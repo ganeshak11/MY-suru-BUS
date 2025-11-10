@@ -1,0 +1,50 @@
+/* src/app/globals.css */
+
+:root {
+  --color-main-background: #f8f9fa; /* Light Gray */
+  --color-card-background: #ffffff; /* Pure White */
+  --color-table-background: #ffffff;
+  --color-table-header-background: #f1f3f5;
+  --color-table-row-hover-background: #f9f9f9;
+
+  /* Primary Accent: Professional Deep Purple */
+  --color-primary-accent: #5E548E; 
+  
+  --color-button-text: #ffffff; 
+
+  --color-primary-text: #212529; /* High contrast black */
+  --color-secondary-text: #6c757d; /* Standard secondary gray */
+
+  /* Semantic colors remain standard */
+  --color-success: #28a745;
+  --color-warning: #ffc107;
+  --color-danger: #dc3545;
+}
+
+.dark {
+  /* SUGGESTION: Slightly lighter background for reduced eye strain */
+  --color-main-background: #12121D; 
+
+  /* SUGGESTION: Slightly lighter card background for clear separation/depth */
+  --color-card-background: #1E1E2D; 
+  --color-table-background: #1E1E2D;
+  --color-table-header-background: #2A2A3C;
+  --color-table-row-hover-background: #323246;
+
+  /* Primary Accent: Light, but still muted purple */
+  --color-primary-accent: #9F86C0; 
+
+  --color-button-text: #1C1C28; 
+
+  --color-primary-text: #E0E0E6; /* Off-white for easier reading */
+  /* SUGGESTION: Lighter secondary text for better dark mode readability */
+  --color-secondary-text: #A7A9BE; 
+
+  --color-success: #28a745;
+  --color-warning: #ffc107;
+  --color-danger: #dc3545;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

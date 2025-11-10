@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+.next/
+out/
+build/
+
+# Supabase local files
+.supabase/
+supabase/.temp/
+supabase/functions/_shared/__pycache__/
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Expo / React Native (if used later)
+.expo/
+.expo-shared/
+
+# Editor & OS junk
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Typescript build artifacts
+*.tsbuildinfo
+
+# Misc cache
+.cache/
+dist/
+coverage/
