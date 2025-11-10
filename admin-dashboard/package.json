@@ -1,6 +1,8 @@
 {
-  "name": "admin-dashboard",
-  "version": "0.1.0",
+  "name": "@mysuru-bus/admin-dashboard",
+  "version": "1.0.0",
+  "description": "MY(suru) BUS Admin Dashboard Web Application",
+  "author": "MY(suru) BUS Team",
   "private": true,
   "scripts": {
     "dev": "next dev",

@@ -1,6 +1,8 @@
 {
-  "name": "driver-app",
+  "name": "@mysuru-bus/driver-app",
   "version": "1.0.0",
+  "description": "MY(suru) BUS Driver Mobile Application",
+  "author": "MY(suru) BUS Team",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",

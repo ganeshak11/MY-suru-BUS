@@ -1,6 +1,8 @@
 {
-  "name": "passenger-app",
+  "name": "@mysuru-bus/passenger-app",
   "version": "1.0.0",
+  "description": "MY(suru) BUS Passenger Mobile Application",
+  "author": "MY(suru) BUS Team",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
