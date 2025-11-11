@@ -4,6 +4,7 @@ import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { LeafletMap } from "../components/LeafletMap";
+import { LocationDebug } from "../components/LocationDebug";
 import { supabase } from "../lib/supabaseClient";
 import { useDriverLocation } from "../hooks/useDriverLocation";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
@@ -107,9 +108,37 @@ export default function TripScreen() {
       }));
       setStops(formattedStops);
 
-      // start background tracking for this trip's bus
+      // Update trip status to En Route if it's Scheduled
+      if (tripData.status === "Scheduled") {
+        const { error: statusError } = await supabase
+          .from("trips")
+          .update({ status: "En Route" })
+          .eq("trip_id", id);
+        
+        if (statusError) {
+          console.error("Failed to update trip status:", statusError);
+        } else {
+          console.log("Trip status updated to En Route");
+          tripData.status = "En Route";
+        }
+      }
+
+      // Update bus with current trip
+      const { error: busUpdateError } = await supabase
+        .from("buses")
+        .update({ current_trip_id: id })
+        .eq("bus_id", tripData.bus_id);
+      
+      if (busUpdateError) {
+        console.error("Failed to update bus trip:", busUpdateError);
+      }
+
+      // Start background tracking
       if (tripData.bus_id) {
-        await startLocationTracking(tripData.bus_id);
+        const trackingStarted = await startLocationTracking(tripData.bus_id);
+        if (!trackingStarted) {
+          Alert.alert("Warning", "Location tracking failed to start. Your location may not be updated.");
+        }
       }
     } catch (error: any) {
       Alert.alert("Error fetching trip data", error.message);
@@ -218,6 +247,8 @@ export default function TripScreen() {
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color={colors.primaryText} />
       </TouchableOpacity>
+      
+      <LocationDebug location={location} isTracking={true} />
       
       <Card style={styles.mapCard}>
         <View style={styles.cardHeader}>

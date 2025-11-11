@@ -160,7 +160,7 @@ export default function Home() {
 
           {/* --- Welcome Message --- */}
           <View style={styles.welcomeContainer}>
-            <Ionicons name="bus" size={40} color="#fff" />
+            <Ionicons name="bus" size={40} color="#050505ff" />
             <Text style={styles.welcomeText}>Welcome, {driverName || 'Driver'}</Text>
           </View>
 
@@ -218,7 +218,7 @@ export default function Home() {
                 <Text style={[styles.txt, { color: colors.primaryText, marginLeft: 8 }]}>
                   {fetchError}
                 </Text>
-                <StyledButton title="Retry" onPress={fetchDriverAndTrip} style={{ marginTop: 10 }} />
+                <StyledButton title="Retry" onPress={() => fetchDriverAndTrip()} style={{ marginTop: 10 }} />
               </View>
             ) : nextTrip ? (
               <View>
@@ -364,14 +364,14 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
   welcomeText: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#fff',
+    color: '#000000ff',
     marginTop: 8,
   },
   cardShadow: {
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: '#000000ff',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 8,

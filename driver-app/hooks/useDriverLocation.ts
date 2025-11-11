@@ -104,10 +104,14 @@ export const useDriverLocation = () => {
 
   // ------------------ BACKGROUND TRACKING ------------------
   const startLocationTracking = async (busId: number): Promise<boolean> => {
-    await processLocationQueue(); // Try to sync any old data
+    console.log("[START TRACKING] Bus ID:", busId);
+    await processLocationQueue();
 
     const hasPermissions = await requestPermissions();
-    if (!hasPermissions) return false;
+    if (!hasPermissions) {
+      console.log("[START TRACKING] Permissions denied");
+      return false;
+    }
 
     const servicesEnabled = await Location.hasServicesEnabledAsync();
     if (!servicesEnabled) {
@@ -117,16 +121,26 @@ export const useDriverLocation = () => {
 
     try {
       await AsyncStorage.setItem(ASYNC_STORAGE_BUS_ID_KEY, String(busId));
+      console.log("[START TRACKING] Bus ID stored in AsyncStorage");
     } catch (e) {
-      console.error("Error storing busId in AsyncStorage:", e);
+      console.error("[START TRACKING] Error storing busId:", e);
       return false;
     }
 
     try {
+      const isTaskDefined = await TaskManager.isTaskDefined(LOCATION_TASK_NAME);
+      console.log("[START TRACKING] Task defined:", isTaskDefined);
+      
+      const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
+      if (isTaskRegistered) {
+        console.log("[START TRACKING] Task already registered, stopping first");
+        await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+      }
+
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.Highest,
-        distanceInterval: 10, // meters
-        timeInterval: 10000, // every 10s
+        accuracy: Location.Accuracy.High,
+        distanceInterval: 10,
+        timeInterval: 10000,
         pausesUpdatesAutomatically: false,
         showsBackgroundLocationIndicator: true,
         foregroundService: {
@@ -136,11 +150,12 @@ export const useDriverLocation = () => {
       });
 
       setIsTracking(true);
-      console.log("Background location tracking started.");
+      console.log("[START TRACKING] ✓ Background tracking started successfully");
       return true;
-    } catch (e) {
-      console.error("Failed to start background tracking:", e);
+    } catch (e: any) {
+      console.error("[START TRACKING] Failed:", e?.message || e);
       await AsyncStorage.removeItem(ASYNC_STORAGE_BUS_ID_KEY);
+      Alert.alert("Error", `Failed to start tracking: ${e?.message || 'Unknown error'}`);
       return false;
     }
   };
@@ -177,7 +192,7 @@ TaskManager.defineTask(
   LOCATION_TASK_NAME,
   async ({ data, error }: TaskManager.TaskManagerTaskBody) => {
     if (error) {
-      console.error("TaskManager error:", error);
+      console.error("[BG TASK] Error:", error);
       return;
     }
 
@@ -186,12 +201,16 @@ TaskManager.defineTask(
       const newLocation = locations[0];
 
       if (newLocation) {
+        console.log("[BG TASK] New location:", newLocation.coords.latitude, newLocation.coords.longitude);
+        
         try {
           const busId = await AsyncStorage.getItem(ASYNC_STORAGE_BUS_ID_KEY);
           if (!busId) {
-            console.log("Background task ran but no busId found.");
+            console.log("[BG TASK] No busId found in storage");
             return;
           }
+
+          console.log("[BG TASK] Updating bus_id:", busId);
 
           const payload: LocationUpdatePayload = {
             bus_id: Number(busId),
@@ -206,17 +225,14 @@ TaskManager.defineTask(
             .eq("bus_id", payload.bus_id);
 
           if (supabaseError) {
-            console.error(
-              "Background Supabase update error (likely offline):",
-              supabaseError.message
-            );
+            console.error("[BG TASK] Supabase error:", supabaseError.message);
             await addUpdateToQueue(payload);
           } else {
-            console.log("Background update sent successfully.");
+            console.log("[BG TASK] ✓ Location updated successfully");
             await processLocationQueue();
           }
         } catch (e) {
-          console.error("Error in background task:", e);
+          console.error("[BG TASK] Exception:", e);
         }
       }
     }
