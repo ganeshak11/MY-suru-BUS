@@ -128,13 +128,13 @@ export default function MonitoringDashboard() {
   }
 
   return (
-    <div className="flex flex-col h-full pl-14">
-      <div className="mb-4">
-        <h1 className="text-3xl font-bold tracking-tight">Live Monitoring</h1>
-        <p className="text-muted-foreground">Real-time bus locations and trip status.</p>
+    <div className="flex flex-col h-full">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Live Monitoring</h1>
+        <p className="text-secondary text-base">Real-time bus locations and trip status</p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
-        <div className="lg:col-span-2 h-[calc(100vh-220px)] rounded-lg border overflow-hidden">
+        <div className="lg:col-span-2 h-[calc(100vh-220px)] rounded-2xl border border-border/50 overflow-hidden shadow-sm">
           <Suspense fallback={<div className="flex items-center justify-center h-full"><p>Loading map...</p></div>}>
             <LiveMap 
               buses={busesToDisplay} // Pass the final filtered buses

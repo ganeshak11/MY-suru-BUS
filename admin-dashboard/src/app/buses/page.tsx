@@ -145,26 +145,26 @@ export default function BusesPage() {
   }
   
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-bold text-foreground">Manage Buses</h1>
-          <p className="mt-2 text-sm text-secondary">Add, edit, and remove buses from the system.</p>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Buses</h1>
+          <p className="text-secondary">Manage your bus fleet</p>
         </div>
-          <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex items-center space-x-4">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => fetchBuses()}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground shadow-sm hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2 sm:w-auto"
-            >
+            className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground border border-border rounded-xl hover:bg-card transition-all"
+          >
             Refresh
-            </button>
+          </button>
           <button
             type="button"
             onClick={() => openModal('add')}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:w-auto"
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
           >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+            <PlusIcon className="h-5 w-5" />
             Add Bus
           </button>
         </div>

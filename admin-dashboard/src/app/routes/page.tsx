@@ -171,84 +171,78 @@ export default function RoutesPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-bold text-foreground">Manage Routes</h1>
-          <p className="mt-2 text-sm text-secondary">A list of all the bus routes in the system.</p>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Routes</h1>
+          <p className="text-secondary">Manage all bus routes in the system</p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            type="button"
-            onClick={() => setView('planner')}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:w-auto"
-          >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-            Create Interactive Route
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setView('planner')}
+          className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
+        >
+          <PlusIcon className="h-5 w-5" />
+          Create Route
+        </button>
       </div>
 
       {/* --- ADDED: Global error display --- */}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
       {loading ? (
-        <p className="mt-8 text-center">Loading routes...</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
       ) : routes.length === 0 ? (
-        <div className="mt-8 text-center">
-            <MapIcon className="mx-auto h-12 w-12 text-secondary" />
-            <h3 className="mt-2 text-sm font-medium text-foreground">No routes found</h3>
-            <p className="mt-1 text-sm text-secondary">Get started by creating a new route.</p>
+        <div className="text-center py-12 bg-card rounded-2xl border border-border">
+          <MapIcon className="mx-auto h-16 w-16 text-secondary/50" />
+          <h3 className="mt-4 text-lg font-medium text-foreground">No routes found</h3>
+          <p className="mt-2 text-secondary">Get started by creating your first route</p>
         </div>
       ) : (
-        <div className="mt-8 flex flex-col">
-          <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                {/* --- UPDATED: Theme-aware dividers --- */}
-                <table className="min-w-full divide-y divide-secondary/30">
-                  <thead className="bg-table-header">
-                    <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-6">Route Name</th>
-                      {/* --- ADDED: New Columns --- */}
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Stops</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Schedules</th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-secondary/30 bg-table">
-                    {routes.map((route) => (
-                      <tr key={route.route_id} className="hover:bg-table-row-hover">
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-6">
-                          <Link href={`/routes/${route.route_id}`} className="hover:underline text-primary">
-                            {route.route_name}
-                          </Link>
-                        </td>
-                        {/* --- ADDED: New Data --- */}
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                          {route.route_stops[0]?.count || 0}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                          {route.schedules[0]?.count || 0}
-                        </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <button onClick={() => openEditModal(route)} className="text-primary hover:text-primary/80 mr-4">
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                          {/* --- UPDATED: Theme-aware button --- */}
-                          <button onClick={() => handleDelete(route)} className="text-danger hover:text-danger/80">
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-card">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Route Name</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Stops</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Schedules</th>
+                <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {routes.map((route) => (
+                <tr key={route.route_id} className="hover:bg-primary/5 transition-colors">
+                  <td className="px-6 py-4">
+                    <Link href={`/routes/${route.route_id}`} className="text-primary font-medium hover:text-primary/80 transition-colors">
+                      {route.route_name}
+                    </Link>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-secondary">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
+                      {route.route_stops[0]?.count || 0} stops
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-secondary">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-medium">
+                      {route.schedules[0]?.count || 0} schedules
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button onClick={() => openEditModal(route)} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      <button onClick={() => handleDelete(route)} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors">
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

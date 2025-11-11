@@ -9,7 +9,7 @@ import type { Bus } from './types';
 // --- FIX 1: Import useTheme from next-themes ---
 import { useTheme } from 'next-themes'; 
 
-// --- Icon Definitions (No change) ---
+// --- Icon Definitions ---
 const busIcon = L.icon({
   iconUrl: '/leaflet/images/bus-icon.png',
   iconSize: [20, 30],
@@ -19,6 +19,18 @@ const busIcon = L.icon({
 
 const selectedIcon = new L.Icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
+const startStopIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+});
+
+const endStopIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
@@ -44,6 +56,8 @@ function MapEffects({ selectedBus }: { selectedBus: Bus | null }) {
 // --- Main Component ---
 export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: LiveMapProps) {
   const [routePolyline, setRoutePolyline] = useState<L.LatLngExpression[]>([]);
+  const [startStop, setStartStop] = useState<{lat: number, lng: number, name: string} | null>(null);
+  const [endStop, setEndStop] = useState<{lat: number, lng: number, name: string} | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supabase = createClientComponentClient();
   
@@ -80,16 +94,17 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
     }
   }, []);
 
-  // --- FIX 2: Correct the Supabase queries ---
   useEffect(() => {
     const fetchRoutePath = async () => {
       setRoutePolyline([]);
+      setStartStop(null);
+      setEndStop(null);
       setError(null);
       if (!selectedTripId) return;
       
       const { data: tripData } = await supabase
         .from('trips')
-        .select('schedules:schedule_id(route_id)') // <-- Corrected query
+        .select('schedules:schedule_id(route_id)')
         .eq('trip_id', selectedTripId)
         .single();
       
@@ -98,7 +113,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
 
       const { data: stopsData } = await supabase
         .from('route_stops')
-        .select('stops:stop_id(latitude, longitude)') // <-- Corrected query
+        .select('stops:stop_id(stop_name, latitude, longitude)')
         .eq('route_id', routeId)
         .order('stop_sequence');
 
@@ -106,6 +121,13 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
         const waypoints = stopsData
           .map(rs => (rs.stops ? L.latLng(rs.stops.latitude, rs.stops.longitude) : null))
           .filter((wp): wp is L.LatLng => wp !== null);
+        
+        if (stopsData[0].stops) {
+          setStartStop({lat: stopsData[0].stops.latitude, lng: stopsData[0].stops.longitude, name: stopsData[0].stops.stop_name});
+        }
+        if (stopsData[stopsData.length - 1].stops) {
+          setEndStop({lat: stopsData[stopsData.length - 1].stops.latitude, lng: stopsData[stopsData.length - 1].stops.longitude, name: stopsData[stopsData.length - 1].stops.stop_name});
+        }
         
         if (waypoints.length > 1) {
           await fetchOSRMRoute(waypoints);
@@ -126,24 +148,37 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
         <div className="absolute top-4 right-4 z-[1000]">
           <button
             onClick={() => setSelectedTripId(null)}
-            // This button uses your tailwind.config.js classes, so it's theme-aware
-            className={`
-              p-2 rounded-lg shadow-lg border font-semibold cursor-pointer
-              bg-card text-foreground border-secondary 
-              hover:bg-background
-            `}
+            className="px-4 py-2 rounded-xl shadow-lg border font-medium cursor-pointer bg-card text-foreground border-border/50 hover:bg-primary hover:text-white hover:border-primary transition-all"
           >
             Show All Buses
           </button>
         </div>
       )}
 
-      {/* Render the Polyline (No change) */}
+      {/* Render the Polyline */}
       {routePolyline.length > 0 && (
-        <Polyline positions={routePolyline} color="#0ea5e9" weight={5} opacity={0.8} />
+        <Polyline positions={routePolyline} color="#3b82f6" weight={4} opacity={0.7} />
       )}
 
-      {/* Render buses prop (No change) */}
+      {/* Render start and end stop markers */}
+      {startStop && (
+        <Marker position={[startStop.lat, startStop.lng]} icon={startStopIcon} zIndexOffset={500}>
+          <Popup>
+            <b>Start Stop</b><br />
+            {startStop.name}
+          </Popup>
+        </Marker>
+      )}
+      {endStop && (
+        <Marker position={[endStop.lat, endStop.lng]} icon={endStopIcon} zIndexOffset={500}>
+          <Popup>
+            <b>End Stop</b><br />
+            {endStop.name}
+          </Popup>
+        </Marker>
+      )}
+
+      {/* Render buses */}
       {buses.map((bus) => (
         bus.current_latitude && bus.current_longitude && (
           <Marker

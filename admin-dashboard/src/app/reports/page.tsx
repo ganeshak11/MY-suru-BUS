@@ -148,18 +148,17 @@ export default function ReportsPage() {
 
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            <div className="sm:flex sm:items-center justify-between">
-                <div className="sm:flex-auto">
-                    <h1 className="text-3xl font-bold text-foreground">Passenger Reports</h1>
-                    <p className="mt-2 text-secondary">Feedback and issues submitted by passengers.</p>
+        <div>
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold text-foreground mb-2">Reports</h1>
+                    <p className="text-secondary">Passenger feedback and issues</p>
                 </div>
-                {/* ADDED: Manual Refresh Button */}
                 <button
                     onClick={fetchReports}
-                    className="inline-flex items-center px-4 py-2 border border-secondary/50 rounded-md shadow-sm text-sm font-medium text-foreground bg-card hover:bg-background/80 transition-colors mt-4 sm:mt-0"
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-sm font-medium text-secondary hover:text-foreground hover:bg-card transition-all"
                 >
-                    <ArrowPathIcon className="h-5 w-5 mr-2" />
+                    <ArrowPathIcon className="h-5 w-5" />
                     Refresh
                 </button>
             </div>
@@ -167,39 +166,44 @@ export default function ReportsPage() {
             {/* ADDED: Report Stats Visualization */}
             <ReportStats reports={reports} />
             
-            {/* ADDED: Filter Bar */}
-            <div className="mt-6 flex flex-wrap gap-2 items-center">
-                <FunnelIcon className="h-5 w-5 text-secondary mr-2" />
-                <span className="text-sm text-secondary">Filter:</span>
-                {statuses.map(status => {
-                    const statusClass = status === 'All' ? { color: 'bg-secondary/30', text: 'text-foreground' } : getStatusClasses(status);
-                    return (
+            <div className="mb-6 flex items-center gap-3">
+                <span className="text-sm font-medium text-foreground">Filter by Status:</span>
+                <div className="flex gap-2">
+                    {statuses.map(status => (
                         <button
                             key={status}
                             onClick={() => setFilterStatus(status)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${statusClass.color} ${statusClass.text} ${filterStatus === status ? 'ring-2 ring-primary ring-offset-2' : 'hover:opacity-80'}`}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                filterStatus === status
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'bg-card text-secondary hover:bg-primary/10 border border-border'
+                            }`}
                         >
                             {status}
                         </button>
-                    );
-                })}
+                    ))}
+                </div>
             </div>
 
             {loading ? (
-                <p className="mt-8 text-center text-secondary">Loading reports...</p>
+                <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                </div>
             ) : error ? (
-                <p className="mt-8 text-center text-danger">{error}</p>
+                <div className="bg-danger/10 border border-danger/20 rounded-2xl p-6 text-center">
+                    <p className="text-danger font-medium">{error}</p>
+                </div>
             ) : reports.length === 0 ? (
-                <div className="mt-8 text-center bg-card p-6 rounded-lg border border-secondary/30">
-                    <h3 className="mt-2 text-lg font-medium text-foreground">No reports found</h3>
-                    <p className="mt-1 text-sm text-secondary">New reports from the passenger app will appear here.</p>
+                <div className="text-center py-12 bg-card rounded-2xl border border-border">
+                    <h3 className="mt-4 text-lg font-medium text-foreground">No reports found</h3>
+                    <p className="mt-2 text-secondary">New reports from passengers will appear here</p>
                 </div>
             ) : (
-                <div className="mt-8 space-y-4">
+                <div className="space-y-4">
                     {filteredReports.map((report) => {
                         const classes = getStatusClasses(report.status);
                         return (
-                            <div key={report.report_id} className="p-4 rounded-lg bg-card shadow border border-secondary/30">
+                            <div key={report.report_id} className="p-6 rounded-2xl bg-card shadow-sm border border-border hover:shadow-md transition-all">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-grow">
                                         <span 

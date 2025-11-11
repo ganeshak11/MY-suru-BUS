@@ -90,16 +90,21 @@ export const useDriverLocation = () => {
       return;
     }
 
-    await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.Highest,
-        timeInterval: 3000, // 3s
-        distanceInterval: 5, // 5m
-      },
-      (loc) => {
-        setLocation(loc);
-      }
-    );
+    try {
+      await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Highest,
+          timeInterval: 3000, // 3s
+          distanceInterval: 5, // 5m
+        },
+        (loc) => {
+          setLocation(loc);
+        }
+      );
+    } catch (e) {
+      console.error("[FOREGROUND] watchPositionAsync error:", e);
+      // Silently fail - foreground watching is optional
+    }
   };
 
   // ------------------ BACKGROUND TRACKING ------------------
@@ -139,10 +144,11 @@ export const useDriverLocation = () => {
 
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.High,
-        distanceInterval: 10,
-        timeInterval: 10000,
+        distanceInterval: 20, // Increased from 10m to 20m
+        timeInterval: 15000, // Increased from 10s to 15s
         pausesUpdatesAutomatically: false,
         showsBackgroundLocationIndicator: true,
+        mayShowUserSettingsDialog: false,
         foregroundService: {
           notificationTitle: "MY(suru) BUS",
           notificationBody: "Tracking your bus location.",
@@ -187,54 +193,66 @@ export const useDriverLocation = () => {
   };
 };
 
-// ------------------ BACKGROUND TASK DEFINITION ------------------
-TaskManager.defineTask(
-  LOCATION_TASK_NAME,
-  async ({ data, error }: TaskManager.TaskManagerTaskBody) => {
-    if (error) {
-      console.error("[BG TASK] Error:", error);
+// CRITICAL: This must be defined at module level, outside React
+// DO NOT use any Expo modules that emit events to JS in this task
+TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
+  try {
+    // Extract data safely
+    if (!task || !task.data) {
       return;
     }
 
-    if (data) {
-      const { locations } = data as { locations: Location.LocationObject[] };
-      const newLocation = locations[0];
-
-      if (newLocation) {
-        console.log("[BG TASK] New location:", newLocation.coords.latitude, newLocation.coords.longitude);
-        
-        try {
-          const busId = await AsyncStorage.getItem(ASYNC_STORAGE_BUS_ID_KEY);
-          if (!busId) {
-            console.log("[BG TASK] No busId found in storage");
-            return;
-          }
-
-          console.log("[BG TASK] Updating bus_id:", busId);
-
-          const payload: LocationUpdatePayload = {
-            bus_id: Number(busId),
-            current_latitude: newLocation.coords.latitude,
-            current_longitude: newLocation.coords.longitude,
-            last_updated: new Date().toISOString(),
-          };
-
-          const { error: supabaseError } = await supabase
-            .from("buses")
-            .update(payload)
-            .eq("bus_id", payload.bus_id);
-
-          if (supabaseError) {
-            console.error("[BG TASK] Supabase error:", supabaseError.message);
-            await addUpdateToQueue(payload);
-          } else {
-            console.log("[BG TASK] ✓ Location updated successfully");
-            await processLocationQueue();
-          }
-        } catch (e) {
-          console.error("[BG TASK] Exception:", e);
-        }
-      }
+    const { locations, error } = task.data;
+    
+    // Handle errors silently
+    if (error || !locations || !Array.isArray(locations) || locations.length === 0) {
+      return;
     }
+
+    const location = locations[0];
+    if (!location || !location.coords) {
+      return;
+    }
+
+    // Get busId
+    const busIdStr = await AsyncStorage.getItem(ASYNC_STORAGE_BUS_ID_KEY);
+    if (!busIdStr) {
+      return;
+    }
+
+    const busId = Number(busIdStr);
+    if (isNaN(busId)) {
+      return;
+    }
+
+    // Build update payload
+    const payload: LocationUpdatePayload = {
+      bus_id: busId,
+      current_latitude: location.coords.latitude,
+      current_longitude: location.coords.longitude,
+      last_updated: new Date().toISOString(),
+    };
+
+    // Try to update database
+    try {
+      const { error: supabaseError } = await supabase
+        .from("buses")
+        .update(payload)
+        .eq("bus_id", busId);
+
+      if (supabaseError) {
+        // Queue for later
+        await addUpdateToQueue(payload);
+      } else {
+        // Try to process queue if we have network
+        await processLocationQueue();
+      }
+    } catch (dbError) {
+      // Queue for later if database call fails
+      await addUpdateToQueue(payload);
+    }
+  } catch (e) {
+    // Silently catch all errors - the background task MUST NOT crash
+    console.error("[BG TASK] Unexpected error:", e);
   }
-);
+});

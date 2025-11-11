@@ -21,85 +21,80 @@ interface BusListProps {
 
 export default function BusList({ buses, loading, error, openModal, handleDelete }: BusListProps) {
   if (loading) {
-    return <p className="mt-8 text-center">Loading buses...</p>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (error) {
-    return <p className="mt-8 text-center text-danger">{error}</p>; // Use theme color
+    return (
+      <div className="bg-danger/10 border border-danger/20 rounded-2xl p-6 text-center">
+        <p className="text-danger font-medium">{error}</p>
+      </div>
+    );
   }
 
   if (buses.length === 0) {
     return (
-      <div className="mt-8 text-center">
-        <TruckIcon className="mx-auto h-12 w-12 text-secondary" />
-        <h3 className="mt-2 text-sm font-medium text-foreground">No buses found</h3>
-        <p className="mt-1 text-sm text-secondary">Get started by adding your first bus.</p>
+      <div className="text-center py-12 bg-card rounded-2xl border border-border">
+        <TruckIcon className="mx-auto h-16 w-16 text-secondary/50" />
+        <h3 className="mt-4 text-lg font-medium text-foreground">No buses found</h3>
+        <p className="mt-2 text-secondary">Get started by adding your first bus</p>
       </div>
     );
   }
 
   return (
-    <div className="mt-8 flex flex-col">
-      <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-        <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-          <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-300">
-              <thead className="bg-table-header">
-                {/* --- UPDATED: Added new columns --- */}
-                <tr>
-                  <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-6">Bus Number</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Status</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Current Trip ID</th>
-                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Last Updated</th>
-                  <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-                {/* --- END UPDATE --- */}
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-table">
-                {buses.map((bus) => (
-                  <tr key={bus.bus_id} className="hover:bg-table-row-hover">
-                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-6">{bus.bus_no}</td>
-                    
-                    {/* --- UPDATED: Added new data cells --- */}
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                      {bus.current_trip_id ? (
-                        <span className="inline-flex items-center rounded-full bg-success/20 px-2.5 py-0.5 text-xs font-medium text-success">
-                          <span className="mr-1.5 h-2 w-2 rounded-full bg-success"></span>
-                          En Route
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-secondary/20 px-2.5 py-0.5 text-xs font-medium text-secondary">
-                          <span className="mr-1.5 h-2 w-2 rounded-full bg-secondary"></span>
-                          Idle
-                        </span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                      {bus.current_trip_id || 'N/A'}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                      {bus.last_updated ? new Date(bus.last_updated).toLocaleString() : 'N/A'}
-                    </td>
-                    {/* --- END UPDATE --- */}
-
-                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                      <button onClick={() => openModal('edit', bus)} className="text-primary hover:text-primary/80 mr-4">
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      {/* --- UPDATED: Use theme color --- */}
-                      <button onClick={() => handleDelete(bus)} className="text-danger hover:text-danger/80">
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <div className="bg-card rounded-2xl border border-border overflow-hidden">
+      <table className="min-w-full divide-y divide-border">
+        <thead className="bg-card">
+          <tr>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Bus Number</th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Current Trip</th>
+            <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Last Updated</th>
+            <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {buses.map((bus) => (
+            <tr key={bus.bus_id} className="hover:bg-primary/5 transition-colors">
+              <td className="px-6 py-4 font-medium text-foreground">{bus.bus_no}</td>
+              <td className="px-6 py-4">
+                {bus.current_trip_id ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm font-medium">
+                    <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                    En Route
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">
+                    <span className="h-2 w-2 rounded-full bg-gray-400"></span>
+                    Idle
+                  </span>
+                )}
+              </td>
+              <td className="px-6 py-4 text-sm text-secondary">
+                {bus.current_trip_id ? `Trip #${bus.current_trip_id}` : '—'}
+              </td>
+              <td className="px-6 py-4 text-sm text-secondary">
+                {bus.last_updated ? new Date(bus.last_updated).toLocaleString() : '—'}
+              </td>
+              <td className="px-6 py-4 text-right">
+                <div className="flex items-center justify-end gap-2">
+                  <button onClick={() => openModal('edit', bus)} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                    <PencilIcon className="h-5 w-5" />
+                  </button>
+                  <button onClick={() => handleDelete(bus)} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors">
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

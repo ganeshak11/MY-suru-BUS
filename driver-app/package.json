@@ -11,6 +11,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@babel/helpers": "^7.28.4",
+    "@babel/runtime": "^7.28.4",
     "@expo/config-plugins": "^54.0.2",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "^2.43.1",

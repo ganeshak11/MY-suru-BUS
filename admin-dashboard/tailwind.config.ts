@@ -18,6 +18,7 @@ const config: Config = {
         'primary-foreground': 'var(--color-button-text)',
         secondary: 'var(--color-secondary-text)',
         'secondary-foreground': 'var(--color-primary-text)',
+        border: 'var(--color-border)',
         table: {
           DEFAULT: 'var(--color-table-background)',
           header: 'var(--color-table-header-background)',

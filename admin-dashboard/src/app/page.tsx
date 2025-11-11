@@ -127,48 +127,94 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="pl-14">
-      <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-      <p className="mt-2 text-lg text-secondary">
-        Welcome to the MY(suru) BUS management panel.
-      </p>
+    <div className="min-h-screen">
+      {/* Header Section */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard</h1>
+        <p className="text-secondary text-lg">Welcome back! Here's what's happening with your bus fleet.</p>
+      </div>
 
-      {/* 4. Render the new, dynamic grid */}
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium mb-1">Active Trips</p>
+              <p className="text-4xl font-bold">{stats.activeTrips}</p>
+            </div>
+            <div className="bg-white/20 p-3 rounded-xl">
+              <MapIcon className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm font-medium mb-1">Total Buses</p>
+              <p className="text-4xl font-bold">{stats.totalBuses}</p>
+            </div>
+            <div className="bg-white/20 p-3 rounded-xl">
+              <BusIcon className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium mb-1">Total Drivers</p>
+              <p className="text-4xl font-bold">{stats.totalDrivers}</p>
+            </div>
+            <div className="bg-white/20 p-3 rounded-xl">
+              <UsersIcon className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-red-100 text-sm font-medium mb-1">New Reports</p>
+              <p className="text-4xl font-bold">{stats.newReports}</p>
+            </div>
+            <div className="bg-white/20 p-3 rounded-xl">
+              <UsersIcon className="h-8 w-8" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-foreground mb-4">Quick Actions</h2>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {features.map((feature) => (
-          // Make the whole card a clickable link
           <Link
             href={feature.href}
             key={feature.name}
-            className="group flex flex-col justify-between overflow-hidden rounded-lg bg-card p-6 shadow-md transition-all duration-200 ease-in-out hover:shadow-xl hover:-translate-y-1"
+            className="group relative bg-card rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-border/50 hover:border-primary/50"
           >
-            <div>
-              <div className="flex items-center justify-between">
-                {/* Icon */}
-                <div className="flex-shrink-0">{feature.icon}</div>
-                
-                {/* Stat (if it exists) */}
-                {feature.stat !== undefined && (
-                  <div className="text-right">
-                    <p className="text-4xl font-bold text-foreground">
-                      {feature.stat}
-                    </p>
-                    <p className="text-sm font-medium text-secondary">
-                      {feature.statLabel}
-                    </p>
-                  </div>
-                )}
+            <div className="flex items-start justify-between mb-4">
+              <div className="bg-primary/10 p-3 rounded-xl group-hover:bg-primary/20 transition-colors">
+                {feature.icon}
               </div>
-              
-              {/* Text content */}
-              <div className="mt-4">
-                <h2 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {feature.name}
-                </h2>
-                <p className="mt-2 text-sm text-secondary-foreground">
-                  {feature.description}
-                </p>
-              </div>
+            </div>
+            
+            <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
+              {feature.name}
+            </h3>
+            <p className="text-sm text-secondary leading-relaxed">
+              {feature.description}
+            </p>
+            
+            <div className="mt-4 flex items-center text-primary text-sm font-medium">
+              <span>Open</span>
+              <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </Link>
         ))}

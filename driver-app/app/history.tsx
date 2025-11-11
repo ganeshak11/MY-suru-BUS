@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Platform, RefreshControl } from "react-native";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
 import { useSession } from "../contexts/SessionContext";
 import { supabase } from "../lib/supabaseClient";
 import { Card } from "../components/Card";
+import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 
 export default function History() {
@@ -12,14 +13,19 @@ export default function History() {
   const { user } = useSession();
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchHistory();
   }, []);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (isRefresh = false) => {
     if (!user) return;
-    setLoading(true);
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const { data: driverRow } = await supabase
         .from("drivers")
@@ -42,6 +48,7 @@ export default function History() {
       console.error(e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -55,18 +62,57 @@ export default function History() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Ionicons name="time" size={28} color={colors.primaryAccent} />
+        <Text style={styles.headerTitle}>Trip History</Text>
+      </View>
       <FlatList
         data={trips}
         keyExtractor={(item) => item.trip_id.toString()}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchHistory(true)}
+            tintColor={colors.primaryAccent}
+            colors={[colors.primaryAccent]}
+          />
+        }
         renderItem={({ item }) => (
           <Card style={styles.card}>
-            <Text style={styles.routeName}>{item.schedules.routes.route_name}</Text>
-            <Text style={styles.detail}>Bus: {item.buses.bus_no}</Text>
-            <Text style={styles.detail}>Date: {dayjs(item.trip_date).format("MMM D, YYYY")}</Text>
+            <View style={styles.cardHeader}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+              </View>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.routeName}>{item.schedules.routes.route_name}</Text>
+                <Text style={styles.tripId}>Trip #{item.trip_id}</Text>
+              </View>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.detailRow}>
+              <Ionicons name="bus" size={16} color={colors.secondaryText} />
+              <Text style={styles.detailLabel}>Bus:</Text>
+              <Text style={styles.detailValue}>{item.buses.bus_no}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="calendar" size={16} color={colors.secondaryText} />
+              <Text style={styles.detailLabel}>Date:</Text>
+              <Text style={styles.detailValue}>{dayjs(item.trip_date).format("MMM D, YYYY")}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="time" size={16} color={colors.secondaryText} />
+              <Text style={styles.detailLabel}>Time:</Text>
+              <Text style={styles.detailValue}>{item.schedules.start_time ? item.schedules.start_time.slice(0, 5) : 'N/A'}</Text>
+            </View>
           </Card>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>No completed trips yet</Text>
+          <View style={styles.emptyContainer}>
+            <Ionicons name="folder-open-outline" size={64} color={colors.secondaryText} />
+            <Text style={styles.empty}>No completed trips yet</Text>
+            <Text style={styles.emptySubtext}>Your trip history will appear here</Text>
+          </View>
         }
       />
     </View>
@@ -75,10 +121,102 @@ export default function History() {
 
 const createStyles = (colors: typeof themeTokens.light) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.mainBackground, padding: 16 },
+    container: { flex: 1, backgroundColor: colors.mainBackground },
     center: { justifyContent: "center", alignItems: "center" },
-    card: { marginBottom: 12 },
-    routeName: { fontSize: 18, fontWeight: "600", color: colors.primaryText, marginBottom: 8 },
-    detail: { fontSize: 14, color: colors.secondaryText, marginBottom: 4 },
-    empty: { textAlign: "center", color: colors.secondaryText, marginTop: 20 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 20,
+      paddingBottom: 16,
+      gap: 12,
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: colors.primaryText,
+    },
+    listContent: {
+      padding: 16,
+      paddingTop: 0,
+    },
+    card: {
+      marginBottom: 16,
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+        },
+        android: { elevation: 8 },
+      }),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 12,
+      gap: 12,
+    },
+    iconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: "#10b98120",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardHeaderText: {
+      flex: 1,
+    },
+    routeName: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.primaryText,
+      marginBottom: 2,
+    },
+    tripId: {
+      fontSize: 13,
+      color: colors.secondaryText,
+      fontWeight: "500",
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border + "40",
+      marginBottom: 12,
+    },
+    detailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 8,
+      gap: 8,
+    },
+    detailLabel: {
+      fontSize: 14,
+      color: colors.secondaryText,
+      fontWeight: "500",
+    },
+    detailValue: {
+      fontSize: 14,
+      color: colors.primaryText,
+      fontWeight: "600",
+      flex: 1,
+    },
+    emptyContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+    },
+    empty: {
+      textAlign: "center",
+      color: colors.primaryText,
+      fontSize: 18,
+      fontWeight: "600",
+      marginTop: 16,
+    },
+    emptySubtext: {
+      textAlign: "center",
+      color: colors.secondaryText,
+      fontSize: 14,
+      marginTop: 8,
+    },
   });

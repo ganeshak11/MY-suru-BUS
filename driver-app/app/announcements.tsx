@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Platform, RefreshControl } from "react-native";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
 import { supabase } from "../lib/supabaseClient";
 import { Card } from "../components/Card";
+import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 
 export default function Announcements() {
@@ -10,13 +11,18 @@ export default function Announcements() {
   const styles = createStyles(colors);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchAnnouncements();
   }, []);
 
-  const fetchAnnouncements = async () => {
-    setLoading(true);
+  const fetchAnnouncements = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const { data } = await supabase
         .from("announcements")
@@ -29,6 +35,7 @@ export default function Announcements() {
       console.error(e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -42,18 +49,46 @@ export default function Announcements() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Ionicons name="megaphone" size={28} color={colors.primaryAccent} />
+        <Text style={styles.headerTitle}>Announcements</Text>
+      </View>
       <FlatList
         data={announcements}
         keyExtractor={(item) => item.announcement_id.toString()}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchAnnouncements(true)}
+            tintColor={colors.primaryAccent}
+            colors={[colors.primaryAccent]}
+          />
+        }
         renderItem={({ item }) => (
           <Card style={styles.card}>
-            <Text style={styles.title}>{item.title}</Text>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconCircle, { backgroundColor: colors.primaryAccent + "20" }]}>
+                <Ionicons name="notifications" size={24} color={colors.primaryAccent} />
+              </View>
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.title}>{item.title}</Text>
+                <View style={styles.dateRow}>
+                  <Ionicons name="time-outline" size={14} color={colors.secondaryText} />
+                  <Text style={styles.date}>{dayjs(item.created_at).format("MMM D, YYYY h:mm A")}</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.divider} />
             <Text style={styles.message}>{item.message}</Text>
-            <Text style={styles.date}>{dayjs(item.created_at).format("MMM D, YYYY h:mm A")}</Text>
           </Card>
         )}
         ListEmptyComponent={
-          <Text style={styles.empty}>No announcements</Text>
+          <View style={styles.emptyContainer}>
+            <Ionicons name="megaphone-outline" size={64} color={colors.secondaryText} />
+            <Text style={styles.empty}>No announcements</Text>
+            <Text style={styles.emptySubtext}>Check back later for updates</Text>
+          </View>
         }
       />
     </View>
@@ -62,11 +97,94 @@ export default function Announcements() {
 
 const createStyles = (colors: typeof themeTokens.light) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.mainBackground, padding: 16 },
+    container: { flex: 1, backgroundColor: colors.mainBackground },
     center: { justifyContent: "center", alignItems: "center" },
-    card: { marginBottom: 12 },
-    title: { fontSize: 18, fontWeight: "600", color: colors.primaryText, marginBottom: 8 },
-    message: { fontSize: 14, color: colors.primaryText, marginBottom: 8 },
-    date: { fontSize: 12, color: colors.secondaryText },
-    empty: { textAlign: "center", color: colors.secondaryText, marginTop: 20 },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 20,
+      paddingBottom: 16,
+      gap: 12,
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: colors.primaryText,
+    },
+    listContent: {
+      padding: 16,
+      paddingTop: 0,
+    },
+    card: {
+      marginBottom: 16,
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+        },
+        android: { elevation: 8 },
+      }),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 12,
+      gap: 12,
+    },
+    iconCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardHeaderText: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 17,
+      fontWeight: "700",
+      color: colors.primaryText,
+      marginBottom: 6,
+    },
+    dateRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+    },
+    date: {
+      fontSize: 12,
+      color: colors.secondaryText,
+      fontWeight: "500",
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.border + "40",
+      marginBottom: 12,
+    },
+    message: {
+      fontSize: 15,
+      color: colors.primaryText,
+      lineHeight: 22,
+    },
+    emptyContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 60,
+    },
+    empty: {
+      textAlign: "center",
+      color: colors.primaryText,
+      fontSize: 18,
+      fontWeight: "600",
+      marginTop: 16,
+    },
+    emptySubtext: {
+      textAlign: "center",
+      color: colors.secondaryText,
+      fontSize: 14,
+      marginTop: 8,
+    },
   });

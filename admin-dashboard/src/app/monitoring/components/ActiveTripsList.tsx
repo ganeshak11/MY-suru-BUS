@@ -38,20 +38,20 @@ export default function ActiveTripsList({
 
   // --- UPDATED: No loading state, just render ---
   return (
-    <div className="h-[80vh] bg-card p-4 rounded-lg border flex flex-col">
-      <h2 className="text-2xl font-semibold tracking-tight mb-4">Active Trips ({filteredTrips.length})</h2>
+    <div className="h-[80vh] bg-card p-6 rounded-2xl border border-border/50 flex flex-col shadow-sm">
+      <h2 className="text-2xl font-bold text-foreground mb-4">Active Trips <span className="text-primary">({filteredTrips.length})</span></h2>
       
-      {/* Filter UI (now just controls parent state) */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-4">
-        <div className="flex-1">
-          <label htmlFor="route-filter" className="block text-sm font-medium text-muted-foreground">
-            Filter by Route
+      {/* Filter UI */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div>
+          <label htmlFor="route-filter" className="block text-sm font-medium text-secondary mb-1.5">
+            Route
           </label>
           <select
             id="route-filter"
             value={selectedRoute}
             onChange={(e) => setSelectedRoute(e.target.value)}
-            className="w-full p-2 border rounded-md bg-background text-foreground border-secondary"
+            className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
           >
             <option value="all">All Routes</option>
             {availableRoutes.map(route => (
@@ -59,15 +59,15 @@ export default function ActiveTripsList({
             ))}
           </select>
         </div>
-        <div className="flex-1">
-          <label htmlFor="driver-filter" className="block text-sm font-medium text-muted-foreground">
-            Filter by Driver
+        <div>
+          <label htmlFor="driver-filter" className="block text-sm font-medium text-secondary mb-1.5">
+            Driver
           </label>
           <select
             id="driver-filter"
             value={selectedDriver}
             onChange={(e) => setSelectedDriver(e.target.value)}
-            className="w-full p-2 border rounded-md bg-background text-foreground border-secondary"
+            className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
           >
             <option value="all">All Drivers</option>
             {availableDrivers.map(driver => (
@@ -77,27 +77,37 @@ export default function ActiveTripsList({
         </div>
       </div>
       
-      {/* List (renders the pre-filtered 'filteredTrips' prop) */}
+      {/* List */}
       {filteredTrips.length === 0 ? (
-        <p className="text-muted-foreground">
-          {allTrips.length > 0 ? 'No active trips match your filters.' : 'No active trips at the moment.'}
-        </p>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <svg className="mx-auto h-12 w-12 text-secondary/50 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            <p className="text-secondary">
+              {allTrips.length > 0 ? 'No trips match your filters' : 'No active trips'}
+            </p>
+          </div>
+        </div>
       ) : (
-        <div className="flex-1 space-y-4 overflow-y-auto min-h-0">
+        <div className="flex-1 space-y-3 overflow-y-auto min-h-0 pr-2">
           {filteredTrips.map(trip => (
             <div 
               key={trip.trip_id} 
               onClick={() => setSelectedTripId(trip.trip_id)}
-              className={`p-3 rounded-lg bg-background border-2 cursor-pointer transition-colors ${
-                selectedTripId === trip.trip_id ? 'border-primary' : 'border-transparent'
+              className={`p-4 rounded-xl bg-background border-2 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                selectedTripId === trip.trip_id ? 'border-primary shadow-md' : 'border-border/30 hover:border-primary/50'
               }`}
             >
-              <div className="font-bold text-lg">{trip.schedules?.routes?.route_name}</div>
-              <div className="text-sm text-muted-foreground">
-                {trip.buses?.bus_no} - {trip.drivers?.name}
+              <div className="font-bold text-base text-foreground mb-1">{trip.schedules?.routes?.route_name}</div>
+              <div className="text-sm text-secondary mb-2">
+                {trip.buses?.bus_no} • {trip.drivers?.name}
               </div>
-              <div className="text-sm text-green-500 font-semibold mt-2">
-                {trip.latest_stop}
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                  {trip.latest_stop}
+                </div>
               </div>
             </div>
           ))}

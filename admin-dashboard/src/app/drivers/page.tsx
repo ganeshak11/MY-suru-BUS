@@ -176,100 +176,92 @@ export default function DriversPage() {
   // --- END UPDATE ---
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-bold text-foreground">Manage Drivers</h1>
-          <p className="mt-2 text-sm text-secondary">A list of all the drivers in the system.</p>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Drivers</h1>
+          <p className="text-secondary">Manage your driver roster</p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            type="button"
-            onClick={() => openModal('add')}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:w-auto"
-          >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-            Add Driver
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => openModal('add')}
+          className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
+        >
+          <PlusIcon className="h-5 w-5" />
+          Add Driver
+        </button>
       </div>
 
       {loading ? (
-        <p className="mt-8 text-center">Loading drivers...</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
       ) : error ? (
-         <p className="mt-8 text-center text-danger">{error}</p> // --- UPDATED: Theme color
+        <div className="bg-danger/10 border border-danger/20 rounded-2xl p-6 text-center">
+          <p className="text-danger font-medium">{error}</p>
+        </div>
       ) : drivers.length === 0 ? (
-        <div className="mt-8 text-center">
-            <UserCircleIcon className="mx-auto h-12 w-12 text-secondary" />
-            <h3 className="mt-2 text-sm font-medium text-foreground">No drivers found</h3>
-            <p className="mt-1 text-sm text-secondary">Get started by adding a new driver.</p>
+        <div className="text-center py-12 bg-card rounded-2xl border border-border">
+          <UserCircleIcon className="mx-auto h-16 w-16 text-secondary/50" />
+          <h3 className="mt-4 text-lg font-medium text-foreground">No drivers found</h3>
+          <p className="mt-2 text-secondary">Get started by adding your first driver</p>
         </div>
       ) : (
-        <div className="mt-8 flex flex-col">
-          <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                {/* --- UPDATED: Theme-aware dividers --- */}
-                <table className="min-w-full divide-y divide-secondary/30">
-                  <thead className="bg-table-header">
-                    {/* --- UPDATED: Added new columns --- */}
-                    <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-6">Name</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Contact</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Status</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Current Trip ID</th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-secondary/30 bg-table">
-                    {drivers.map((driver) => {
-                      // --- ADDED: Find active trip ---
-                      const activeTrip = driver.trips.find(trip => trip.status === 'En Route');
-                      
-                      return (
-                        <tr key={driver.driver_id} className="hover:bg-table-row-hover">
-                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-6">{driver.name}</td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                            <div>{driver.email || 'No email'}</div>
-                            <div>{driver.phone_number}</div>
-                          </td>
-                          {/* --- ADDED: Status Cell --- */}
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                            {activeTrip ? (
-                              <span className="inline-flex items-center rounded-full bg-success/20 px-2.5 py-0.5 text-xs font-medium text-success">
-                                <span className="mr-1.5 h-2 w-2 rounded-full bg-success"></span>
-                                En Route
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center rounded-full bg-secondary/20 px-2.5 py-0.5 text-xs font-medium text-secondary">
-                                <span className="mr-1.5 h-2 w-2 rounded-full bg-secondary"></span>
-                                Idle
-                              </span>
-                            )}
-                          </td>
-                          {/* --- ADDED: Trip ID Cell --- */}
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                            {activeTrip?.trip_id || 'N/A'}
-                          </td>
-                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                            <button onClick={() => openModal('edit', driver)} className="text-primary hover:text-primary/80 mr-4">
-                              <PencilIcon className="h-5 w-5" />
-                            </button>
-                            {/* --- UPDATED: Theme color --- */}
-                            <button onClick={() => handleDelete(driver)} className="text-danger hover:text-danger/80">
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-card">
+              <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Name</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Contact</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Current Trip</th>
+                <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {drivers.map((driver) => {
+                const activeTrip = driver.trips.find(trip => trip.status === 'En Route');
+                
+                return (
+                  <tr key={driver.driver_id} className="hover:bg-primary/5 transition-colors">
+                    <td className="px-6 py-4 font-medium text-foreground">{driver.name}</td>
+                    <td className="px-6 py-4 text-sm text-secondary">
+                      <div className="flex flex-col gap-1">
+                        <span>{driver.email || 'No email'}</span>
+                        <span className="text-xs">{driver.phone_number}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {activeTrip ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm font-medium">
+                          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                          En Route
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">
+                          <span className="h-2 w-2 rounded-full bg-gray-400"></span>
+                          Idle
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-secondary">
+                      {activeTrip ? `Trip #${activeTrip.trip_id}` : '—'}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => openModal('edit', driver)} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => handleDelete(driver)} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors">
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

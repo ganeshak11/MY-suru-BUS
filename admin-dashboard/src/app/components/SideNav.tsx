@@ -105,37 +105,38 @@ export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }:
               </Transition.Child>
 
               {/* Logo/Brand Header */}
-              <div className="h-16 flex items-center justify-center text-2xl font-bold shrink-0 border-b border-secondary/20">
-                <span className="text-primary">MY</span>(suru) BUS
+              <div className="h-20 flex items-center justify-center text-2xl font-bold shrink-0 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
+                <div className="flex items-center gap-2">
+                  <div className="bg-primary p-2 rounded-lg">
+                    <TripIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <span><span className="text-primary">MY</span>suru BUS</span>
+                </div>
               </div>
 
               {/* Navigation Links */}
-              <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+              <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
-                    // SUGGESTION: Theme-aware hover effect
-                    className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                    className="group flex items-center px-4 py-3 text-sm font-medium rounded-xl text-foreground hover:bg-primary hover:text-white transition-all duration-200 hover:shadow-md hover:translate-x-1"
                     onClick={onClose}
                   >
-                    <item.icon className="h-6 w-6 mr-3 shrink-0" />
+                    <item.icon className="h-5 w-5 mr-3 shrink-0 group-hover:scale-110 transition-transform" />
                     {item.name}
                   </Link>
                 ))}
               </nav>
 
               {/* Footer (Theme Toggle & Logout) */}
-              <div className="p-4 border-t border-secondary/20 shrink-0">
-                <div className="mb-2">
-                    <ThemeToggleButton />
-                </div>
+              <div className="p-4 border-t border-border shrink-0 space-y-2">
+                <ThemeToggleButton />
                 <button
                   onClick={handleLogout}
-                  // SUGGESTION: Use danger for logout to stand out
-                  className="flex items-center w-full px-2 py-2 text-sm font-medium rounded-md text-foreground hover:bg-danger/10 hover:text-danger transition-colors"
+                  className="flex items-center w-full px-4 py-3 text-sm font-medium rounded-xl text-foreground hover:bg-danger hover:text-white transition-all duration-200 hover:shadow-md"
                 >
-                  <LogoutIcon className="h-6 w-6 mr-3 shrink-0" />
+                  <LogoutIcon className="h-5 w-5 mr-3 shrink-0" />
                   Logout
                 </button>
               </div>
