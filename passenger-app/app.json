@@ -18,7 +18,13 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.mysurubus.passenger",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -26,6 +32,14 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "passenger-app"
+    "scheme": "passenger-app",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "bb074092-d7eb-4d65-847b-33c2958b72cd"
+      }
+    }
   }
 }

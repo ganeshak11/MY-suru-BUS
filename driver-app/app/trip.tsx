@@ -125,10 +125,10 @@ export default function TripScreen() {
       longitude: Number(nextStop.longitude),
     });
 
-    // Calculate ETA using actual speed or fallback to 30 km/h
+    // Calculate ETA using actual speed or fallback to 50 km/h
     const currentSpeedMps = location.coords.speed || 0;
     const currentSpeedKmh = currentSpeedMps * 3.6;
-    const speedKmh = currentSpeedKmh > 5 ? currentSpeedKmh : 30; // Use actual speed if moving, else default
+    const speedKmh = currentSpeedKmh > 5 ? currentSpeedKmh : 50; // Use actual speed if moving, else default
     const distanceKm = d / 1000;
     const timeHours = distanceKm / speedKmh;
     const timeMinutes = Math.round(timeHours * 60);
@@ -366,15 +366,6 @@ export default function TripScreen() {
               color={colors.primaryAccent}
             />
             <Text style={styles.cardTitle}>Live Map</Text>
-            {location?.coords.speed !== null &&
-              location?.coords.speed !== undefined && (
-              <View style={styles.speedBadge}>
-                <Ionicons name="speedometer" size={12} color="#fff" />
-                <Text style={styles.speedText}>
-                  {Math.round((location.coords.speed || 0) * 3.6)} km/h
-                </Text>
-              </View>
-            )}
           </View>
           {location
             ? <LeafletMap location={location} stops={stops} />
@@ -393,6 +384,25 @@ export default function TripScreen() {
           <View style={styles.cardHeader}>
             <Ionicons name="list" size={22} color={colors.primaryAccent} />
             <Text style={styles.cardTitle}>Route Stops</Text>
+            {trip?.schedules?.start_time && stops.length > 0 && currentStopIndex < stops.length && stops[currentStopIndex]?.time_offset_from_start !== undefined && (() => {
+              const currentStop = stops[currentStopIndex];
+              const now = new Date();
+              const today = now.toISOString().split('T')[0];
+              const tripStart = new Date(`${today}T${trip.schedules.start_time}`);
+              const elapsedMinutes = Math.round((now.getTime() - tripStart.getTime()) / 60000);
+              const delayMinutes = elapsedMinutes - currentStop.time_offset_from_start;
+              const isDelayed = delayMinutes > 0;
+              const isEarly = delayMinutes < -2;
+              
+              return (
+                <View style={[styles.delayBadge, isDelayed ? styles.delayBadgeDelayed : isEarly ? styles.delayBadgeEarly : styles.delayBadgeOnTime]}>
+                  <Ionicons name={isDelayed ? "alert-circle" : isEarly ? "time" : "checkmark-circle"} size={12} color="#fff" />
+                  <Text style={styles.delayText}>
+                    {isDelayed ? `+${delayMinutes}` : delayMinutes} min
+                  </Text>
+                </View>
+              );
+            })()}
             {stops.length > 0 && (
               <View style={styles.progressBadge}>
                 <Text style={styles.progressText}>
@@ -578,26 +588,42 @@ const createStyles = (colors: typeof themeTokens.light) =>
       alignItems: "center",
       padding: 20,
     },
-    speedBadge: {
+    delayBadge: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: "#10b981",
       borderRadius: 16,
       paddingHorizontal: 10,
       paddingVertical: 6,
       gap: 4,
-      marginRight: 8,
+      zIndex: 1002,
       ...Platform.select({
         ios: {
-          shadowColor: "#10b981",
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.3,
           shadowRadius: 4,
         },
-        android: { elevation: 4 },
+        android: { elevation: 1002 },
       }),
     },
-    speedText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+    delayBadgeOnTime: {
+      backgroundColor: "#10b981",
+      ...Platform.select({
+        ios: { shadowColor: "#10b981" },
+      }),
+    },
+    delayBadgeEarly: {
+      backgroundColor: "#3b82f6",
+      ...Platform.select({
+        ios: { shadowColor: "#3b82f6" },
+      }),
+    },
+    delayBadgeDelayed: {
+      backgroundColor: "#ef4444",
+      ...Platform.select({
+        ios: { shadowColor: "#ef4444" },
+      }),
+    },
+    delayText: { color: "#fff", fontSize: 12, fontWeight: "700" },
     etaBadge: {
       flexDirection: "row",
       alignItems: "center",

@@ -1,0 +1,54 @@
+{
+  "name": "mysuru-bus",
+  "version": "1.0.0",
+  "description": "MY(suru) BUS - Real-Time Bus Fleet Management System",
+  "author": "MY(suru) BUS Team",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "admin-dashboard",
+    "driver-app",
+    "passenger-app"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:admin\" \"npm run dev:driver\" \"npm run dev:passenger\"",
+    "dev:admin": "cd admin-dashboard && npm run dev",
+    "dev:driver": "cd driver-app && npm start",
+    "dev:passenger": "cd passenger-app && npm start",
+    "build": "npm run build:admin && npm run build:driver && npm run build:passenger",
+    "build:admin": "cd admin-dashboard && npm run build",
+    "build:driver": "cd driver-app && eas build --platform all",
+    "build:passenger": "cd passenger-app && eas build --platform all",
+    "install:all": "npm install && npm run install:admin && npm run install:driver && npm run install:passenger",
+    "install:admin": "cd admin-dashboard && npm install",
+    "install:driver": "cd driver-app && npm install",
+    "install:passenger": "cd passenger-app && npm install",
+    "clean": "npm run clean:admin && npm run clean:driver && npm run clean:passenger",
+    "clean:admin": "cd admin-dashboard && rm -rf .next node_modules",
+    "clean:driver": "cd driver-app && rm -rf .expo node_modules",
+    "clean:passenger": "cd passenger-app && rm -rf .expo node_modules",
+    "lint": "npm run lint:admin",
+    "lint:admin": "cd admin-dashboard && npm run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/MY-suru-BUS.git"
+  },
+  "keywords": [
+    "bus-tracking",
+    "fleet-management",
+    "real-time",
+    "nextjs",
+    "react-native",
+    "expo",
+    "supabase",
+    "typescript"
+  ]
+}

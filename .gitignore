@@ -66,3 +66,7 @@ coverage/
 *.bak
 *.tmp
 *.temp
+
+#settings extra
+.vscode
+.amazonq

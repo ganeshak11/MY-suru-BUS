@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
+import { supabase } from '../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../../contexts/ThemeContext';
-import { RouteLeafletMap } from '../../components/RouteLeafletMap';
-import { StopsTimeline } from '../../components/StopsTimeline';
-import { Header } from '../../components/Header';
+import { useTheme } from '../contexts/ThemeContext';
+import { RouteLeafletMap } from '../components/RouteLeafletMap';
+import { StopsTimeline } from '../components/StopsTimeline';
+import { Header } from '../components/Header';
 
 type StopDetails = {
   stop_id: number;
@@ -20,7 +20,7 @@ type StopDetails = {
   time_offset_from_start?: number;
 };
 
-const RouteDetailsPage: React.FC = () => {
+const MapViewScreen: React.FC = () => {
   const { route_id } = useLocalSearchParams() as { route_id?: string };
   const router = useRouter();
   const { colors } = useTheme();
@@ -51,7 +51,6 @@ const RouteDetailsPage: React.FC = () => {
       if (bus.current_latitude && bus.current_longitude) {
         const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
 
-        // Track current stop
         for (let i = 0; i < stops.length; i++) {
           if (stops[i].status === 'Completed') continue;
           const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
@@ -358,39 +357,36 @@ const RouteDetailsPage: React.FC = () => {
             <Ionicons name="information-circle" size={22} color={colors.primaryAccent} />
             <Text style={styles.cardTitle}>{busLocations.length > 0 ? busLocations.map(b => b.bus_no).join(', ') : 'Bus Details'}</Text>
           </View>
-          <View style={styles.detailsRow}>
-            <View style={styles.detailsLeft}>
-              <View style={styles.detailItem}>
-                <Ionicons name="navigate-circle" size={18} color={colors.primaryAccent} />
-                <Text style={styles.detailLabel}>Route: </Text>
-                <Text style={styles.detailValue}>{route?.route_name || 'N/A'}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="location" size={18} color={colors.primaryAccent} />
-                <Text style={styles.detailLabel}>Stops: </Text>
-                <Text style={styles.detailValue}>{stops.length}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="navigate" size={18} color={colors.primaryAccent} />
-                <Text style={styles.detailLabel}>Distance: </Text>
-                <Text style={styles.detailValue}>{stops.length > 0 ? `${(stops.reduce((acc, stop, idx) => {
-                  if (idx === 0) return 0;
-                  return acc + getDistance(
-                    { latitude: stops[idx - 1].latitude, longitude: stops[idx - 1].longitude },
-                    { latitude: stop.latitude, longitude: stop.longitude }
-                  );
-                }, 0) / 1000).toFixed(1)} km` : 'N/A'}</Text>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="time" size={18} color={colors.primaryAccent} />
-                <Text style={styles.detailLabel}>Trips: </Text>
-                <Text style={styles.detailValue}>{schedules.length}</Text>
-              </View>
+          <View style={{ padding: 20, gap: 8 }}>
+            <View style={styles.detailItem}>
+              <Ionicons name="navigate-circle" size={18} color={colors.primaryAccent} />
+              <Text style={styles.detailLabel}>Route: </Text>
+              <Text style={styles.detailValue}>{route?.route_name || 'N/A'}</Text>
             </View>
-            <TouchableOpacity style={styles.mapButton} onPress={() => router.push({ pathname: '/MapView', params: { route_id: route_id } })}>
-              <Ionicons name="map" size={24} color="#fff" />
-              <Text style={styles.mapButtonText}>View Map</Text>
-            </TouchableOpacity>
+            <View style={{ height: 1, backgroundColor: colors.secondaryText + '30' }} />
+            <View style={styles.detailItem}>
+              <Ionicons name="location" size={18} color={colors.primaryAccent} />
+              <Text style={styles.detailLabel}>Stops: </Text>
+              <Text style={styles.detailValue}>{stops.length}</Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: colors.secondaryText + '30' }} />
+            <View style={styles.detailItem}>
+              <Ionicons name="navigate" size={18} color={colors.primaryAccent} />
+              <Text style={styles.detailLabel}>Distance: </Text>
+              <Text style={styles.detailValue}>{stops.length > 0 ? `${(stops.reduce((acc, stop, idx) => {
+                if (idx === 0) return 0;
+                return acc + getDistance(
+                  { latitude: stops[idx - 1].latitude, longitude: stops[idx - 1].longitude },
+                  { latitude: stop.latitude, longitude: stop.longitude }
+                );
+              }, 0) / 1000).toFixed(1)} km` : 'N/A'}</Text>
+            </View>
+            <View style={{ height: 1, backgroundColor: colors.secondaryText + '30' }} />
+            <View style={styles.detailItem}>
+              <Ionicons name="time" size={18} color={colors.primaryAccent} />
+              <Text style={styles.detailLabel}>Trips: </Text>
+              <Text style={styles.detailValue}>{schedules.length}</Text>
+            </View>
           </View>
           {schedules.length > 0 && (
             <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
@@ -428,25 +424,16 @@ const RouteDetailsPage: React.FC = () => {
 
         <View style={styles.stopsCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="list" size={22} color={colors.primaryAccent} />
-            <Text style={styles.cardTitle}>Route Stops</Text>
-            {stops.length > 0 && (
-              <View style={styles.progressBadge}>
-                <Text style={styles.progressText}>{currentStopIndex + 1}/{stops.length}</Text>
-              </View>
-            )}
+            <Ionicons name="map" size={22} color={colors.primaryAccent} />
+            <Text style={styles.cardTitle}>Live Map</Text>
           </View>
-          <StopsTimeline 
-            stops={stops} 
-            currentStopIndex={currentStopIndex}
-            tripStartTime={route?.start_time} 
-            currentLocation={activeScheduleId && selectedStartTime === schedules.find(s => s.schedule_id === activeScheduleId)?.start_time ? busLocation : undefined}
-            tripId={activeScheduleId && selectedStartTime === schedules.find(s => s.schedule_id === activeScheduleId)?.start_time ? activeTripId || undefined : undefined}
-          />
+          <View style={{ height: 500, borderRadius: 20, overflow: 'hidden' }}>
+            <RouteLeafletMap stops={stops} buses={busLocations} />
+          </View>
         </View>
       </ScrollView>
     </LinearGradient>
   );
 };
 
-export default RouteDetailsPage;
+export default MapViewScreen;

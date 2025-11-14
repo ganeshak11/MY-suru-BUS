@@ -11,18 +11,18 @@ type Stop = {
   longitude: number;
   geofence_radius_meters: number;
   status: string;
-  cumulativeDistance?: number; // Distance from start point to this stop
-time_offset_from_start?: number; // Offset in minutes from trip start
-  scheduledArrivalTime?: string; // ISO string of scheduled arrival time
+  cumulativeDistance?: number;
+  time_offset_from_start?: number;
+  scheduledArrivalTime?: string;
 };
 
 interface StopsTimelineProps {
   stops: Stop[];
   currentStopIndex: number;
   eta?: string;
-  tripStartTime?: string; // Trip start time as ISO string
-  distanceToStop?: number; // in meters
-  currentLocation?: { latitude: number; longitude: number }; // Current driver location
+  tripStartTime?: string;
+  distanceToStop?: number;
+  currentLocation?: { latitude: number; longitude: number };
 }
 
 export const StopsTimeline: React.FC<StopsTimelineProps> = ({
@@ -35,64 +35,6 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
 }) => {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-
-  const getDistance = (from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }): number => {
-    const R = 6371e3;
-    const φ1 = (from.latitude * Math.PI) / 180;
-    const φ2 = (to.latitude * Math.PI) / 180;
-    const Δφ = ((to.latitude - from.latitude) * Math.PI) / 180;
-    const Δλ = ((to.longitude - from.longitude) * Math.PI) / 180;
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const calculateETA = (stop: Stop, index: number): { etaMinutes: number; scheduledMinutes: number } | null => {
-    if (!tripStartTime || stop.time_offset_from_start === undefined || !currentLocation) return null;
-    
-    const scheduledMinutes = stop.time_offset_from_start;
-    
-    if (index < currentStopIndex) return { etaMinutes: 0, scheduledMinutes };
-    
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const tripStart = new Date(`${today}T${tripStartTime}`);
-    const elapsedMinutes = Math.round((now.getTime() - tripStart.getTime()) / 60000);
-    
-    // Calculate current delay
-    const currentStopScheduled = stops[currentStopIndex]?.time_offset_from_start || 0;
-    const currentDelay = elapsedMinutes - currentStopScheduled;
-    
-    if (index === currentStopIndex) {
-      const distanceMeters = getDistance(currentLocation, { latitude: stop.latitude, longitude: stop.longitude });
-      const distanceKm = distanceMeters / 1000;
-      const speedKmh = 15;
-      const travelMinutes = Math.round((distanceKm / speedKmh) * 60);
-      return { etaMinutes: elapsedMinutes + travelMinutes, scheduledMinutes };
-    }
-    
-    // For future stops: scheduled time + current delay + additional travel time
-    let additionalDistance = 0;
-    additionalDistance += getDistance(currentLocation, { latitude: stops[currentStopIndex].latitude, longitude: stops[currentStopIndex].longitude });
-    
-    for (let i = currentStopIndex; i < index; i++) {
-      additionalDistance += getDistance(
-        { latitude: stops[i].latitude, longitude: stops[i].longitude },
-        { latitude: stops[i + 1].latitude, longitude: stops[i + 1].longitude }
-      );
-    }
-    
-    const additionalDistanceKm = additionalDistance / 1000;
-    const speedKmh = 15;
-    const additionalMinutes = Math.round((additionalDistanceKm / speedKmh) * 60);
-    
-    // Predicted ETA = scheduled time + current delay + (actual travel time - scheduled travel time between stops)
-    const scheduledTravelTime = scheduledMinutes - currentStopScheduled;
-    const delayPropagation = Math.max(0, additionalMinutes - scheduledTravelTime);
-    const predictedETA = scheduledMinutes + currentDelay + delayPropagation;
-    
-    return { etaMinutes: predictedETA, scheduledMinutes };
-  };
 
   const formatDistance = (meters: number): string => {
     if (meters < 1000) {
@@ -202,37 +144,18 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                   >
                     {stop.stop_name}
                   </Text>
-                  <View style={styles.timeColumn}>
-                    {stop.time_offset_from_start !== undefined && tripStartTime && (() => {
-                      const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
-                      const startTotalMinutes = (startHours * 60) + startMinutes;
-                      const scheduledTotalMinutes = startTotalMinutes + stop.time_offset_from_start;
-                      const scheduledHours = Math.floor(scheduledTotalMinutes / 60) % 24;
-                      const scheduledMinutes = scheduledTotalMinutes % 60;
-                      return (
-                        <Text style={styles.offsetTime}>
-                          {scheduledHours}:{String(scheduledMinutes).padStart(2, '0')}
-                        </Text>
-                      );
-                    })()}
-                    {(() => {
-                      const etaData = calculateETA(stop, index);
-                      if (etaData && !completed && tripStartTime) {
-                        const isOnTime = etaData.etaMinutes <= etaData.scheduledMinutes;
-                        const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
-                        const startTotalMinutes = (startHours * 60) + startMinutes;
-                        const etaTotalMinutes = startTotalMinutes + etaData.etaMinutes;
-                        const etaHours = Math.floor(etaTotalMinutes / 60) % 24;
-                        const etaMinutes = etaTotalMinutes % 60;
-                        return (
-                          <Text style={[styles.etaTime, isOnTime ? styles.etaOnTime : styles.etaDelayed]}>
-                            {etaHours}:{String(etaMinutes).padStart(2, '0')}
-                          </Text>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </View>
+                  {stop.time_offset_from_start !== undefined && tripStartTime && (() => {
+                    const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
+                    const startTotalMinutes = (startHours * 60) + startMinutes;
+                    const scheduledTotalMinutes = startTotalMinutes + stop.time_offset_from_start;
+                    const scheduledHours = Math.floor(scheduledTotalMinutes / 60) % 24;
+                    const scheduledMinutes = scheduledTotalMinutes % 60;
+                    return (
+                      <Text style={styles.offsetTime}>
+                        {scheduledHours}:{String(scheduledMinutes).padStart(2, '0')}
+                      </Text>
+                    );
+                  })()}
                 </View>
 
                 {/* Distance and Status */}

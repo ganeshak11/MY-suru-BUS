@@ -1,8 +1,9 @@
 import { Slot } from 'expo-router';
 import { ThemeProvider } from '../contexts/ThemeContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import * as Notifications from 'expo-notifications';
+import SplashScreen from './SplashScreen';
 
 // Configure notification handler for when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -66,11 +67,28 @@ function AnnouncementListener() {
   return null; // This component doesn't render any UI
 }
 
+function AppContent() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) return <SplashScreen />;
+
+  return (
+    <>
+      <AnnouncementListener />
+      <Slot />
+    </>
+  );
+}
+
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <AnnouncementListener />
-      <Slot />
+      <AppContent />
     </ThemeProvider>
   );
 }

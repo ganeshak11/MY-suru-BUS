@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import { Picker } from '@react-native-picker/picker';
+import { Header } from '../components/Header';
 
 const ReportPage: React.FC = () => {
   const router = useRouter();
@@ -78,6 +79,7 @@ const ReportPage: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <Header showBackButton />
       <Text style={styles.header}>Submit a Report</Text>
 
       <Text style={styles.label}>Report Category</Text>

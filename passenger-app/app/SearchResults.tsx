@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../lib/supabaseClient';
 import { Icon } from 'react-native-elements';
 import { useTheme } from '../contexts/ThemeContext';
+import { Header } from '../components/Header';
 
 interface BusResult {
   bus_id: string; // bus id (matches DB)
@@ -34,16 +35,6 @@ const SearchResults = () => {
       flex: 1,
       padding: 20,
       backgroundColor: currentColors.mainBackground,
-    },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    backButtonText: {
-      marginLeft: 5,
-      fontSize: 16,
-      color: currentColors.primaryText,
     },
     title: {
       fontSize: 24,
@@ -183,21 +174,20 @@ const SearchResults = () => {
           }
           const scheduleIds = scheduleData.map(s => s.schedule_id);
 
-          const today = new Date().toISOString().split('T')[0];
+          // Get all buses assigned to trips on valid schedules
           const { data: tripData, error: tripError } = await supabase
             .from('trips')
             .select('bus_id')
-            .eq('trip_date', today)
             .in('schedule_id', scheduleIds);
 
           if (tripError) {
-            console.error('Error fetching trips for route search:', tripError);
-            setError('Error fetching trip information.');
+            console.error('Error fetching trips:', tripError);
+            setError('Error fetching bus information.');
             setLoading(false);
             return;
           }
 
-          const busIds = (tripData || []).map(t => t.bus_id);
+          const busIds = Array.from(new Set((tripData || []).map(t => t.bus_id).filter(Boolean)));
           if (busIds.length > 0) {
             busQuery = busQuery.in('bus_id', busIds);
           } else {
@@ -232,7 +222,7 @@ const SearchResults = () => {
         console.error('Error fetching buses:', busError);
         setError('Error fetching bus data.');
       } else {
-        setBusResults(busData as BusResult[] || []);
+        setBusResults(busData as any || []);
       }
       setLoading(false);
     };
@@ -242,18 +232,19 @@ const SearchResults = () => {
 
   const renderBusItem = ({ item }: { item: BusResult }) => {
     const route = item.current_trip?.schedule?.route;
-    const routeName = route?.route_name ?? 'Not on a trip';
+    const hasRoute = !!route;
     const targetRouteId = route?.route_id;
 
     return (
       <TouchableOpacity
         onPress={() => {
-          if (targetRouteId != null) router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(targetRouteId) } });
+          if (targetRouteId) router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(targetRouteId) } });
         }}
+        disabled={!hasRoute}
       >
         <View style={styles.busCard}>
           <Text style={styles.busNumber}>{item.bus_no}</Text>
-          <Text style={styles.routeName}>{routeName}</Text>
+          {hasRoute && <Text style={styles.routeName}>{route.route_name}</Text>}
         </View>
       </TouchableOpacity>
     );
@@ -262,11 +253,8 @@ const SearchResults = () => {
   return (
     <SafeAreaView style={styles.container}>
   <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Icon name="arrow-back" type="material" color={currentColors.primaryText} size={24} />
-        <Text style={styles.backButtonText}>Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.title}>Search Results for "{query}"</Text>
+      <Header showBackButton />
+      <Text style={styles.title}>Available Buses for "{query}"</Text>
 
       {loading && <ActivityIndicator size="large" color={currentColors.primaryAccent} />}
       {error && <Text style={styles.errorText}>{error}</Text>}
