@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import SplashScreen from './SplashScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import { Header } from '../components/Header';
-import * as Haptics from 'expo-haptics';
+
 
 interface BusResult {
   bus_id: string;
@@ -53,6 +53,7 @@ const App: React.FC = () => {
       if (error) {
         console.error('Error fetching all bus details:', error);
         setAllBusDetails([]);
+        return;
       } else {
         const busData = data || [];
         const augmented = await Promise.all(busData.map(async (b: any) => {
@@ -107,7 +108,6 @@ const App: React.FC = () => {
   };
 
   const handleShare = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await Share.share({
         message: 'Download MY(suru) BUS app to track buses in real-time! https://mysurubus.com/download',
@@ -127,7 +127,7 @@ const App: React.FC = () => {
 
   // toggleTheme comes from ThemeContext
 
-  const fetchSuggestions = async (query: string, type: 'source' | 'destination', setSuggestions: React.Dispatch<React.SetStateAction<string[]>>) => {
+  const fetchSuggestions = React.useCallback(async (query: string, type: 'source' | 'destination', setSuggestions: React.Dispatch<React.SetStateAction<string[]>>) => {
     if (!query) {
       setSuggestions([]);
       return;
@@ -156,11 +156,10 @@ const App: React.FC = () => {
       console.error(e);
       setSuggestions([]);
     }
-  };
+  }, [source]);
 
   const handleFindRoutes = async () => {
     if (!source || !destination) return;
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const newSearch = `${source} to ${destination}`;
     setRecentRouteSearches(prev => [newSearch, ...prev.filter(s => s !== newSearch)].slice(0, 5));
     setSource('');
@@ -427,15 +426,23 @@ const App: React.FC = () => {
       const targetRouteId = item.routes?.[0]?.route_id ?? item.route_id;
       const hasRoute = item.routes && item.routes.length > 0;
       return (
-    <TouchableOpacity onPress={async () => { 
-      if (targetRouteId != null) {
-        router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(targetRouteId) } });
-      } else {
-        const { data } = await supabase.from('trips').select('schedules(route_id)').eq('bus_id', item.bus_id).limit(1).single();
-        const schedules = data?.schedules as any;
-        if (schedules?.route_id) {
-          router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(schedules.route_id) } });
+    <TouchableOpacity onPress={async () => {
+      try {
+        if (targetRouteId != null) {
+          router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(targetRouteId) } });
+        } else {
+          const { data, error } = await supabase.from('trips').select('schedules(route_id)').eq('bus_id', item.bus_id).limit(1).single();
+          if (error) {
+            console.error('Error fetching route:', error);
+            return;
+          }
+          const schedules = data?.schedules as any;
+          if (schedules?.route_id) {
+            router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(schedules.route_id) } });
+          }
         }
+      } catch (error) {
+        console.error('Error navigating to route:', error);
       }
     }}>
           <View style={styles.busCard}>

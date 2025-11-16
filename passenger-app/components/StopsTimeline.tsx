@@ -38,19 +38,28 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
     if (!tripId) return;
 
     const fetchPredictedTimes = async () => {
-      const { data } = await supabase
-        .from('trip_stop_times')
-        .select('stop_id, predicted_arrival_time')
-        .eq('trip_id', tripId);
-      
-      if (data) {
-        const times: Record<number, string> = {};
-        data.forEach(item => {
-          if (item.predicted_arrival_time) {
-            times[item.stop_id] = item.predicted_arrival_time;
-          }
-        });
-        setPredictedTimes(times);
+      try {
+        const { data, error } = await supabase
+          .from('trip_stop_times')
+          .select('stop_id, predicted_arrival_time')
+          .eq('trip_id', tripId);
+        
+        if (error) {
+          console.error('Error fetching predicted times:', error);
+          return;
+        }
+        
+        if (data) {
+          const times: Record<number, string> = {};
+          data.forEach(item => {
+            if (item.predicted_arrival_time) {
+              times[item.stop_id] = item.predicted_arrival_time;
+            }
+          });
+          setPredictedTimes(times);
+        }
+      } catch (error) {
+        console.error('Error in fetchPredictedTimes:', error);
       }
     };
 

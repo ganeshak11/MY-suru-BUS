@@ -13,9 +13,9 @@ export const BusCardSkeleton = () => {
         Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [opacity]);
 
-  const styles = StyleSheet.create({
+  const styles = React.useMemo(() => StyleSheet.create({
     card: {
       backgroundColor: colors.cardBackground,
       padding: 15,
@@ -28,7 +28,7 @@ export const BusCardSkeleton = () => {
       borderRadius: 4,
       marginBottom: 8,
     },
-  });
+  }), [colors]);
 
   return (
     <Animated.View style={[styles.card, { opacity }]}>

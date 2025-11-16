@@ -1,11 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 import 'react-native-url-polyfill/auto';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl =
+  Constants.expoConfig?.extra?.supabaseUrl ||
+  Constants.manifest?.extra?.supabaseUrl;
+
+const supabaseAnonKey =
+  Constants.expoConfig?.extra?.supabaseAnonKey ||
+  Constants.manifest?.extra?.supabaseAnonKey;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase URL or anon key');
+  throw new Error(
+    'Supabase URL and Anon Key must be defined in app.json → expo.extra.'
+  );
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

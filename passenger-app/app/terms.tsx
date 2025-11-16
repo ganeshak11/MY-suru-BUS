@@ -6,6 +6,7 @@ import { Header } from '../components/Header';
 const TermsPage: React.FC = () => {
   const { colors } = useTheme();
 
+
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.mainBackground, padding: 20 },
     title: { fontSize: 24, fontWeight: 'bold', color: colors.primaryText, marginTop: 20, marginBottom: 16 },

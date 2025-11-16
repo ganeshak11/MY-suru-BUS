@@ -72,13 +72,14 @@ export default function Home() {
         return;
       }
 
-      // 2. Fetch the next scheduled or en route trip
+      // 2. Fetch the next scheduled or en route trip (today only)
+      const today = dayjs().format('YYYY-MM-DD');
       const { data: trips, error: tripsError } = await supabase
         .from("trips")
         .select("*, schedules(route_id, start_time, routes(route_name)), buses!fk_trips_bus(bus_no)")
         .eq("driver_id", driverIdValue)
+        .eq("trip_date", today)
         .in("status", ["Scheduled", "En Route"])
-        .order("trip_date", { ascending: true })
         .order("schedules(start_time)", { ascending: true })
         .limit(1);
       

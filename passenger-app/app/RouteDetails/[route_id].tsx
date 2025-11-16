@@ -46,22 +46,26 @@ const RouteDetailsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (busLocations.length > 0 && stops.length > 0) {
-      const bus = busLocations[0];
-      if (bus.current_latitude && bus.current_longitude) {
-        const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
+    try {
+      if (busLocations.length > 0 && stops.length > 0) {
+        const bus = busLocations[0];
+        if (bus?.current_latitude && bus?.current_longitude) {
+          const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
 
-        // Track current stop
-        for (let i = 0; i < stops.length; i++) {
-          if (stops[i].status === 'Completed') continue;
-          const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
-          if (d < stops[i].geofence_radius_meters) {
-            setStops(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'Completed' } : s));
-            setCurrentStopIndex(i + 1);
+          // Track current stop
+          for (let i = 0; i < stops.length; i++) {
+            if (stops[i].status === 'Completed') continue;
+            const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
+            if (d < stops[i].geofence_radius_meters) {
+              setStops(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'Completed' } : s));
+              setCurrentStopIndex(i + 1);
+            }
+            break;
           }
-          break;
         }
       }
+    } catch (error) {
+      console.error('Error tracking stop status:', error);
     }
   }, [busLocations, stops]);
 
@@ -74,6 +78,11 @@ const RouteDetailsPage: React.FC = () => {
 
       try {
         const rid = Number(route_id);
+        if (isNaN(rid)) {
+          console.error('Invalid route_id');
+          setLoading(false);
+          return;
+        }
 
         const { data: routeData, error: routeErr } = await supabase
           .from('routes')
@@ -197,7 +206,7 @@ const RouteDetailsPage: React.FC = () => {
     };
   }, [route_id]);
 
-  const styles = StyleSheet.create({
+  const styles = React.useMemo(() => StyleSheet.create({
     container: { flex: 1, padding: 16 },
     scrollContent: { paddingTop: 16 },
     mapCard: {
@@ -332,7 +341,7 @@ const RouteDetailsPage: React.FC = () => {
     scheduleTime: { fontSize: 14, fontWeight: '600', color: colors.primaryText },
     scheduleTimeActive: { color: '#10b981', fontWeight: '700' },
     scheduleTimeSelected: { color: '#fff', fontWeight: '700' },
-  });
+  }), [colors]);
 
   if (loading) {
     return (
@@ -428,7 +437,6 @@ const RouteDetailsPage: React.FC = () => {
 
         <View style={styles.stopsCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="list" size={22} color={colors.primaryAccent} />
             <Text style={styles.cardTitle}>Route Stops</Text>
             {stops.length > 0 && (
               <View style={styles.progressBadge}>

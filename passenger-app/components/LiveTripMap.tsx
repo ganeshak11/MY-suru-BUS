@@ -26,9 +26,13 @@ export const LiveTripMap = ({ stops, bus }: Props) => {
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
-    if (webViewRef.current && bus) {
-      const busJson = JSON.stringify(bus);
-      webViewRef.current.injectJavaScript(`updateBus(${busJson}); true;`);
+    try {
+      if (webViewRef.current && bus) {
+        const busJson = JSON.stringify(bus);
+        webViewRef.current.injectJavaScript(`updateBus(${busJson}); true;`);
+      }
+    } catch (error) {
+      console.error('Error updating bus location on map:', error);
     }
   }, [bus]);
 

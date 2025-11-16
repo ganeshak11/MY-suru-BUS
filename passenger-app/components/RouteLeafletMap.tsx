@@ -25,9 +25,13 @@ export const RouteLeafletMap = ({ stops, buses = [] }: Props) => {
   const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
-    if (webViewRef.current && buses.length > 0) {
-      const busesJson = JSON.stringify(buses);
-      webViewRef.current.injectJavaScript(`updateBuses(${busesJson}); true;`);
+    try {
+      if (webViewRef.current && buses.length > 0) {
+        const busesJson = JSON.stringify(buses);
+        webViewRef.current.injectJavaScript(`updateBuses(${busesJson}); true;`);
+      }
+    } catch (error) {
+      console.error('Error updating bus locations on map:', error);
     }
   }, [buses]);
 
@@ -50,10 +54,40 @@ export const RouteLeafletMap = ({ stops, buses = [] }: Props) => {
     body { margin: 0; padding: 0; }
     #map { width: 100vw; height: 100vh; }
     .leaflet-routing-container { display: none; }
+    .zoom-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .zoom-btn {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .zoom-btn:active {
+      background: #f0f0f0;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div class="zoom-controls">
+    <button class="zoom-btn" onclick="map.zoomIn()">+</button>
+    <button class="zoom-btn" onclick="map.zoomOut()">−</button>
+  </div>
   <script>
     const map = L.map('map', { zoomControl: false }).setView([${centerLat}, ${centerLng}], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

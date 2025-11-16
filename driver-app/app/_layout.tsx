@@ -51,7 +51,7 @@ function AuthLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="home" options={{ title: 'Driver Dashboard' }} />
-      <Stack.Screen name="profile" options={{ title: 'Profile & Settings' }} />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="history" options={{ title: 'Trip History' }} />
       <Stack.Screen name="announcements" options={{ title: 'Announcements' }} />
       <Stack.Screen name="report" options={{ title: 'Report to Admin' }} />

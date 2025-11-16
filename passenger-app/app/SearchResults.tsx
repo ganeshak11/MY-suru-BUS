@@ -7,8 +7,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Header } from '../components/Header';
 
 interface BusResult {
-  bus_id: string; // bus id (matches DB)
+  bus_id: string;
   bus_no: string;
+  route_id?: string;
+  driver_id?: string;
+  routes?: { route_id: string; route_name: string; }[] | null;
   current_trip: {
     trip_id: number;
     schedule: {
@@ -222,7 +225,45 @@ const SearchResults = () => {
         console.error('Error fetching buses:', busError);
         setError('Error fetching bus data.');
       } else {
-        setBusResults(busData as any || []);
+        const augmented = await Promise.all((busData || []).map(async (b: any) => {
+          const route = b.current_trip?.schedule?.route;
+          
+          if (route) {
+            return {
+              bus_id: b.bus_id,
+              bus_no: b.bus_no,
+              driver_id: b.current_trip?.driver_id,
+              route_id: route.route_id,
+              routes: [{
+                route_id: route.route_id,
+                route_name: route.route_name,
+              }],
+              current_trip: b.current_trip
+            };
+          }
+          
+          const { data: tripData } = await supabase
+            .from('trips')
+            .select('schedules(route_id, routes(route_id, route_name))')
+            .eq('bus_id', b.bus_id)
+            .limit(1)
+            .single();
+          
+          const schedules = tripData?.schedules as any;
+          const tripRoute = schedules?.routes;
+          return {
+            bus_id: b.bus_id,
+            bus_no: b.bus_no,
+            driver_id: null,
+            route_id: tripRoute?.route_id,
+            routes: tripRoute ? [{
+              route_id: tripRoute.route_id,
+              route_name: tripRoute.route_name,
+            }] : null,
+            current_trip: b.current_trip
+          };
+        }));
+        setBusResults(augmented || []);
       }
       setLoading(false);
     };
@@ -231,20 +272,34 @@ const SearchResults = () => {
   }, [query, type]);
 
   const renderBusItem = ({ item }: { item: BusResult }) => {
-    const route = item.current_trip?.schedule?.route;
-    const hasRoute = !!route;
-    const targetRouteId = route?.route_id;
+    const targetRouteId = item.routes?.[0]?.route_id ?? item.route_id;
+    const hasRoute = item.routes && item.routes.length > 0;
 
     return (
       <TouchableOpacity
-        onPress={() => {
-          if (targetRouteId) router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(targetRouteId) } });
+        onPress={async () => {
+          try {
+            if (targetRouteId != null) {
+              router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(targetRouteId) } });
+            } else {
+              const { data, error } = await supabase.from('trips').select('schedules(route_id)').eq('bus_id', item.bus_id).limit(1).single();
+              if (error) {
+                console.error('Error fetching route for bus:', error);
+                return;
+              }
+              const schedules = data?.schedules as any;
+              if (schedules?.route_id) {
+                router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(schedules.route_id) } });
+              }
+            }
+          } catch (error) {
+            console.error('Error navigating to route details:', error);
+          }
         }}
-        disabled={!hasRoute}
       >
         <View style={styles.busCard}>
           <Text style={styles.busNumber}>{item.bus_no}</Text>
-          {hasRoute && <Text style={styles.routeName}>{route.route_name}</Text>}
+          {hasRoute && item.routes?.[0] && <Text style={styles.routeName}>Route: {item.routes[0].route_name}</Text>}
         </View>
       </TouchableOpacity>
     );

@@ -46,21 +46,25 @@ const MapViewScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    if (busLocations.length > 0 && stops.length > 0) {
-      const bus = busLocations[0];
-      if (bus.current_latitude && bus.current_longitude) {
-        const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
+    try {
+      if (busLocations.length > 0 && stops.length > 0) {
+        const bus = busLocations[0];
+        if (bus?.current_latitude && bus?.current_longitude) {
+          const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
 
-        for (let i = 0; i < stops.length; i++) {
-          if (stops[i].status === 'Completed') continue;
-          const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
-          if (d < stops[i].geofence_radius_meters) {
-            setStops(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'Completed' } : s));
-            setCurrentStopIndex(i + 1);
+          for (let i = 0; i < stops.length; i++) {
+            if (stops[i].status === 'Completed') continue;
+            const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
+            if (d < stops[i].geofence_radius_meters) {
+              setStops(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'Completed' } : s));
+              setCurrentStopIndex(i + 1);
+            }
+            break;
           }
-          break;
         }
       }
+    } catch (error) {
+      console.error('Error updating stop status:', error);
     }
   }, [busLocations, stops]);
 
@@ -123,11 +127,15 @@ const MapViewScreen: React.FC = () => {
           .order('start_time', { ascending: true });
         
         if (!schedErr && scheduleData) {
-          const { data: activeTrips } = await supabase
+          const { data: activeTrips, error: activeTripsErr } = await supabase
             .from('trips')
             .select('schedule_id, trip_id')
             .in('schedule_id', scheduleData.map(s => s.schedule_id))
             .eq('status', 'En Route');
+          
+          if (activeTripsErr) {
+            console.error('Error fetching active trips:', activeTripsErr);
+          }
           
           const activeScheduleIds = new Set(activeTrips?.map(t => t.schedule_id) || []);
           const firstActiveScheduleId = activeTrips?.[0]?.schedule_id || null;
@@ -196,7 +204,7 @@ const MapViewScreen: React.FC = () => {
     };
   }, [route_id]);
 
-  const styles = StyleSheet.create({
+  const styles = React.useMemo(() => StyleSheet.create({
     container: { flex: 1, padding: 16 },
     scrollContent: { paddingTop: 16 },
     mapCard: {
@@ -331,7 +339,7 @@ const MapViewScreen: React.FC = () => {
     scheduleTime: { fontSize: 14, fontWeight: '600', color: colors.primaryText },
     scheduleTimeActive: { color: '#10b981', fontWeight: '700' },
     scheduleTimeSelected: { color: '#fff', fontWeight: '700' },
-  });
+  }), [colors]);
 
   if (loading) {
     return (

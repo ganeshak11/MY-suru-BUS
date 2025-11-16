@@ -398,7 +398,13 @@ export default function TripScreen() {
                 <View style={[styles.delayBadge, isDelayed ? styles.delayBadgeDelayed : isEarly ? styles.delayBadgeEarly : styles.delayBadgeOnTime]}>
                   <Ionicons name={isDelayed ? "alert-circle" : isEarly ? "time" : "checkmark-circle"} size={12} color="#fff" />
                   <Text style={styles.delayText}>
-                    {isDelayed ? `+${delayMinutes}` : delayMinutes} min
+                    {(() => {
+                      const absMinutes = Math.abs(delayMinutes);
+                      const hours = Math.floor(absMinutes / 60);
+                      const mins = absMinutes % 60;
+                      const sign = isDelayed ? '+' : '';
+                      return hours > 0 ? `${sign}${hours}:${mins.toString().padStart(2, '0')}` : `${sign}${mins} min`;
+                    })()}
                   </Text>
                 </View>
               );

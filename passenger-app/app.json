@@ -1,18 +1,19 @@
 {
   "expo": {
-    "name": "passenger-app",
+    "name": "MY(suru) BUS Passenger",
     "slug": "passenger-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mysurubus.passenger"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +21,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.mysurubus.passenger",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -30,10 +32,25 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow MY(suru) BUS to use your location to show nearby buses and routes."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#C8B6E2"
+        }
+      ]
     ],
     "scheme": "passenger-app",
-    "extra": {
+        "extra": {
+      "supabaseUrl": "https://ygxktvxliwmayezqlsgt.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlneGt0dnhsaXdtYXllenFsc2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NDI1NTMsImV4cCI6MjA3NzQxODU1M30.ZNqY-fyTOf-h5vXafxwHuKHp6z3SVw-xTpQ3S44_3uk",
       "router": {
         "origin": false
       },

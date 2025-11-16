@@ -22,21 +22,26 @@ const ReportPage: React.FC = () => {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from('passenger_reports').insert([
-      {
-        report_type: reportType,
-        message: message,
-      },
-    ]);
+    try {
+      const { error } = await supabase.from('passenger_reports').insert([
+        {
+          report_type: reportType,
+          message: message,
+        },
+      ]);
 
-    setIsSubmitting(false);
-
-    if (error) {
-      console.error('Error submitting report:', error);
-      Alert.alert('Error', 'Could not submit your report. Please try again later.');
-    } else {
-      Alert.alert('Success', 'Your report has been submitted. Thank you for your feedback.');
-      router.back();
+      if (error) {
+        console.error('Error submitting report:', error);
+        Alert.alert('Error', 'Could not submit your report. Please try again later.');
+      } else {
+        Alert.alert('Success', 'Your report has been submitted. Thank you for your feedback.');
+        router.back();
+      }
+    } catch (error) {
+      console.error('Exception submitting report:', error);
+      Alert.alert('Error', 'An unexpected error occurred. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
