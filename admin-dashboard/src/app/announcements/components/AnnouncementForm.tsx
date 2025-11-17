@@ -2,10 +2,9 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function AnnouncementForm() {
-  const supabase = createClientComponentClient();
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabaseClient';
 import { TrashIcon } from '@heroicons/react/24/outline';
 import Modal from '@/app/components/Modal'; // ADDED: Import Modal
 
@@ -14,7 +14,6 @@ interface Announcement {
 }
 
 export default function AnnouncementList() {
-  const supabase = createClientComponentClient();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

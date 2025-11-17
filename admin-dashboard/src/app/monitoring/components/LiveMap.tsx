@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import { useEffect, useState, useCallback, useContext } from 'react'; // <--- 'useContext' is no longer needed
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabaseClient';
 import type { Bus } from './types'; 
 // --- FIX 1: Import useTheme from next-themes ---
 import { useTheme } from 'next-themes'; 
@@ -59,7 +59,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
   const [startStop, setStartStop] = useState<{lat: number, lng: number, name: string} | null>(null);
   const [endStop, setEndStop] = useState<{lat: number, lng: number, name: string} | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createClientComponentClient();
+
   
   // --- FIX 1 (cont.): Use the correct theme hook ---
   const { theme } = useTheme();

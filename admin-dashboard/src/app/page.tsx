@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabaseClient';
 import { Database } from '@/lib/database.types'; // Import your generated types
 
 // Import your icons
@@ -24,7 +24,6 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const supabase = createClientComponentClient<Database>();
   const [stats, setStats] = useState<DashboardStats>({
     activeTrips: 0,
     totalBuses: 0,

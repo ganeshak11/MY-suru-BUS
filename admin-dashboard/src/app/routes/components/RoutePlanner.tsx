@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabaseClient';
 import RoutePlannerPanel from './RoutePlannerPanel';
 import { Stop } from '../../../lib/database.types';
 import { useRouter } from 'next/navigation'; // --- ADDED: For navigation
@@ -14,7 +14,7 @@ interface RoutePlannerProps {
 }
 
 export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerProps) {
-  const supabase = createClientComponentClient();
+  
   const router = useRouter(); // --- ADDED
 
   const [allStops, setAllStops] = useState<Stop[]>([]);

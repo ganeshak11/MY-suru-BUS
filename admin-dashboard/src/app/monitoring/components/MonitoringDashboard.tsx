@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useEffect, useMemo } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabaseClient';
 import ActiveTripsList from './ActiveTripsList';
 import type { Trip, Bus } from './types'; // Import from shared types file
 
@@ -15,7 +15,7 @@ const LiveMap = dynamic(
 );
 
 export default function MonitoringDashboard() {
-  const supabase = createClientComponentClient();
+  
 
   // --- All state now lives here ---
   const [allTrips, setAllTrips] = useState<Trip[]>([]);

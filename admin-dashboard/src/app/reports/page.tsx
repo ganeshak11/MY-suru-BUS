@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabaseClient';
 import { FunnelIcon, ArrowPathIcon } from '@heroicons/react/24/outline'; // ADDED icons
 
 // Define the type for a report
@@ -89,7 +89,7 @@ export default function ReportsPage() {
     const [filterRoute, setFilterRoute] = useState('All');
     const [filterDriver, setFilterDriver] = useState('All');
 
-    const supabase = createClientComponentClient();
+    
 
     const fetchReports = async () => {
         setLoading(true);
