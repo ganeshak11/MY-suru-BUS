@@ -5,26 +5,7 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import { Stop } from '../../../lib/database.types';
 import { useState, useEffect, useCallback } from 'react'; // --- ADDED
-
-// --- Marker icon setup (No change) ---
-const defaultIcon = new L.Icon({
-  iconUrl: '/leaflet/images/marker-icon.png',
-  iconRetinaUrl: '/leaflet/images/marker-icon-2x.png',
-  shadowUrl: '/leaflet/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-const selectedIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+import { MapMarkers } from '../../components/MapMarkers';
 
 interface Props {
   allStops: Stop[];
@@ -82,13 +63,23 @@ export default function RoutePlannerMap({ allStops, selectedStops, onAddStopToRo
       {routePolyline.length > 1 && <Polyline positions={routePolyline} color="#0ea5e9" weight={5} opacity={0.8} />}
 
       {/* Display all available stops */}
-      {allStops.map(stop => {
+      {allStops.map((stop, index) => {
         const isSelected = selectedStopIds.has(stop.stop_id);
+        const isStart = isSelected && index === 0;
+        const isEnd = isSelected && index === selectedStops.length - 1 && selectedStops.length > 1;
+        
+        let icon = MapMarkers.intermediateStop;
+        if (isSelected) {
+          if (isStart) icon = MapMarkers.startStop;
+          else if (isEnd) icon = MapMarkers.endStop;
+          else icon = MapMarkers.selectedStop;
+        }
+        
         return (
           <Marker 
             key={stop.stop_id} 
             position={[stop.latitude, stop.longitude]} 
-            icon={isSelected ? selectedIcon : defaultIcon}
+            icon={icon}
             // --- ADDED: Make unselected stops semi-transparent ---
             opacity={isSelected ? 1.0 : 0.6}
             zIndexOffset={isSelected ? 1000 : 0}

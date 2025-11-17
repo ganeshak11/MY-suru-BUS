@@ -41,6 +41,11 @@ export default function StopsPage() {
   // --- ADDED: State for delete modal ---
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [stopToDelete, setStopToDelete] = useState<Stop | null>(null);
+  
+  // --- ADDED: State for routes modal ---
+  const [isRoutesModalOpen, setIsRoutesModalOpen] = useState(false);
+  const [selectedStopRoutes, setSelectedStopRoutes] = useState<any[]>([]);
+  const [loadingRoutes, setLoadingRoutes] = useState(false);
 
   useEffect(() => {
     fetchStops();
@@ -215,6 +220,29 @@ export default function StopsPage() {
         setIsDeleteModalOpen(false);
     }
   };
+  
+  const showStopRoutes = async (stopId: number) => {
+    setLoadingRoutes(true);
+    setIsRoutesModalOpen(true);
+    
+    const { data, error } = await supabase
+      .from('route_stops')
+      .select(`
+        routes:route_id (
+          route_id,
+          route_name
+        )
+      `)
+      .eq('stop_id', stopId);
+    
+    if (error) {
+      console.error('Error fetching routes:', error);
+      setSelectedStopRoutes([]);
+    } else {
+      setSelectedStopRoutes(data.map(item => item.routes));
+    }
+    setLoadingRoutes(false);
+  };
   // --- END UPDATE ---
 
   return (
@@ -288,12 +316,15 @@ export default function StopsPage() {
                     </td>
                     <td className="px-6 py-4">
                       {stop.route_stops[0].count > 0 ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                        <button
+                          onClick={() => showStopRoutes(stop.stop_id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+                        >
                           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
                           </svg>
                           {stop.route_stops[0].count} {stop.route_stops[0].count > 1 ? 'routes' : 'route'}
-                        </span>
+                        </button>
                       ) : (
                         <span className="text-sm text-secondary font-medium">Not in use</span>
                       )}
@@ -363,6 +394,30 @@ export default function StopsPage() {
             </div>
           </div>
         )}
+      </Modal>
+      
+      {/* --- ADDED: Routes Modal --- */}
+      <Modal isOpen={isRoutesModalOpen} onClose={() => setIsRoutesModalOpen(false)} title="Routes Using This Stop">
+        <div className="max-h-96 overflow-y-auto">
+          {loadingRoutes ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : !selectedStopRoutes || selectedStopRoutes.length === 0 ? (
+            <p className="text-secondary text-center py-8">No routes found for this stop.</p>
+          ) : (
+            <div className="space-y-3">
+              {selectedStopRoutes.map((route) => (
+                <div key={route.route_id} className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                  <h4 className="font-semibold text-foreground">{route.route_name}</h4>
+                  <p className="text-sm text-secondary mt-1">
+                    Route ID: {route.route_id}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

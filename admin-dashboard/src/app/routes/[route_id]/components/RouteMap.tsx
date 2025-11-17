@@ -4,7 +4,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useEffect, useState, useRef } from 'react';
-// import { supabase } from '@/lib/supabaseClient'; // Not needed here
+import { MapMarkers } from '../../../components/MapMarkers';
+// import { supabase } from '@/lib/supabaseClient';
 
 // Fix for default Leaflet icons not appearing (assuming this is needed)
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -12,13 +13,6 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: '/leaflet/images/marker-icon-2x.png',
   iconUrl: '/leaflet/images/marker-icon.png',
   shadowUrl: '/leaflet/images/marker-shadow.png',
-});
-
-// Icon for Route Stops (e.g., a primary colored pin)
-const routeStopIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
 });
 
 // ... (Interfaces - moved to page.tsx, but kept here for self-containment)
@@ -136,19 +130,28 @@ export default function RouteMap({ routeId, stops }: RouteMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" // <-- Ensure this is correct
       />
-      {stops.map((stop) => (
-  <Marker
-    key={stop.stop_id}
-    position={[stop.latitude, stop.longitude]}
-    icon={routeStopIcon}
-  >
-    <Popup>
-      <b>{stop.stop_name}</b><br />
-      Stop #{stop.stop_sequence}<br />
-      Offset: {stop.time_offset_from_start}
-    </Popup>
-  </Marker>
-))}
+      {stops.map((stop, index) => {
+        const isStart = index === 0;
+        const isEnd = index === stops.length - 1 && stops.length > 1;
+        let icon = MapMarkers.intermediateStop;
+        
+        if (isStart) icon = MapMarkers.startStop;
+        else if (isEnd) icon = MapMarkers.endStop;
+        
+        return (
+          <Marker
+            key={stop.stop_id}
+            position={[stop.latitude, stop.longitude]}
+            icon={icon}
+          >
+            <Popup>
+              <b>{stop.stop_name}</b><br />
+              Stop #{stop.stop_sequence}<br />
+              Offset: {stop.time_offset_from_start}
+            </Popup>
+          </Marker>
+        );
+      })}
 
       {routePolyline.length > 0 && (
         <Polyline positions={routePolyline} color="#5E548E" weight={6} opacity={0.8} /> 

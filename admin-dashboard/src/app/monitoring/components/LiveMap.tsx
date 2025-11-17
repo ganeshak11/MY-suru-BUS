@@ -8,32 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import type { Bus } from './types'; 
 // --- FIX 1: Import useTheme from next-themes ---
 import { useTheme } from 'next-themes'; 
-
-// --- Icon Definitions ---
-const busIcon = L.icon({
-  iconUrl: '/leaflet/images/bus-icon.png',
-  iconSize: [20, 30],
-  iconAnchor: [17, 35],
-  popupAnchor: [0, -35]
-});
-
-const selectedIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-});
-
-const startStopIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-});
-
-const endStopIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-});
+import { MapMarkers } from '../../components/MapMarkers';
 
 // --- Prop Interface (No change) ---
 interface LiveMapProps {
@@ -56,8 +31,7 @@ function MapEffects({ selectedBus }: { selectedBus: Bus | null }) {
 // --- Main Component ---
 export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: LiveMapProps) {
   const [routePolyline, setRoutePolyline] = useState<L.LatLngExpression[]>([]);
-  const [startStop, setStartStop] = useState<{lat: number, lng: number, name: string} | null>(null);
-  const [endStop, setEndStop] = useState<{lat: number, lng: number, name: string} | null>(null);
+  const [routeStops, setRouteStops] = useState<{lat: number, lng: number, name: string, isStart: boolean, isEnd: boolean}[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   
@@ -97,8 +71,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
   useEffect(() => {
     const fetchRoutePath = async () => {
       setRoutePolyline([]);
-      setStartStop(null);
-      setEndStop(null);
+      setRouteStops([]);
       setError(null);
       if (!selectedTripId) return;
       
@@ -128,15 +101,18 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
           })
           .filter((wp): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
         
-        const firstStopData = Array.isArray(stopsData[0].stops) ? stopsData[0].stops[0] : stopsData[0].stops;
-        if (firstStopData && 'latitude' in firstStopData) {
-          setStartStop({lat: parseFloat(firstStopData.latitude), lng: parseFloat(firstStopData.longitude), name: firstStopData.stop_name});
-        }
-        
-        const lastStopData = Array.isArray(stopsData[stopsData.length - 1].stops) ? stopsData[stopsData.length - 1].stops[0] : stopsData[stopsData.length - 1].stops;
-        if (lastStopData && 'latitude' in lastStopData) {
-          setEndStop({lat: parseFloat(lastStopData.latitude), lng: parseFloat(lastStopData.longitude), name: lastStopData.stop_name});
-        }
+        // Set all route stops with start/end flags
+        const allStops = stopsData.map((rs, index) => {
+          const stop = Array.isArray(rs.stops) ? rs.stops[0] : rs.stops;
+          return {
+            lat: parseFloat(stop.latitude),
+            lng: parseFloat(stop.longitude),
+            name: stop.stop_name,
+            isStart: index === 0,
+            isEnd: index === stopsData.length - 1 && stopsData.length > 1
+          };
+        });
+        setRouteStops(allStops);
         
         if (waypoints.length > 1) {
           await fetchOSRMRoute(waypoints);
@@ -169,23 +145,33 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
         <Polyline positions={routePolyline} color="#3b82f6" weight={4} opacity={0.7} />
       )}
 
-      {/* Render start and end stop markers */}
-      {startStop && (
-        <Marker position={[startStop.lat, startStop.lng]} icon={startStopIcon} zIndexOffset={500}>
-          <Popup>
-            <b>Start Stop</b><br />
-            {startStop.name}
-          </Popup>
-        </Marker>
-      )}
-      {endStop && (
-        <Marker position={[endStop.lat, endStop.lng]} icon={endStopIcon} zIndexOffset={500}>
-          <Popup>
-            <b>End Stop</b><br />
-            {endStop.name}
-          </Popup>
-        </Marker>
-      )}
+      {/* Render all route stop markers */}
+      {routeStops.map((stop, index) => {
+        let icon = MapMarkers.intermediateStop;
+        let label = 'Stop';
+        
+        if (stop.isStart) {
+          icon = MapMarkers.startStop;
+          label = 'Start Stop';
+        } else if (stop.isEnd) {
+          icon = MapMarkers.endStop;
+          label = 'End Stop';
+        }
+        
+        return (
+          <Marker 
+            key={index} 
+            position={[stop.lat, stop.lng]} 
+            icon={icon} 
+            zIndexOffset={500}
+          >
+            <Popup>
+              <b>{label}</b><br />
+              {stop.name}
+            </Popup>
+          </Marker>
+        );
+      })}
 
       {/* Render buses */}
       {buses.map((bus) => (
@@ -193,7 +179,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
           <Marker
             key={bus.bus_id}
             position={[bus.current_latitude, bus.current_longitude]}
-            icon={bus.current_trip_id === selectedTripId ? selectedIcon : busIcon}
+            icon={bus.current_trip_id === selectedTripId ? MapMarkers.selectedBus : MapMarkers.bus}
             zIndexOffset={bus.current_trip_id === selectedTripId ? 1000 : 0}
             eventHandlers={{
               click: () => {
