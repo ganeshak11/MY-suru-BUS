@@ -2,7 +2,7 @@
 
 Run this checklist before building to ensure success:
 
-## 1. Validation Script
+## 1. Validation Script to use
 ```bash
 node validate-build.js
 ```
