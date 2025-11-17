@@ -148,7 +148,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
   // --- End of fixes ---
 
   return (
-    <MapContainer center={[12.2958, 76.6394]} zoom={13} style={{ height: '100%', width: '100%' }} className="z-10">
+    <MapContainer center={[12.2958, 76.6394]} zoom={13} style={{ height: '100%', width: '100%', touchAction: 'pan-x pan-y' }} className="z-10 touch-pan-x touch-pan-y">
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       <MapEffects selectedBus={selectedBus} />
       
@@ -203,7 +203,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
           >
             <Popup>
               <b>Bus No: {bus.bus_no}</b> <br />
-              Last Updated: {bus.last_updated ? new Date(bus.last_updated).toLocaleString() : 'N/A'}
+              Last Updated: {bus.last_updated ? new Date(bus.last_updated).toLocaleString('en-GB') : 'N/A'}
             </Popup>
           </Marker>
         )

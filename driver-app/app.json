@@ -22,6 +22,11 @@
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "package": "com.ganesh_a_k_11.driverapp"
@@ -63,6 +68,10 @@
     ],
     "runtimeVersion": {
       "policy": "appVersion"
-    }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/934427f1-e88d-4fa8-b5d2-be175e383369"
+    },
+    "ios": {}
   }
 }

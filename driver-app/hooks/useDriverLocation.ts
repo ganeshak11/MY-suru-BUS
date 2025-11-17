@@ -224,7 +224,15 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
       bus_id: busId,
       current_latitude: location.coords.latitude,
       current_longitude: location.coords.longitude,
-      last_updated: new Date().toISOString(),
+      last_updated: (() => {
+        const now = new Date();
+        return now.getFullYear() + '-' + 
+          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(now.getDate()).padStart(2, '0') + 'T' + 
+          String(now.getHours()).padStart(2, '0') + ':' + 
+          String(now.getMinutes()).padStart(2, '0') + ':' + 
+          String(now.getSeconds()).padStart(2, '0');
+      })(),
     };
 
     // Try to update database

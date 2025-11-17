@@ -187,50 +187,74 @@ export default function ReportsPage() {
             {/* ADDED: Report Stats Visualization */}
             <ReportStats reports={reports} />
             
-            <div className="my-8 space-y-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-sm font-medium text-foreground">Status:</span>
-                    <div className="flex gap-2 flex-wrap">
-                        {statuses.map(status => (
-                            <button
-                                key={status}
-                                onClick={() => setFilterStatus(status)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                                    filterStatus === status
-                                        ? 'bg-primary text-white shadow-md'
-                                        : 'bg-card text-secondary hover:bg-primary/10 border border-border'
-                                }`}
-                            >
-                                {status}
-                            </button>
-                        ))}
+            <div className="my-8 space-y-6">
+                {/* Status Filter */}
+                <div className="mb-6">
+                    <span className="text-sm font-medium text-foreground mb-2 block sm:inline sm:mb-0">Filter by Status:</span>
+                    {/* Mobile Dropdown */}
+                    <div className="sm:hidden">
+                        <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            {statuses.map(status => (
+                                <option key={status} value={status}>{status}</option>
+                            ))}
+                        </select>
+                    </div>
+                    {/* Desktop Buttons */}
+                    <div className="hidden sm:flex sm:items-center sm:gap-3 sm:ml-3">
+                        <div className="flex gap-2">
+                            {statuses.map(status => (
+                                <button
+                                    key={status}
+                                    onClick={() => setFilterStatus(status)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                        filterStatus === status
+                                            ? 'bg-primary text-white shadow-md'
+                                            : 'bg-card text-secondary hover:bg-primary/10 border border-border'
+                                    }`}
+                                >
+                                    {status}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-sm font-medium text-foreground">Bus:</span>
-                    <select
-                        value={filterBus}
-                        onChange={(e) => setFilterBus(e.target.value)}
-                        className="px-4 py-2 rounded-lg text-sm bg-card border border-border text-foreground"
-                    >
-                        {uniqueBuses.map(bus => <option key={bus} value={bus}>{bus}</option>)}
-                    </select>
-                    <span className="text-sm font-medium text-foreground">Route:</span>
-                    <select
-                        value={filterRoute}
-                        onChange={(e) => setFilterRoute(e.target.value)}
-                        className="px-4 py-2 rounded-lg text-sm bg-card border border-border text-foreground"
-                    >
-                        {uniqueRoutes.map(route => <option key={route} value={route}>{route}</option>)}
-                    </select>
-                    <span className="text-sm font-medium text-foreground">Driver:</span>
-                    <select
-                        value={filterDriver}
-                        onChange={(e) => setFilterDriver(e.target.value)}
-                        className="px-4 py-2 rounded-lg text-sm bg-card border border-border text-foreground"
-                    >
-                        {uniqueDrivers.map(driver => <option key={driver} value={driver}>{driver}</option>)}
-                    </select>
+                
+                {/* Other Filters */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Bus</label>
+                        <select
+                            value={filterBus}
+                            onChange={(e) => setFilterBus(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            {uniqueBuses.map(bus => <option key={bus} value={bus}>{bus}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Route</label>
+                        <select
+                            value={filterRoute}
+                            onChange={(e) => setFilterRoute(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            {uniqueRoutes.map(route => <option key={route} value={route}>{route}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Driver</label>
+                        <select
+                            value={filterDriver}
+                            onChange={(e) => setFilterDriver(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        >
+                            {uniqueDrivers.map(driver => <option key={driver} value={driver}>{driver}</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -307,7 +331,7 @@ export default function ReportsPage() {
                                         <p className="mt-1 text-sm text-secondary">{report.message}</p>
                                     </div>
                                     <div className="flex flex-col items-end space-y-2 flex-shrink-0">
-                                        <span className="text-xs text-secondary">{new Date(report.created_at).toLocaleString()}</span>
+                                        <span className="text-xs text-secondary">{new Date(report.created_at).toLocaleString('en-GB')}</span>
                                         <div className="flex space-x-2">
                                             {/* Status Update Buttons */}
                                             {report.status === 'New' && (

@@ -38,7 +38,7 @@ export default function ActiveTripsList({
 
   // --- UPDATED: No loading state, just render ---
   return (
-    <div className="h-[80vh] bg-card p-6 rounded-2xl border border-border/50 flex flex-col shadow-sm">
+    <div className="h-[400px] sm:h-[500px] lg:h-[80vh] bg-card p-6 rounded-2xl border border-border/50 flex flex-col shadow-sm">
       <h2 className="text-2xl font-bold text-foreground mb-4">Active Trips <span className="text-primary">({filteredTrips.length})</span></h2>
       
       {/* Filter UI */}

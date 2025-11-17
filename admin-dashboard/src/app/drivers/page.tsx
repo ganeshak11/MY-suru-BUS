@@ -220,7 +220,7 @@ export default function DriversPage() {
           <p className="mt-2 text-secondary max-w-sm mx-auto">Get started by adding your first driver to the roster</p>
         </div>
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-soft">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto shadow-soft">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border">
               <thead className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
@@ -299,14 +299,14 @@ export default function DriversPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button 
                             onClick={() => openModal('edit', driver)} 
-                            className="p-2.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+                            className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                             title="Edit driver"
                           >
                             <PencilIcon className="h-5 w-5" />
                           </button>
                           <button 
                             onClick={() => handleDelete(driver)} 
-                            className="p-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                            className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                             title="Delete driver"
                           >
                             <TrashIcon className="h-5 w-5" />

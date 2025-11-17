@@ -47,6 +47,9 @@
       ]
     ],
     "scheme": "passenger-app",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "supabaseUrl": "https://ygxktvxliwmayezqlsgt.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlneGt0dnhsaXdtYXllenFsc2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NDI1NTMsImV4cCI6MjA3NzQxODU1M30.ZNqY-fyTOf-h5vXafxwHuKHp6z3SVw-xTpQ3S44_3uk",

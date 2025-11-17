@@ -101,15 +101,15 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Interactive Route Planner</h1>
         <p className="text-secondary">Click stops on the map to add them, then drag to reorder.</p>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
-        <div className="lg:col-span-2 h-[calc(100vh-220px)] rounded-lg border overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow">
+        <div className="lg:col-span-1 h-[350px] sm:h-[450px] lg:h-[calc(100vh-130px)] rounded-lg border overflow-hidden">
           <RoutePlannerMap 
             allStops={allStops}
             selectedStops={selectedStops}
             onAddStopToRoute={handleAddStopToRoute}
           />
         </div>
-        <div className="lg:col-span-1 h-[calc(100vh-220px)]">
+        <div className="lg:col-span-1 h-[350px] sm:h-[450px] lg:h-[calc(100vh-130px)]">
           <RoutePlannerPanel 
             routeName={routeName}
             setRouteName={setRouteName}

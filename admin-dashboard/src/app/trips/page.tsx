@@ -75,13 +75,19 @@ export default function TripsPage() {
     schedule_id: 0,
     bus_id: 0,
     driver_id: 0,
-    trip_date: new Date().toISOString().split('T')[0],
+    trip_date: (() => {
+      const now = new Date();
+      return now.getFullYear() + '-' + 
+        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(now.getDate()).padStart(2, '0');
+    })(),
     status: 'Scheduled',
   });
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
 
   useEffect(() => {
@@ -187,7 +193,12 @@ export default function TripsPage() {
         schedule_id: schedules.length > 0 ? schedules[0].schedule_id : 0,
         bus_id: buses.length > 0 ? buses[0].bus_id : 0,
         driver_id: drivers.length > 0 ? drivers[0].driver_id : 0,
-        trip_date: new Date().toISOString().split('T')[0],
+        trip_date: (() => {
+          const now = new Date();
+          return now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0');
+        })(),
         status: 'Scheduled',
       });
     }
@@ -241,6 +252,107 @@ export default function TripsPage() {
     setTripToDelete(trip);
     setIsDeleteModalOpen(true);
     setError(null);
+  };
+
+  const generateDailyTrips = async () => {
+    setIsGenerating(true);
+    setError(null);
+    
+    try {
+      // Use local timezone instead of UTC
+      const now = new Date();
+      const today = now.getFullYear() + '-' + 
+        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(now.getDate()).padStart(2, '0');
+      
+      // Check if trips already exist for today
+      const { data: existingTrips } = await supabase
+        .from('trips')
+        .select('trip_id')
+        .eq('trip_date', today)
+        .limit(1);
+      
+      if (existingTrips && existingTrips.length > 0) {
+        setError('Trips already exist for today');
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Get all schedules
+      const { data: schedules, error: schedulesError } = await supabase
+        .from('schedules')
+        .select('schedule_id');
+      
+      if (schedulesError) throw schedulesError;
+      
+      if (!schedules || schedules.length === 0) {
+        setError('No schedules found to generate trips');
+        setIsGenerating(false);
+        return;
+      }
+      
+      // Get yesterday's date to find previous trips
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.getFullYear() + '-' + 
+        String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(yesterday.getDate()).padStart(2, '0');
+      
+      const tripsToCreate = [];
+      
+      // For each schedule, find the previous trip to get bus and driver assignments
+      for (const schedule of schedules) {
+        // Check if trip already exists for today
+        const { data: existingTrip } = await supabase
+          .from('trips')
+          .select('trip_id')
+          .eq('schedule_id', schedule.schedule_id)
+          .eq('trip_date', today)
+          .single();
+        
+        if (existingTrip) continue; // Skip if already exists
+        
+        // Get previous trip to copy bus and driver assignments
+        const { data: prevTrip } = await supabase
+          .from('trips')
+          .select('bus_id, driver_id')
+          .eq('schedule_id', schedule.schedule_id)
+          .eq('trip_date', yesterdayStr)
+          .single();
+        
+        if (prevTrip) {
+          tripsToCreate.push({
+            schedule_id: schedule.schedule_id,
+            trip_date: today,
+            status: 'Scheduled' as const,
+            bus_id: prevTrip.bus_id,
+            driver_id: prevTrip.driver_id
+          });
+        }
+      }
+      
+      if (tripsToCreate.length === 0) {
+        setError('No previous trips found to copy assignments from');
+        setIsGenerating(false);
+        return;
+      }
+      
+      const { data: createdTrips, error: createError } = await supabase
+        .from('trips')
+        .insert(tripsToCreate)
+        .select();
+      
+      if (createError) throw createError;
+      
+      // Success - trips will be updated via real-time listener
+      console.log(`Created ${createdTrips.length} trips for ${today}`);
+      
+    } catch (error: any) {
+      console.error('Error generating daily trips:', error);
+      setError(`Failed to generate trips: ${error.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const confirmDelete = async () => {
@@ -297,32 +409,63 @@ export default function TripsPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">Trips</h1>
           <p className="text-secondary">Manage daily trip assignments</p>
         </div>
-        <button
-          type="button"
-          onClick={() => openModal('add')}
-          className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Add Trip
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={generateDailyTrips}
+            disabled={isGenerating}
+            className="inline-flex items-center gap-2 bg-success text-white px-6 py-3 rounded-xl font-medium hover:bg-success/90 transition-all hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              <CalendarDaysIcon className="h-5 w-5" />
+            )}
+            {isGenerating ? 'Generating...' : "Generate Today's Trips"}
+          </button>
+          <button
+            type="button"
+            onClick={() => openModal('add')}
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Add Trip
+          </button>
+        </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-3">
-        <span className="text-sm font-medium text-foreground">Filter by Status:</span>
-        <div className="flex gap-2">
-          {['all', ...tripStatuses].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                statusFilter === status
-                  ? 'bg-primary text-white shadow-md'
-                  : 'bg-card text-secondary hover:bg-primary/10 border border-border'
-              }`}
-            >
-              {status === 'all' ? 'All' : status}
-            </button>
-          ))}
+      <div className="mb-6">
+        <span className="text-sm font-medium text-foreground mb-2 block sm:inline sm:mb-0">Filter by Status:</span>
+        {/* Mobile Dropdown */}
+        <div className="sm:hidden">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+          >
+            <option value="all">All Statuses</option>
+            {tripStatuses.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+        </div>
+        {/* Desktop Buttons */}
+        <div className="hidden sm:flex sm:items-center sm:gap-3 sm:ml-3">
+          <div className="flex gap-2">
+            {['all', ...tripStatuses].map((status) => (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(status)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  statusFilter === status
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-card text-secondary hover:bg-primary/10 border border-border'
+                }`}
+              >
+                {status === 'all' ? 'All' : status}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -341,7 +484,7 @@ export default function TripsPage() {
           <p className="mt-2 text-secondary">{statusFilter === 'all' ? 'Get started by adding your first trip' : `No ${statusFilter} trips`}</p>
         </div>
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-card">
               <tr>
@@ -356,7 +499,7 @@ export default function TripsPage() {
             <tbody className="divide-y divide-border">
               {filteredTrips.map((trip) => (
                 <tr key={trip.trip_id} className="hover:bg-primary/5 transition-colors">
-                  <td className="px-6 py-4 font-medium text-foreground">{new Date(trip.trip_date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-medium text-foreground">{new Date(trip.trip_date).toLocaleDateString('en-GB')}</td>
                   <td className="px-6 py-4 text-sm text-foreground">{getScheduleDisplay(trip.schedules)}</td>
                   <td className="px-6 py-4 text-sm text-secondary">{trip.buses?.bus_no || '—'}</td>
                   <td className="px-6 py-4 text-sm text-secondary">{trip.drivers?.name || '—'}</td>
@@ -367,11 +510,11 @@ export default function TripsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openModal('edit', trip)} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">
-                        <PencilIcon className="h-5 w-5" />
+                      <button onClick={() => openModal('edit', trip)} className="w-8 h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                        <PencilIcon className="h-4 w-4" />
                       </button>
-                      <button onClick={() => handleDeleteClick(trip)} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors">
-                        <TrashIcon className="h-5 w-5" />
+                      <button onClick={() => handleDeleteClick(trip)} className="w-8 h-8 flex items-center justify-center text-danger hover:bg-danger/10 rounded-lg transition-colors">
+                        <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -396,11 +539,11 @@ export default function TripsPage() {
             leaveTo="opacity-0"
           >
             {/* UPDATED: Theme-aware backdrop */}
-            <div className="fixed inset-0 bg-secondary/75 transition-opacity" /> 
+            <div className="fixed inset-0 bg-secondary/75 backdrop-blur-sm transition-opacity" /> 
           </Transition.Child>
 
           <div className="fixed inset-0 z-10 overflow-y-auto">
-            <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
               <Transition.Child
                 as={Fragment}
                 enter="ease-out duration-300"
@@ -410,7 +553,7 @@ export default function TripsPage() {
                 leaveFrom="opacity-100 translate-y-0 sm:scale-100"
                 leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
               >
-                <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-card px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-card px-4 pt-5 pb-4 text-left shadow-xl transition-all w-full max-w-sm sm:max-w-lg sm:p-6">
                   <form onSubmit={handleSubmit}>
                     <div>
                       <h3 className="text-lg font-medium leading-6 text-foreground">{modalMode === 'add' ? 'Add New Trip' : 'Edit Trip'}</h3>

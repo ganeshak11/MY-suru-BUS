@@ -37,6 +37,8 @@ export default function SchedulesPage() {
   // --- ADDED: Delete Modal State ---
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(null);
+  const [availableSchedules, setAvailableSchedules] = useState<Schedule[]>([]);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<number>(0);
 
   const [filters, setFilters] = useState({
     route_id: '',
@@ -105,23 +107,37 @@ export default function SchedulesPage() {
     }
   };
 
-  const openModal = (mode: 'add' | 'edit', schedule?: Schedule) => {
+  const openModal = (mode: 'add' | 'edit', schedules?: Schedule[]) => {
     setModalMode(mode);
     setError(null);
-    if (mode === 'edit' && schedule) {
-      setSelectedSchedule(schedule);
-      setFormState({
-        route_id: schedule.route_id,
-        start_time: schedule.start_time,
-      });
+    if (mode === 'edit' && schedules) {
+      if (schedules.length === 1) {
+        setSelectedSchedule(schedules[0]);
+        setFormState({
+          route_id: schedules[0].route_id,
+          start_time: schedules[0].start_time,
+        });
+        setIsModalOpen(true);
+      } else {
+        setAvailableSchedules(schedules);
+        setSelectedScheduleId(schedules[0].schedule_id);
+        const firstSchedule = schedules[0];
+        setSelectedSchedule(firstSchedule);
+        setFormState({
+          route_id: firstSchedule.route_id,
+          start_time: firstSchedule.start_time,
+        });
+        setIsModalOpen(true);
+      }
     } else {
       setSelectedSchedule(null);
+      setAvailableSchedules([]);
       setFormState({
         route_id: routes.length > 0 ? routes[0].route_id : 0, 
         start_time: '00:00:00',
       });
+      setIsModalOpen(true);
     }
-    setIsModalOpen(true);
   };
 
   const closeModal = () => {
@@ -170,29 +186,33 @@ export default function SchedulesPage() {
   };
 
   // --- UPDATED: Delete handler uses modal ---
-  const handleDelete = (schedule: Schedule) => {
-    setScheduleToDelete(schedule);
-    setIsDeleteModalOpen(true);
+  const handleDelete = (schedules: Schedule[]) => {
+    if (schedules.length === 1) {
+      setScheduleToDelete(schedules[0]);
+      setIsDeleteModalOpen(true);
+    } else {
+      setAvailableSchedules(schedules);
+      setSelectedScheduleId(schedules[0].schedule_id);
+      setScheduleToDelete(null);
+      setIsDeleteModalOpen(true);
+    }
     setError(null);
   };
 
   const confirmDelete = async () => {
-    if (!scheduleToDelete) return;
+    const targetSchedule = scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId);
+    if (!targetSchedule) return;
     
-    // Deleting a schedule might cascade delete trips, so we check first
-    // Check for future/active trips first to warn user (Optional, but good UX)
-    
-    const { error } = await supabase.from('schedules').delete().eq('schedule_id', scheduleToDelete.schedule_id);
+    const { error } = await supabase.from('schedules').delete().eq('schedule_id', targetSchedule.schedule_id);
 
     if (error) {
       console.error('Error deleting schedule:', error);
       setError(`Failed to delete schedule: ${error.message}`);
-    } else {
-      // Success is handled by real-time listener
     }
     
     setIsDeleteModalOpen(false);
     setScheduleToDelete(null);
+    setAvailableSchedules([]);
   };
   // --- END UPDATED ---
 
@@ -222,6 +242,19 @@ export default function SchedulesPage() {
     }
     return true;
   });
+
+  // Group schedules by route
+  const groupedSchedules = filteredSchedules.reduce((acc, schedule) => {
+    const routeId = schedule.route_id;
+    if (!acc[routeId]) {
+      acc[routeId] = {
+        route: schedule.routes,
+        schedules: []
+      };
+    }
+    acc[routeId].schedules.push(schedule);
+    return acc;
+  }, {} as Record<number, { route: Route | undefined, schedules: Schedule[] }>);
 
   return (
     <div>
@@ -265,7 +298,7 @@ export default function SchedulesPage() {
           <p className="mt-2 text-secondary">Add your first schedule or adjust filters</p>
         </div>
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-card">
               <tr>
@@ -275,24 +308,32 @@ export default function SchedulesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredSchedules.map((schedule) => (
-                  <tr key={schedule.schedule_id} className="hover:bg-primary/5 transition-colors">
+              {Object.values(groupedSchedules).map((group) => (
+                  <tr key={group.route?.route_id} className="hover:bg-primary/5 transition-colors">
                     <td className="px-6 py-4 font-medium text-primary">
-                      {schedule.routes?.route_name || '—'}
+                      {group.route?.route_name || '—'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-foreground font-mono">{schedule.start_time.slice(0, 5)}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-2">
+                        {group.schedules.map((schedule) => (
+                          <span key={schedule.schedule_id} className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-sm font-mono">
+                            {schedule.start_time.slice(0, 5)}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
                         <button 
-                          onClick={() => openModal('edit', schedule)} 
-                          className="p-2.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+                          onClick={() => openModal('edit', group.schedules)} 
+                          className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                           title="Edit schedule"
                         >
                           <PencilIcon className="h-5 w-5" />
                         </button>
                         <button 
-                          onClick={() => handleDelete(schedule)} 
-                          className="p-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                          onClick={() => handleDelete(group.schedules)} 
+                          className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                           title="Delete schedule"
                         >
                           <TrashIcon className="h-5 w-5" />
@@ -308,6 +349,33 @@ export default function SchedulesPage() {
 
       {/* --- ADD/EDIT MODAL --- */}
       <Modal isOpen={isModalOpen} onClose={closeModal} title={modalMode === 'add' ? 'Add New Schedule' : 'Edit Schedule'}>
+        {modalMode === 'edit' && availableSchedules.length > 1 && (
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-secondary mb-2">Select Schedule to Edit:</label>
+            <select
+              value={selectedScheduleId}
+              onChange={(e) => {
+                const scheduleId = parseInt(e.target.value);
+                setSelectedScheduleId(scheduleId);
+                const schedule = availableSchedules.find(s => s.schedule_id === scheduleId);
+                if (schedule) {
+                  setSelectedSchedule(schedule);
+                  setFormState({
+                    route_id: schedule.route_id,
+                    start_time: schedule.start_time,
+                  });
+                }
+              }}
+              className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+            >
+              {availableSchedules.map(schedule => (
+                <option key={schedule.schedule_id} value={schedule.schedule_id}>
+                  {schedule.start_time.slice(0, 5)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <ScheduleForm
           formState={formState}
           handleFormChange={handleFormChange}
@@ -369,32 +437,46 @@ export default function SchedulesPage() {
       
       {/* --- ADDED: Delete Confirmation Modal --- */}
       <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirm Deletion">
-        {scheduleToDelete && (
-          <div>
-            <p className="text-sm text-secondary">
-              Are you sure you want to delete the schedule for route <strong>{scheduleToDelete.routes?.route_name || 'N/A'}</strong> at <strong>{scheduleToDelete.start_time}</strong>?
-            </p>
-            <p className="mt-2 text-sm font-semibold text-danger">
-              Warning: This may automatically delete any future scheduled trips associated with this time slot.
-            </p>
-            <div className="mt-6 flex justify-end space-x-4">
-              <button 
-                type="button" 
-                onClick={() => setIsDeleteModalOpen(false)} 
-                className="inline-flex w-full justify-center rounded-md border border-secondary bg-card px-4 py-2 text-base font-medium text-foreground shadow-sm hover:bg-card-foreground/5 sm:w-auto sm:text-sm"
+        <div>
+          {availableSchedules.length > 1 && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-secondary mb-2">Select Schedule to Delete:</label>
+              <select
+                value={selectedScheduleId}
+                onChange={(e) => setSelectedScheduleId(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               >
-                Cancel
-              </button>
-              <button 
-                type="button" 
-                onClick={confirmDelete} 
-                className="inline-flex w-full justify-center rounded-md border border-transparent bg-danger px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-danger/80 sm:w-auto sm:text-sm"
-              >
-                Delete Schedule
-              </button>
+                {availableSchedules.map(schedule => (
+                  <option key={schedule.schedule_id} value={schedule.schedule_id}>
+                    {schedule.start_time.slice(0, 5)}
+                  </option>
+                ))}
+              </select>
             </div>
+          )}
+          <p className="text-sm text-secondary">
+            Are you sure you want to delete the schedule for route <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.routes?.route_name || 'N/A'}</strong> at <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.start_time}</strong>?
+          </p>
+          <p className="mt-2 text-sm font-semibold text-danger">
+            Warning: This may automatically delete any future scheduled trips associated with this time slot.
+          </p>
+          <div className="mt-6 flex justify-end space-x-4">
+            <button 
+              type="button" 
+              onClick={() => setIsDeleteModalOpen(false)} 
+              className="inline-flex w-full justify-center rounded-md border border-secondary bg-card px-4 py-2 text-base font-medium text-foreground shadow-sm hover:bg-card-foreground/5 sm:w-auto sm:text-sm"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              onClick={confirmDelete} 
+              className="inline-flex w-full justify-center rounded-md border border-transparent bg-danger px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-danger/80 sm:w-auto sm:text-sm"
+            >
+              Delete Schedule
+            </button>
           </div>
-        )}
+        </div>
       </Modal>
     </div>
   );

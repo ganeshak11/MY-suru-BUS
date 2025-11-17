@@ -119,7 +119,7 @@ export default function AnnouncementList() {
             <h3 className="font-semibold text-primary">{item.title}</h3>
             <p className="text-sm text-secondary mt-1">{item.message}</p>
             <p className="text-xs text-secondary mt-2">
-              {new Date(item.created_at).toLocaleString()}
+              {new Date(item.created_at).toLocaleString('en-GB')}
             </p>
           </div>
           

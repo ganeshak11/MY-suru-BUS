@@ -72,8 +72,11 @@ export default function Home() {
         return;
       }
 
-      // 2. Get today's trips directly
-      const today = new Date().toISOString().split('T')[0];
+      // 2. Get today's trips directly (using local timezone)
+      const now = new Date();
+      const today = now.getFullYear() + '-' + 
+        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(now.getDate()).padStart(2, '0');
       const { data: trips, error: tripsError } = await supabase
         .from('trips')
         .select(`

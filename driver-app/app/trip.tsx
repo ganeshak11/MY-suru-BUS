@@ -234,7 +234,15 @@ export default function TripScreen() {
     await queueArrival({
       trip_id: Number(trip_id),
       stop_id: stop.stop_id,
-      actual_arrival_time: new Date().toISOString(),
+      actual_arrival_time: (() => {
+        const now = new Date();
+        return now.getFullYear() + '-' + 
+          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(now.getDate()).padStart(2, '0') + 'T' + 
+          String(now.getHours()).padStart(2, '0') + ':' + 
+          String(now.getMinutes()).padStart(2, '0') + ':' + 
+          String(now.getSeconds()).padStart(2, '0');
+      })(),
     });
   };
 
@@ -387,7 +395,9 @@ export default function TripScreen() {
             {trip?.schedules?.start_time && stops.length > 0 && currentStopIndex < stops.length && stops[currentStopIndex]?.time_offset_from_start !== undefined && (() => {
               const currentStop = stops[currentStopIndex];
               const now = new Date();
-              const today = now.toISOString().split('T')[0];
+              const today = now.getFullYear() + '-' + 
+                String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                String(now.getDate()).padStart(2, '0');
               const tripStart = new Date(`${today}T${trip.schedules.start_time}`);
               const elapsedMinutes = Math.round((now.getTime() - tripStart.getTime()) / 60000);
               const delayMinutes = elapsedMinutes - (currentStop.time_offset_from_start || 0);

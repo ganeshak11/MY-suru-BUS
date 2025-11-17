@@ -134,7 +134,7 @@ export default function MonitoringDashboard() {
         <p className="text-secondary text-base">Real-time bus locations and trip status</p>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
-        <div className="lg:col-span-2 h-[calc(100vh-130px)] rounded-2xl border border-border/50 overflow-hidden shadow-sm">
+        <div className="lg:col-span-2 h-[350px] sm:h-[450px] lg:h-[calc(100vh-130px)] rounded-2xl border border-border/50 overflow-hidden shadow-sm" style={{touchAction: 'pan-x pan-y'}}>
           <Suspense fallback={<div className="flex items-center justify-center h-full"><p>Loading map...</p></div>}>
             <LiveMap 
               buses={busesToDisplay} // Pass the final filtered buses

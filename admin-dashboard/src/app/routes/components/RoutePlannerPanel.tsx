@@ -33,7 +33,7 @@ export default function RoutePlannerPanel({
 
   return (
     // --- UPDATED: Use theme colors and flex for scrolling ---
-    <div className="bg-card p-4 rounded-lg border h-full flex flex-col">
+    <div className="bg-card p-4 rounded-lg border h-[500px] sm:h-[600px] lg:h-[calc(100vh-100px)] flex flex-col">
       {/* This div grows and makes the list scroll */}
       <div className="flex-1 flex flex-col min-h-0">
         <h2 className="text-2xl font-semibold tracking-tight mb-4 text-foreground">Route Details</h2>

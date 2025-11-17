@@ -201,7 +201,7 @@ export default function RoutesPage() {
           <p className="mt-2 text-secondary">Get started by creating your first route</p>
         </div>
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-card">
               <tr>
@@ -233,17 +233,17 @@ export default function RoutesPage() {
                     <div className="flex items-center justify-end gap-2">
                       <button 
                         onClick={() => openEditModal(route)} 
-                        className="p-2.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+                        className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                         title="Edit route"
                       >
-                        <PencilIcon className="h-5 w-5" />
+                        <PencilIcon className="h-4 w-4" />
                       </button>
                       <button 
                         onClick={() => handleDelete(route)} 
-                        className="p-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                        className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                         title="Delete route"
                       >
-                        <TrashIcon className="h-5 w-5" />
+                        <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </td>

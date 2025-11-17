@@ -7,7 +7,6 @@ import './globals.css';
 import SideNav from '@/app/components/SideNav';
 import { ThemeProvider } from '@/app/components/ThemeProvider';
 import { ThemeToggleButton } from '@/app/components/ThemeToggleButton';
-import Head from 'next/head';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
 // Time in milliseconds (10 minutes)
@@ -81,14 +80,9 @@ export default function RootLayout({
 
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <Head>
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-          integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
-          crossOrigin=""/>
-        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
-          integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
-          crossOrigin=""></script>
-      </Head>
+      <head>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+      </head>
       <body className="h-full">
         {/* --- ADDED: Session Handler Here --- */}
         {showSideNav && <SessionTimeoutHandler />}
@@ -105,11 +99,11 @@ export default function RootLayout({
                 {/* Hamburger button - only visible on mobile */}
                 <button
                   onClick={() => setIsSideNavOpen(!isSideNavOpen)}
-                  className={`lg:hidden fixed top-6 left-6 z-50 p-3 rounded-xl text-white bg-gradient-to-br from-blue-600 to-indigo-600 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group ${
+                  className={`lg:hidden fixed top-4 left-4 z-50 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white bg-gradient-to-br from-blue-600 to-indigo-600 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group ${
                     isSideNavOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
                   }`}
                 >
-                  <Bars3Icon className="h-6 w-6 group-hover:rotate-180 transition-transform duration-300" />
+                  <Bars3Icon className="h-5 w-5 sm:h-6 sm:w-6 group-hover:rotate-180 transition-transform duration-300" />
                 </button>
                 {/* Left edge hover trigger - only on desktop */}
                 <div 
@@ -124,13 +118,13 @@ export default function RootLayout({
                 />
               </>
             )}
-            <main className="flex-1 p-6 sm:p-8 lg:p-12 overflow-y-auto bg-background relative">
+            <main className="flex-1 p-4 sm:p-6 lg:p-12 pt-20 lg:pt-6 overflow-y-auto bg-background relative">
               {showSideNav && (
-                <div className="fixed top-6 right-6 z-40">
+                <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-40">
                   <ThemeToggleButton />
                 </div>
               )}
-              <div className="max-w-7xl mx-auto ml-20 lg:ml-0">
+              <div className="max-w-7xl mx-auto">
                 {children}
               </div>
             </main>

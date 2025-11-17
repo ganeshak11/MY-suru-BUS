@@ -76,7 +76,7 @@ export default function RouteDetailPage() {
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* --- MAP SIDE --- */}
-        <div className="bg-card p-4 rounded-lg shadow-xl border h-[600px] overflow-hidden"> 
+        <div className="bg-card p-4 rounded-lg shadow-xl border h-[350px] sm:h-[450px] lg:h-[calc(100vh-130px)] overflow-hidden"> 
           <h2 className="text-xl font-semibold text-foreground mb-4">Route Map</h2>
           {/* Ensure the map occupies the remaining height */}
           <div className="h-[calc(100%-40px)]"> 
