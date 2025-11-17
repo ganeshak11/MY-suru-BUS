@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "MY(suru) BUS Passenger",
-    "slug": "passenger-app",
+    "slug": "mysuru-bus-passenger-app",
+    "owner": "ganesh_a_k_22",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,10 +11,6 @@
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.mysurubus.passenger"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +22,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "NOTIFICATIONS"
+        "NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -48,14 +47,14 @@
       ]
     ],
     "scheme": "passenger-app",
-        "extra": {
+    "extra": {
       "supabaseUrl": "https://ygxktvxliwmayezqlsgt.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlneGt0dnhsaXdtYXllenFsc2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE4NDI1NTMsImV4cCI6MjA3NzQxODU1M30.ZNqY-fyTOf-h5vXafxwHuKHp6z3SVw-xTpQ3S44_3uk",
       "router": {
         "origin": false
       },
       "eas": {
-        "projectId": "bb074092-d7eb-4d65-847b-33c2958b72cd"
+        "projectId": "9bb7a8b2-1a61-49cb-ac49-0d556121a3d2"
       }
     }
   }

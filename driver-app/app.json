@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "driver-app",
-    "slug": "driver-app",
+    "slug": "mysuru-bus-driver-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,13 +11,6 @@
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "Driver-App",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
     },
     "android": {
       "adaptiveIcon": {
@@ -43,7 +36,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "52bdb467-7b3d-49d2-8079-43b2f632beaf"
+        "projectId": "934427f1-e88d-4fa8-b5d2-be175e383369"
       }
     },
     "plugins": [
@@ -70,9 +63,6 @@
     ],
     "runtimeVersion": {
       "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/52bdb467-7b3d-49d2-8079-43b2f632beaf"
     }
   }
 }
