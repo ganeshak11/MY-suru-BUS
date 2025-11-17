@@ -403,13 +403,13 @@ export default function TripsPage() {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-4 flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Trips</h1>
-          <p className="text-secondary">Manage daily trip assignments</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Trips</h1>
+          <p className="text-secondary text-sm sm:text-base">Manage daily trip assignments</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <button
             type="button"
             onClick={generateDailyTrips}
@@ -434,7 +434,7 @@ export default function TripsPage() {
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6 flex-shrink-0">
         <span className="text-sm font-medium text-foreground mb-2 block sm:inline sm:mb-0">Filter by Status:</span>
         {/* Mobile Dropdown */}
         <div className="sm:hidden">
@@ -469,61 +469,73 @@ export default function TripsPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      ) : error ? (
-        <div className="bg-danger/10 border border-danger/20 rounded-2xl p-6 text-center">
-          <p className="text-danger font-medium">{error}</p>
-        </div>
-      ) : filteredTrips.length === 0 ? (
-        <div className="text-center py-12 bg-card rounded-2xl border border-border">
-          <CalendarDaysIcon className="mx-auto h-16 w-16 text-secondary/50" />
-          <h3 className="mt-4 text-lg font-medium text-foreground">No trips found</h3>
-          <p className="mt-2 text-secondary">{statusFilter === 'all' ? 'Get started by adding your first trip' : `No ${statusFilter} trips`}</p>
-        </div>
-      ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-card">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Date</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Route & Schedule</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Bus</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Driver</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredTrips.map((trip) => (
-                <tr key={trip.trip_id} className="hover:bg-primary/5 transition-colors">
-                  <td className="px-6 py-4 font-medium text-foreground">{new Date(trip.trip_date).toLocaleDateString('en-GB')}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">{getScheduleDisplay(trip.schedules)}</td>
-                  <td className="px-6 py-4 text-sm text-secondary">{trip.buses?.bus_no || '—'}</td>
-                  <td className="px-6 py-4 text-sm text-secondary">{trip.drivers?.name || '—'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusClasses(trip.status)}`}>
-                      {trip.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openModal('edit', trip)} className="w-8 h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg transition-colors">
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => handleDeleteClick(trip)} className="w-8 h-8 flex items-center justify-center text-danger hover:bg-danger/10 rounded-lg transition-colors">
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="flex-1 min-h-0">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-danger/10 border border-danger/20 rounded-2xl p-6 text-center">
+            <p className="text-danger font-medium">{error}</p>
+          </div>
+        ) : filteredTrips.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-2xl border border-border h-full flex flex-col justify-center">
+            <CalendarDaysIcon className="mx-auto h-16 w-16 text-secondary/50" />
+            <h3 className="mt-4 text-lg font-medium text-foreground">No trips found</h3>
+            <p className="mt-2 text-secondary">{statusFilter === 'all' ? 'Get started by adding your first trip' : `No ${statusFilter} trips`}</p>
+          </div>
+        ) : (
+          <div className="bg-card rounded-2xl border border-border h-full flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-auto">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-card sticky top-0">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-foreground">Date</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-foreground">Route & Schedule</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-foreground">Bus</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-foreground">Driver</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-foreground">Status</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-semibold text-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredTrips.map((trip) => (
+                    <tr key={trip.trip_id} className="hover:bg-primary/5 transition-colors">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-foreground text-sm">{new Date(trip.trip_date).toLocaleDateString('en-GB')}</td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-foreground">
+                        <div className="truncate max-w-[150px] sm:max-w-none" title={getScheduleDisplay(trip.schedules)}>
+                          {getScheduleDisplay(trip.schedules)}
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-secondary">{trip.buses?.bus_no || '—'}</td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-secondary">
+                        <div className="truncate max-w-[100px] sm:max-w-none" title={trip.drivers?.name}>
+                          {trip.drivers?.name || '—'}
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${getStatusClasses(trip.status)}`}>
+                          {trip.status}
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-right">
+                        <div className="flex items-center justify-end gap-1 sm:gap-2">
+                          <button onClick={() => openModal('edit', trip)} className="w-8 h-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => handleDeleteClick(trip)} className="w-8 h-8 flex items-center justify-center text-danger hover:bg-danger/10 rounded-lg transition-colors">
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* --- ADD/EDIT MODAL --- */}
       {/* Note: This block uses the standard Transition/Dialog structure provided in the original code */}

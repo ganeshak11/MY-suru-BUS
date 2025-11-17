@@ -257,95 +257,101 @@ export default function SchedulesPage() {
   }, {} as Record<number, { route: Route | undefined, schedules: Schedule[] }>);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="h-full flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-4 flex-shrink-0">
         <div>
-          <h1 className="text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Schedules</h1>
-          <p className="text-secondary text-base">Define when routes run</p>
+          <h1 className="text-2xl sm:text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Schedules</h1>
+          <p className="text-secondary text-sm sm:text-base">Define when routes run</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => setIsFilterModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-xl text-sm font-medium text-secondary hover:text-foreground hover:bg-card transition-all"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 border border-border rounded-xl text-sm font-medium text-secondary hover:text-foreground hover:bg-card transition-all"
           >
-            <FunnelIcon className="h-5 w-5" />
-            Filter
+            <FunnelIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="hidden sm:inline">Filter</span>
           </button>
           <button
             type="button"
             onClick={() => openModal('add')}
-            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
+            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 bg-primary text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl text-sm font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
           >
-            <PlusIcon className="h-5 w-5" />
-            Add Schedule
+            <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="sm:inline">Add</span>
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      ) : error ? (
-        <div className="bg-danger/10 border border-danger/20 rounded-2xl p-6 text-center">
-          <p className="text-danger font-medium">{error}</p>
-        </div>
-      ) : filteredSchedules.length === 0 ? (
-        <div className="text-center py-12 bg-card rounded-2xl border border-border">
-          <ClockIcon className="mx-auto h-16 w-16 text-secondary/50" />
-          <h3 className="mt-4 text-lg font-medium text-foreground">No schedules found</h3>
-          <p className="mt-2 text-secondary">Add your first schedule or adjust filters</p>
-        </div>
-      ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden overflow-x-auto">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-card">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Route</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Start Time</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {Object.values(groupedSchedules).map((group) => (
-                  <tr key={group.route?.route_id} className="hover:bg-primary/5 transition-colors">
-                    <td className="px-6 py-4 font-medium text-primary">
-                      {group.route?.route_name || '—'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {group.schedules.map((schedule) => (
-                          <span key={schedule.schedule_id} className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-sm font-mono">
-                            {schedule.start_time.slice(0, 5)}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => openModal('edit', group.schedules)} 
-                          className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                          title="Edit schedule"
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(group.schedules)} 
-                          className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                          title="Delete schedule"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
+      <div className="flex-1 min-h-0">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-danger/10 border border-danger/20 rounded-2xl p-6 text-center">
+            <p className="text-danger font-medium">{error}</p>
+          </div>
+        ) : filteredSchedules.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-2xl border border-border h-full flex flex-col justify-center">
+            <ClockIcon className="mx-auto h-16 w-16 text-secondary/50" />
+            <h3 className="mt-4 text-lg font-medium text-foreground">No schedules found</h3>
+            <p className="mt-2 text-secondary">Add your first schedule or adjust filters</p>
+          </div>
+        ) : (
+          <div className="bg-card rounded-2xl border border-border h-full flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-auto">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-card sticky top-0">
+                  <tr>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-foreground">Route</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-foreground">Start Time</th>
+                    <th className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-semibold text-foreground">Actions</th>
                   </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {Object.values(groupedSchedules).map((group) => (
+                      <tr key={group.route?.route_id} className="hover:bg-primary/5 transition-colors">
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-primary text-sm sm:text-base">
+                          <div className="truncate max-w-[120px] sm:max-w-none" title={group.route?.route_name}>
+                            {group.route?.route_name || '—'}
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4">
+                          <div className="flex flex-wrap gap-1 sm:gap-2">
+                            {group.schedules.map((schedule) => (
+                              <span key={schedule.schedule_id} className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary text-xs sm:text-sm font-mono">
+                                {schedule.start_time.slice(0, 5)}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1 sm:gap-2">
+                            <button 
+                              onClick={() => openModal('edit', group.schedules)} 
+                              className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                              title="Edit schedule"
+                            >
+                              <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(group.schedules)} 
+                              className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                              title="Delete schedule"
+                            >
+                              <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* --- ADD/EDIT MODAL --- */}
       <Modal isOpen={isModalOpen} onClose={closeModal} title={modalMode === 'add' ? 'Add New Schedule' : 'Edit Schedule'}>
