@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; // ADDED hooks
-import { usePathname, useRouter } from 'next/navigation'; // ADDED useRouter
-import { supabase } from '@/lib/supabaseClient'; // ADDED supabase client
+import { useState, useEffect, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import './globals.css';
 import SideNav from '@/app/components/SideNav';
 import { ThemeProvider } from '@/app/components/ThemeProvider';
+import { ThemeToggleButton } from '@/app/components/ThemeToggleButton';
 import Head from 'next/head';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
@@ -101,16 +102,20 @@ export default function RootLayout({
           <div className="flex h-full bg-background text-foreground">
             {showSideNav && (
               <>
-                {showSideNav && (
-                  <button
-                    onClick={() => setIsSideNavOpen(!isSideNavOpen)}
-                    onMouseEnter={() => setIsSideNavOpen(true)}
-                    // --- THEME UPDATE ---
-                    className="fixed top-4 left-4 z-50 p-2 rounded-lg text-foreground bg-card shadow-lg hover:ring-2 hover:ring-primary/50 transition-all"
-                  >
-                    <Bars3Icon className="h-6 w-6" />
-                  </button>
-                )}
+                {/* Hamburger button - only visible on mobile */}
+                <button
+                  onClick={() => setIsSideNavOpen(!isSideNavOpen)}
+                  className={`lg:hidden fixed top-6 left-6 z-50 p-3 rounded-xl text-white bg-gradient-to-br from-blue-600 to-indigo-600 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group ${
+                    isSideNavOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                  }`}
+                >
+                  <Bars3Icon className="h-6 w-6 group-hover:rotate-180 transition-transform duration-300" />
+                </button>
+                {/* Left edge hover trigger - only on desktop */}
+                <div 
+                  className="hidden lg:block fixed left-0 top-0 bottom-0 w-4 z-30"
+                  onMouseEnter={() => setIsSideNavOpen(true)}
+                />
                 <SideNav
                   isOpen={isSideNavOpen}
                   onClose={() => setIsSideNavOpen(false)}
@@ -119,8 +124,13 @@ export default function RootLayout({
                 />
               </>
             )}
-            <main className="flex-1 p-6 sm:p-8 lg:p-12 pl-20 overflow-y-auto bg-background">
-              <div className="max-w-7xl mx-auto">
+            <main className="flex-1 p-6 sm:p-8 lg:p-12 overflow-y-auto bg-background relative">
+              {showSideNav && (
+                <div className="fixed top-6 right-6 z-40">
+                  <ThemeToggleButton />
+                </div>
+              )}
+              <div className="max-w-7xl mx-auto ml-20 lg:ml-0">
                 {children}
               </div>
             </main>

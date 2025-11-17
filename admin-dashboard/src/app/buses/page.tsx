@@ -15,6 +15,7 @@ interface Bus {
   current_longitude: number | null;
   last_updated: string | null; // ISO timestamp
   current_trip_id: number | null;
+  passenger_reports?: { count: number }[];
 }
 
 type FormState = Omit<Bus, 'bus_id' | 'current_latitude' | 'current_longitude' | 'last_updated' | 'current_trip_id'>;
@@ -56,7 +57,7 @@ export default function BusesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('buses')
-      .select('*')
+      .select('*, passenger_reports(count)')
       .order('bus_no', { ascending: true });
 
     if (error) {
@@ -148,21 +149,21 @@ export default function BusesPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Buses</h1>
-          <p className="text-secondary">Manage your bus fleet</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Buses</h1>
+          <p className="text-secondary text-base">Manage your bus fleet and monitor performance</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => fetchBuses()}
-            className="px-4 py-2 text-sm font-medium text-secondary hover:text-foreground border border-border rounded-xl hover:bg-card transition-all"
+            className="px-5 py-2.5 text-sm font-semibold text-secondary hover:text-foreground border-2 border-border rounded-xl hover:bg-card transition-all hover:shadow-md hover:border-primary/30"
           >
             Refresh
           </button>
           <button
             type="button"
             onClick={() => openModal('add')}
-            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary/90 transition-all hover:shadow-lg hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-xl transition-all hover:-translate-y-0.5 hover:scale-105"
           >
             <PlusIcon className="h-5 w-5" />
             Add Bus

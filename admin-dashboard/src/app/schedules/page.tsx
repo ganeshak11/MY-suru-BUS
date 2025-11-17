@@ -15,21 +15,10 @@ interface Schedule {
   schedule_id: number;
   route_id: number;
   start_time: string; // HH:MM:SS
-  day_of_week: number; // 1 for Monday, 7 for Sunday
   routes?: Route; // Joined route data, now an object
 }
 
 type FormState = Omit<Schedule, 'schedule_id' | 'routes'>;
-
-const daysOfWeek = [
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' },
-  { value: 7, label: 'Sunday' },
-];
 
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -41,7 +30,6 @@ export default function SchedulesPage() {
   const [formState, setFormState] = useState<FormState>({
     route_id: 0,
     start_time: '00:00:00',
-    day_of_week: 1,
   });
   const [error, setError] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -52,12 +40,8 @@ export default function SchedulesPage() {
 
   const [filters, setFilters] = useState({
     route_id: '',
-    day_of_week: '',
     start_time: ''
-  });
-  
-  // Get current day for visual status (1=Monday... 7=Sunday)
-  const currentDay = new Date().getDay() || 7; 
+  }); 
 
   useEffect(() => {
     fetchSchedules();
@@ -90,10 +74,8 @@ export default function SchedulesPage() {
         schedule_id,
         route_id,
         start_time,
-        day_of_week,
         routes:route_id (route_id, route_name)
       `)
-      .order('day_of_week', { ascending: true })
       .order('start_time', { ascending: true });
 
     if (error) {
@@ -131,14 +113,12 @@ export default function SchedulesPage() {
       setFormState({
         route_id: schedule.route_id,
         start_time: schedule.start_time,
-        day_of_week: schedule.day_of_week,
       });
     } else {
       setSelectedSchedule(null);
       setFormState({
         route_id: routes.length > 0 ? routes[0].route_id : 0, 
         start_time: '00:00:00',
-        day_of_week: 1,
       });
     }
     setIsModalOpen(true);
@@ -153,7 +133,7 @@ export default function SchedulesPage() {
     setFormState(prevState => ({
       ...prevState,
       // Ensure numerical fields are parsed correctly
-      [name]: name === 'route_id' || name === 'day_of_week' ? parseInt(value) : value,
+      [name]: name === 'route_id' ? parseInt(value) : value,
     }));
   };
 
@@ -161,9 +141,9 @@ export default function SchedulesPage() {
     e.preventDefault();
     setError(null);
 
-    const { route_id, start_time, day_of_week } = formState;
+    const { route_id, start_time } = formState;
 
-    if (!route_id || !start_time || !day_of_week) {
+    if (!route_id || !start_time) {
         setError("All fields are required.");
         return;
     }
@@ -172,10 +152,10 @@ export default function SchedulesPage() {
     if (modalMode === 'add') {
       // Assuming 'create-schedule' Edge Function handles insertion and checks
       result = await supabase.functions.invoke('create-schedule', {
-        body: { route_id, start_time, day_of_week },
+        body: { route_id, start_time },
       });
     } else if (selectedSchedule) {
-      result = await supabase.from('schedules').update({ route_id, start_time, day_of_week }).eq('schedule_id', selectedSchedule.schedule_id).select();
+      result = await supabase.from('schedules').update({ route_id, start_time }).eq('schedule_id', selectedSchedule.schedule_id).select();
     }
 
     const { data, error: submissionError } = result || {};
@@ -228,7 +208,6 @@ export default function SchedulesPage() {
   const clearFilters = () => {
     setFilters({
       route_id: '',
-      day_of_week: '',
       start_time: ''
     });
     setIsFilterModalOpen(false);
@@ -236,9 +215,6 @@ export default function SchedulesPage() {
 
   const filteredSchedules = schedules.filter(schedule => {
     if (filters.route_id && schedule.route_id !== parseInt(filters.route_id)) {
-      return false;
-    }
-    if (filters.day_of_week && schedule.day_of_week !== parseInt(filters.day_of_week)) {
       return false;
     }
     if (filters.start_time && schedule.start_time.slice(0, 5) !== filters.start_time) {
@@ -251,8 +227,8 @@ export default function SchedulesPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Schedules</h1>
-          <p className="text-secondary">Define when routes run</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Schedules</h1>
+          <p className="text-secondary text-base">Define when routes run</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -295,48 +271,36 @@ export default function SchedulesPage() {
               <tr>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Route</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Start Time</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Day</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Status</th>
                 <th className="px-6 py-4 text-right text-sm font-semibold text-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredSchedules.map((schedule) => {
-                const isToday = schedule.day_of_week === currentDay;
-                return (
+              {filteredSchedules.map((schedule) => (
                   <tr key={schedule.schedule_id} className="hover:bg-primary/5 transition-colors">
                     <td className="px-6 py-4 font-medium text-primary">
                       {schedule.routes?.route_name || '—'}
                     </td>
                     <td className="px-6 py-4 text-sm text-foreground font-mono">{schedule.start_time.slice(0, 5)}</td>
-                    <td className="px-6 py-4 text-sm text-secondary">
-                      {daysOfWeek.find(d => d.value === schedule.day_of_week)?.label || '—'}
-                    </td>
-                    <td className="px-6 py-4">
-                      {isToday ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm font-medium">
-                          <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
-                          Active Today
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">
-                          Scheduled
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openModal('edit', schedule)} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => openModal('edit', schedule)} 
+                          className="p-2.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+                          title="Edit schedule"
+                        >
                           <PencilIcon className="h-5 w-5" />
                         </button>
-                        <button onClick={() => handleDelete(schedule)} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleDelete(schedule)} 
+                          className="p-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                          title="Delete schedule"
+                        >
                           <TrashIcon className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                );
-              })}
+              ))}
             </tbody>
           </table>
         </div>
@@ -374,21 +338,7 @@ export default function SchedulesPage() {
                 ))}
               </select>
             </div>
-            <div>
-              <label htmlFor="day_of_week" className="block text-sm font-medium text-secondary">Day of Week</label>
-              <select
-                id="day_of_week"
-                name="day_of_week"
-                value={filters.day_of_week}
-                onChange={handleFilterChange}
-                className="mt-1 block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground"
-              >
-                <option value="">All Days</option>
-                {daysOfWeek.map(day => (
-                  <option key={day.value} value={day.value}>{day.label}</option>
-                ))}
-              </select>
-            </div>
+
             <div>
               <label htmlFor="start_time" className="block text-sm font-medium text-secondary">Start Time</label>
               <input
@@ -422,7 +372,7 @@ export default function SchedulesPage() {
         {scheduleToDelete && (
           <div>
             <p className="text-sm text-secondary">
-              Are you sure you want to delete the schedule for route <strong>{scheduleToDelete.routes?.route_name || 'N/A'}</strong> on <strong>{daysOfWeek.find(d => d.value === scheduleToDelete.day_of_week)?.label}</strong> at <strong>{scheduleToDelete.start_time}</strong>?
+              Are you sure you want to delete the schedule for route <strong>{scheduleToDelete.routes?.route_name || 'N/A'}</strong> at <strong>{scheduleToDelete.start_time}</strong>?
             </p>
             <p className="mt-2 text-sm font-semibold text-danger">
               Warning: This may automatically delete any future scheduled trips associated with this time slot.

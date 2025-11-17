@@ -218,82 +218,108 @@ export default function StopsPage() {
   // --- END UPDATE ---
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-bold text-foreground">Manage Stops</h1>
-          <p className="mt-2 text-sm text-secondary">Define and manage all physical bus stops in the system.</p>
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Stops</h1>
+          <p className="text-secondary text-base">Define and manage all physical bus stops in the system</p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            type="button"
-            onClick={() => openModal('add')}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:w-auto"
-          >
-            <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-            Add Stop
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => openModal('add')}
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-xl transition-all hover:-translate-y-0.5 hover:scale-105"
+        >
+          <PlusIcon className="h-5 w-5" />
+          Add Stop
+        </button>
       </div>
       
-      {/* --- UPDATED: Global error display --- */}
-      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+      {error && (
+        <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-2 border-red-200 dark:border-red-800 rounded-2xl p-6 mb-6 shadow-soft">
+          <p className="text-red-700 dark:text-red-300 font-semibold">{error}</p>
+        </div>
+      )}
 
       {loading ? (
-        <p className="mt-8 text-center">Loading stops...</p>
+        <div className="flex items-center justify-center py-16">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary/20 border-t-primary"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-8 w-8 bg-primary/10 rounded-full"></div>
+            </div>
+          </div>
+        </div>
       ) : stops.length === 0 ? (
-        <div className="mt-8 text-center">
-            <MapPinIcon className="mx-auto h-12 w-12 text-secondary" />
-            <h3 className="mt-2 text-sm font-medium text-foreground">No stops defined</h3>
-            <p className="mt-1 text-sm text-secondary">Get started by adding your first stop.</p>
+        <div className="text-center py-16 bg-gradient-to-br from-card to-slate-50 dark:to-slate-900 rounded-2xl border border-border shadow-soft">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary/10 rounded-2xl mb-4">
+            <MapPinIcon className="h-10 w-10 text-primary" />
+          </div>
+          <h3 className="text-xl font-bold text-foreground">No stops found</h3>
+          <p className="mt-2 text-secondary max-w-sm mx-auto">Get started by adding your first stop to the system</p>
         </div>
       ) : (
-        <div className="mt-8 flex flex-col">
-          <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                {/* --- UPDATED: Theme-aware dividers --- */}
-                <table className="min-w-full divide-y divide-secondary/30">
-                  <thead className="bg-table-header">
-                    <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-foreground sm:pl-6">Stop Name</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Latitude</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Longitude</th>
-                      {/* --- ADDED: Usage Column --- */}
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-foreground">Used in Routes</th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-secondary/30 bg-table">
-                    {stops.map((stop) => (
-                      <tr key={stop.stop_id} className="hover:bg-table-row-hover">
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-foreground sm:pl-6">{stop.stop_name}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">{stop.latitude}</td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">{stop.longitude}</td>
-                        {/* --- ADDED: Usage Data --- */}
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-secondary">
-                          {stop.route_stops[0].count > 0 
-                            ? `${stop.route_stops[0].count} ${stop.route_stops[0].count > 1 ? 'routes' : 'route'}`
-                            : 'Not in use'
-                          }
-                        </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <button onClick={() => openModal('edit', stop)} className="text-primary hover:text-primary/80 mr-4">
-                            <PencilIcon className="h-5 w-5" />
-                          </button>
-                          {/* --- UPDATED: Theme-aware delete --- */}
-                          <button onClick={() => handleDelete(stop)} className="text-danger hover:text-danger/80">
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-soft">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-foreground/80">Stop Name</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-foreground/80">Coordinates</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-foreground/80">Used in Routes</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-foreground/80">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-card">
+                {stops.map((stop) => (
+                  <tr key={stop.stop_id} className="hover:bg-primary/5 transition-all duration-200 group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                          <MapPinIcon className="h-5 w-5 text-primary" />
+                        </div>
+                        <span className="font-semibold text-foreground">{stop.stop_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-secondary font-mono">
+                      <div className="flex flex-col gap-0.5">
+                        <span>Lat: {stop.latitude.toFixed(6)}</span>
+                        <span>Lng: {stop.longitude.toFixed(6)}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {stop.route_stops[0].count > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                          </svg>
+                          {stop.route_stops[0].count} {stop.route_stops[0].count > 1 ? 'routes' : 'route'}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-secondary font-medium">Not in use</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => openModal('edit', stop)} 
+                          className="p-2.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+                          title="Edit stop"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(stop)} 
+                          className="p-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                          title="Delete stop"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

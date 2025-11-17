@@ -11,7 +11,6 @@ interface Schedule {
   schedule_id: number;
   route_id: number;
   start_time: string; // HH:MM:SS
-  day_of_week: number; // 1 for Monday, 7 for Sunday
   routes?: Route; // Joined route data
 }
 
@@ -27,15 +26,7 @@ interface ScheduleFormProps {
   routes: Route[];
 }
 
-const daysOfWeek = [
-  { value: 1, label: 'Monday' },
-  { value: 2, label: 'Tuesday' },
-  { value: 3, label: 'Wednesday' },
-  { value: 4, label: 'Thursday' },
-  { value: 5, label: 'Friday' },
-  { value: 6, label: 'Saturday' },
-  { value: 7, label: 'Sunday' },
-];
+
 
 export default function ScheduleForm({ formState, handleFormChange, handleSubmit, error, modalMode, closeModal, routes }: ScheduleFormProps) {
   return (
@@ -79,27 +70,6 @@ export default function ScheduleForm({ formState, handleFormChange, handleSubmit
               required
               className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground"
             />
-          </div>
-        </div>
-
-        {/* Day of Week */}
-        <div className="sm:col-span-6">
-          <label htmlFor="day_of_week" className="block text-sm font-medium text-secondary">Day of Week</label>
-          <div className="mt-1">
-            <select
-              id="day_of_week"
-              name="day_of_week"
-              value={formState.day_of_week}
-              onChange={handleFormChange}
-              required
-              className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground"
-            >
-              {daysOfWeek.map(day => (
-                <option key={day.value} value={day.value}>
-                  {day.label}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
 

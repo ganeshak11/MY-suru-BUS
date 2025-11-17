@@ -174,8 +174,8 @@ export default function RoutesPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Routes</h1>
-          <p className="text-secondary">Manage all bus routes in the system</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Routes</h1>
+          <p className="text-secondary text-base">Manage all bus routes in the system</p>
         </div>
         <button
           type="button"
@@ -229,12 +229,20 @@ export default function RoutesPage() {
                       {route.schedules[0]?.count || 0} schedules
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEditModal(route)} className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => openEditModal(route)} 
+                        className="p-2.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-blue-200 dark:hover:border-blue-800"
+                        title="Edit route"
+                      >
                         <PencilIcon className="h-5 w-5" />
                       </button>
-                      <button onClick={() => handleDelete(route)} className="p-2 text-danger hover:bg-danger/10 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDelete(route)} 
+                        className="p-2.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all duration-200 hover:scale-110 hover:shadow-md border border-transparent hover:border-red-200 dark:hover:border-red-800"
+                        title="Delete route"
+                      >
                         <TrashIcon className="h-5 w-5" />
                       </button>
                     </div>

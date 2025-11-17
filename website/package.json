@@ -1,0 +1,19 @@
+{
+  "name": "mysurubus-website",
+  "version": "1.0.0",
+  "description": "MY(suru) BUS - Real-Time Bus Tracking Website",
+  "scripts": {
+    "start": "npx http-server -p 8000 -o",
+    "deploy:vercel": "vercel --prod",
+    "deploy:netlify": "netlify deploy --prod",
+    "deploy:firebase": "firebase deploy"
+  },
+  "keywords": [
+    "bus",
+    "tracking",
+    "real-time",
+    "mysuru"
+  ],
+  "author": "MY(suru) BUS Team",
+  "license": "MIT"
+}

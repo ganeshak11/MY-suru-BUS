@@ -5,7 +5,6 @@ import { supabase } from "../lib/supabaseClient";
 import * as TaskManager from "expo-task-manager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ------------------ TYPES ------------------
 type LocationUpdatePayload = {
   bus_id: number;
   current_latitude: number;
@@ -13,12 +12,10 @@ type LocationUpdatePayload = {
   last_updated: string;
 };
 
-// ------------------ CONSTANTS ------------------
 const LOCATION_TASK_NAME = "background-location-task";
 const ASYNC_STORAGE_BUS_ID_KEY = "current_bus_id";
 const LOCATION_QUEUE_KEY = "offline_location_queue";
 
-// ------------------ QUEUE HELPERS ------------------
 const addUpdateToQueue = async (payload: LocationUpdatePayload) => {
   try {
     const rawQueue = await AsyncStorage.getItem(LOCATION_QUEUE_KEY);
@@ -55,7 +52,6 @@ const processLocationQueue = async () => {
   }
 };
 
-// ------------------ MAIN HOOK ------------------
 export const useDriverLocation = () => {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [isTracking, setIsTracking] = useState(false);
@@ -79,7 +75,6 @@ export const useDriverLocation = () => {
     return true;
   };
 
-  // ------------------ FOREGROUND WATCHER ------------------
   const watchForegroundLocation = async () => {
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) return;
@@ -103,7 +98,6 @@ export const useDriverLocation = () => {
       );
     } catch (e) {
       console.error("[FOREGROUND] watchPositionAsync error:", e);
-      // Silently fail - foreground watching is optional
     }
   };
 

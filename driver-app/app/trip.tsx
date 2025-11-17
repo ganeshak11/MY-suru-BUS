@@ -390,7 +390,7 @@ export default function TripScreen() {
               const today = now.toISOString().split('T')[0];
               const tripStart = new Date(`${today}T${trip.schedules.start_time}`);
               const elapsedMinutes = Math.round((now.getTime() - tripStart.getTime()) / 60000);
-              const delayMinutes = elapsedMinutes - currentStop.time_offset_from_start;
+              const delayMinutes = elapsedMinutes - (currentStop.time_offset_from_start || 0);
               const isDelayed = delayMinutes > 0;
               const isEarly = delayMinutes < -2;
               

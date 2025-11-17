@@ -35,9 +35,13 @@ CREATE TABLE public.passenger_reports (
   status character varying NOT NULL DEFAULT 'New'::character varying,
   trip_id bigint,
   bus_id bigint,
+  driver_id bigint,
+  route_id bigint,
   CONSTRAINT passenger_reports_pkey PRIMARY KEY (report_id),
   CONSTRAINT passenger_reports_trip_id_fkey FOREIGN KEY (trip_id) REFERENCES public.trips(trip_id),
-  CONSTRAINT passenger_reports_bus_id_fkey FOREIGN KEY (bus_id) REFERENCES public.buses(bus_id)
+  CONSTRAINT passenger_reports_bus_id_fkey FOREIGN KEY (bus_id) REFERENCES public.buses(bus_id),
+  CONSTRAINT passenger_reports_driver_id_fkey FOREIGN KEY (driver_id) REFERENCES public.drivers(driver_id),
+  CONSTRAINT passenger_reports_route_id_fkey FOREIGN KEY (route_id) REFERENCES public.routes(route_id)
 );
 CREATE TABLE public.route_stops (
   route_stop_id bigint NOT NULL DEFAULT nextval('route_stops_route_stop_id_seq'::regclass),
@@ -58,7 +62,6 @@ CREATE TABLE public.schedules (
   schedule_id bigint NOT NULL DEFAULT nextval('schedules_schedule_id_seq'::regclass),
   route_id bigint NOT NULL,
   start_time time without time zone NOT NULL,
-  day_of_week smallint NOT NULL CHECK (day_of_week >= 1 AND day_of_week <= 7),
   CONSTRAINT schedules_pkey PRIMARY KEY (schedule_id),
   CONSTRAINT fk_schedules_route FOREIGN KEY (route_id) REFERENCES public.routes(route_id)
 );

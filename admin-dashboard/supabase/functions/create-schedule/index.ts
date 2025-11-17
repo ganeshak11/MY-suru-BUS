@@ -20,24 +20,20 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { route_id, start_time, day_of_week } = body;
+    const { route_id, start_time } = body;
 
     // Validate all fields before DB call
     if (
       !route_id ||
       typeof route_id !== "number" ||
       !start_time ||
-      typeof start_time !== "string" ||
-      !day_of_week ||
-      typeof day_of_week !== "number" ||
-      day_of_week < 1 ||
-      day_of_week > 7
+      typeof start_time !== "string"
     ) {
       return new Response(
         JSON.stringify({
           success: false,
           error:
-            "Valid route_id (number), start_time (string), and day_of_week (1–7) are required.",
+            "Valid route_id (number) and start_time (string) are required.",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
@@ -54,7 +50,7 @@ Deno.serve(async (req: Request) => {
     // Insert schedule entry
     const { data, error } = await supabase
       .from("schedules")
-      .insert([{ route_id, start_time, day_of_week }])
+      .insert([{ route_id, start_time }])
       .select();
 
     if (error) throw error;

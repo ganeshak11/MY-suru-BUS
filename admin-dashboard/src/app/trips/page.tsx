@@ -15,7 +15,6 @@ interface Route {
 interface Schedule {
   schedule_id: number;
   start_time: string;
-  day_of_week: number;
   routes?: Route; // Single object join
 }
 
@@ -121,7 +120,6 @@ export default function TripsPage() {
         schedules:schedule_id (
           schedule_id,
           start_time,
-          day_of_week,
           routes:route_id (route_id, route_name)
         ),
         buses:bus_id (bus_id, bus_no),
@@ -152,7 +150,7 @@ export default function TripsPage() {
     // Fetch Schedules (Use alias syntax for correct joins)
     const { data: schedulesData, error: schedulesError } = await supabase
       .from('schedules')
-      .select(`schedule_id, start_time, day_of_week, routes:route_id (route_id, route_name)`);
+      .select(`schedule_id, start_time, routes:route_id (route_id, route_name)`);
     if (schedulesError) console.error('Error fetching schedules:', schedulesError);
     else setSchedules(schedulesData as unknown as Schedule[]);
 
@@ -248,12 +246,39 @@ export default function TripsPage() {
   const confirmDelete = async () => {
     if (!tripToDelete) return;
 
+    // Delete related trip_stop_times records
+    const { error: stopTimesError } = await supabase
+      .from('trip_stop_times')
+      .delete()
+      .eq('trip_id', tripToDelete.trip_id);
+
+    if (stopTimesError) {
+      console.error('Error deleting trip stop times:', stopTimesError);
+      setError(`Failed to delete trip: ${stopTimesError.message}`);
+      setIsDeleteModalOpen(false);
+      setTripToDelete(null);
+      return;
+    }
+
+    // Set trip_id to null in passenger_reports
+    const { error: reportsError } = await supabase
+      .from('passenger_reports')
+      .update({ trip_id: null })
+      .eq('trip_id', tripToDelete.trip_id);
+
+    if (reportsError) {
+      console.error('Error updating passenger reports:', reportsError);
+      setError(`Failed to delete trip: ${reportsError.message}`);
+      setIsDeleteModalOpen(false);
+      setTripToDelete(null);
+      return;
+    }
+
+    // Delete the trip
     const { error } = await supabase.from('trips').delete().eq('trip_id', tripToDelete.trip_id);
     if (error) {
       console.error('Error deleting trip:', error);
       setError(`Failed to delete trip: ${error.message}`);
-    } else {
-      // Handled by real-time listener
     }
     setIsDeleteModalOpen(false);
     setTripToDelete(null);
@@ -262,15 +287,8 @@ export default function TripsPage() {
 
   const getScheduleDisplay = (schedule?: Schedule) => {
     if (!schedule) return 'N/A';
-    const dayLabel = daysOfWeek.find(d => d.value === schedule.day_of_week)?.label;
-    return `${schedule.routes?.route_name || ''} (${dayLabel} ${schedule.start_time})`;
+    return `${schedule.routes?.route_name || ''} (${schedule.start_time})`;
   };
-
-  const daysOfWeek = [
-    { value: 1, label: 'Monday' }, { value: 2, label: 'Tuesday' }, { value: 3, label: 'Wednesday' },
-    { value: 4, label: 'Thursday' }, { value: 5, label: 'Friday' }, { value: 6, label: 'Saturday' },
-    { value: 7, label: 'Sunday' },
-  ];
 
   return (
     <div>

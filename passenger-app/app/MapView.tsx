@@ -118,12 +118,10 @@ const MapViewScreen: React.FC = () => {
           setStops(formattedStops);
         }
 
-        const today = new Date().getDay() || 7;
         const { data: scheduleData, error: schedErr } = await supabase
           .from('schedules')
           .select('schedule_id, start_time')
           .eq('route_id', rid)
-          .eq('day_of_week', today)
           .order('start_time', { ascending: true });
         
         if (!schedErr && scheduleData) {

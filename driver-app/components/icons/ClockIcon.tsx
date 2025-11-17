@@ -1,7 +1,6 @@
-'use client';
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps } from 'react';
 
-import { ClockIcon as HeroClockIcon } from '@heroicons/react/24/outline';
-
-export default function ClockIcon(props: React.ComponentProps<typeof HeroClockIcon>) {
-  return <HeroClockIcon {...props} />;
+export default function ClockIcon(props: Omit<ComponentProps<typeof Ionicons>, 'name'>) {
+  return <Ionicons name="time" {...props} />;
 }

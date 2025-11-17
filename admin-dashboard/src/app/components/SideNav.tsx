@@ -3,7 +3,6 @@
 
 import { Fragment } from 'react';
 import Link from 'next/link';
-import { ThemeToggleButton } from '@/app/components/ThemeToggleButton';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import HomeIcon from '@/app/components/icons/HomeIcon';
@@ -78,7 +77,7 @@ export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }:
             leaveTo="-translate-x-full"
           >
             <Dialog.Panel
-              className="relative flex w-full max-w-xs flex-1 flex-col bg-card text-card-foreground border-r border-secondary/20 shadow-xl"
+              className="relative flex w-full max-w-xs flex-1 flex-col bg-gradient-to-b from-card via-card to-slate-50 dark:to-slate-900 text-card-foreground border-r-2 border-primary/20 shadow-2xl"
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
             >
@@ -105,39 +104,55 @@ export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }:
               </Transition.Child>
 
               {/* Logo/Brand Header */}
-              <div className="h-20 flex items-center justify-center text-2xl font-bold shrink-0 border-b border-border bg-gradient-to-r from-primary/5 to-transparent">
-                <div className="flex items-center gap-2">
-                  <div className="bg-primary p-2 rounded-lg">
-                    <TripIcon className="h-6 w-6 text-white" />
+              <div className="relative h-24 flex items-center justify-center text-2xl font-bold shrink-0 border-b-2 border-primary/20 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10"></div>
+                <div className="relative flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-2xl shadow-lg transform hover:scale-110 transition-transform">
+                    <TruckIcon className="h-7 w-7 text-white" />
                   </div>
-                  <span><span className="text-primary">MY</span>suru BUS</span>
+                  <div>
+                    <div className="text-xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">MY(suru) BUS</div>
+                    <div className="text-[10px] font-semibold text-secondary uppercase tracking-wider">Admin Portal</div>
+                  </div>
                 </div>
               </div>
 
               {/* Navigation Links */}
-              <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
+              <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="group flex items-center px-4 py-3 text-sm font-medium rounded-xl text-foreground hover:bg-primary hover:text-white transition-all duration-200 hover:shadow-md hover:translate-x-1"
+                    className="group relative flex items-center px-4 py-3.5 text-sm font-semibold rounded-xl text-foreground hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 hover:text-white transition-all duration-300 hover:shadow-lg hover:translate-x-2 overflow-hidden"
                     onClick={onClose}
                   >
-                    <item.icon className="h-5 w-5 mr-3 shrink-0 group-hover:scale-110 transition-transform" />
-                    {item.name}
+                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="relative flex items-center w-full">
+                      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-primary/10 group-hover:bg-white/20 transition-all group-hover:scale-110">
+                        <item.icon className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                      </div>
+                      <span className="ml-3">{item.name}</span>
+                      <svg className="ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </Link>
                 ))}
               </nav>
 
-              {/* Footer (Theme Toggle & Logout) */}
-              <div className="p-4 border-t border-border shrink-0 space-y-2">
-                <ThemeToggleButton />
+              {/* Footer (Logout) */}
+              <div className="p-4 border-t-2 border-primary/20 shrink-0 bg-gradient-to-t from-slate-50/50 dark:from-slate-900/50">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center w-full px-4 py-3 text-sm font-medium rounded-xl text-foreground hover:bg-danger hover:text-white transition-all duration-200 hover:shadow-md"
+                  className="group relative flex items-center w-full px-4 py-3.5 text-sm font-semibold rounded-xl text-foreground hover:bg-gradient-to-r hover:from-red-600 hover:to-rose-600 hover:text-white transition-all duration-300 hover:shadow-lg overflow-hidden"
                 >
-                  <LogoutIcon className="h-5 w-5 mr-3 shrink-0" />
-                  Logout
+                  <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="relative flex items-center w-full">
+                    <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-red-500/10 group-hover:bg-white/20 transition-all">
+                      <LogoutIcon className="h-5 w-5" />
+                    </div>
+                    <span className="ml-3">Logout</span>
+                  </div>
                 </button>
               </div>
             </Dialog.Panel>

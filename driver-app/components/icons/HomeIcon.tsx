@@ -1,7 +1,6 @@
-'use client';
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps } from 'react';
 
-import { HomeIcon as HeroHomeIcon } from '@heroicons/react/24/outline';
-
-export default function HomeIcon(props: React.ComponentProps<typeof HeroHomeIcon>) {
-  return <HeroHomeIcon {...props} />;
+export default function HomeIcon(props: Omit<ComponentProps<typeof Ionicons>, 'name'>) {
+  return <Ionicons name="home" {...props} />;
 }

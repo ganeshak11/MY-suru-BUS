@@ -42,7 +42,7 @@ export const LiveMap: React.FC<LiveMapProps> = ({ location, stops = [] }) => {
         initialRegion={region}
         showsUserLocation={false}
         onMapReady={() => setMapReady(true)}
-        legalLabelInsets={{ bottom: -100, right: -100 }}
+        legalLabelInsets={{ top: 0, left: 0, bottom: -100, right: -100 }}
         rotateEnabled={false}
         pitchEnabled={false}
       >

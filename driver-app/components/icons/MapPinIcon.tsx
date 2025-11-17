@@ -1,7 +1,6 @@
-'use client';
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps } from 'react';
 
-import { MapPinIcon as HeroMapPinIcon } from '@heroicons/react/24/outline';
-
-export default function MapPinIcon(props: React.ComponentProps<typeof HeroMapPinIcon>) {
-  return <HeroMapPinIcon {...props} />;
+export default function MapPinIcon(props: Omit<ComponentProps<typeof Ionicons>, 'name'>) {
+  return <Ionicons name="location" {...props} />;
 }

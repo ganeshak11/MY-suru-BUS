@@ -4,11 +4,11 @@ import Constants from 'expo-constants';
 
 const supabaseUrl =
   Constants.expoConfig?.extra?.supabaseUrl ||
-  Constants.manifest?.extra?.supabaseUrl;
+  (Constants.manifest as any)?.extra?.supabaseUrl;
 
 const supabaseAnonKey =
   Constants.expoConfig?.extra?.supabaseAnonKey ||
-  Constants.manifest?.extra?.supabaseAnonKey;
+  (Constants.manifest as any)?.extra?.supabaseAnonKey;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(

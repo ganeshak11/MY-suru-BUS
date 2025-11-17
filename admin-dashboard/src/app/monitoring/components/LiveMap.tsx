@@ -104,29 +104,38 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
       
       const { data: tripData } = await supabase
         .from('trips')
-        .select('schedules:schedule_id(route_id)')
+        .select('schedules!inner(route_id)')
         .eq('trip_id', selectedTripId)
         .single();
       
-      if (!tripData?.schedules?.route_id) return;
-      const routeId = tripData.schedules.route_id;
+      if (!tripData?.schedules) return;
+      const schedules = Array.isArray(tripData.schedules) ? tripData.schedules[0] : tripData.schedules;
+      if (!schedules?.route_id) return;
+      const routeId = schedules.route_id;
 
       const { data: stopsData } = await supabase
         .from('route_stops')
-        .select('stops:stop_id(stop_name, latitude, longitude)')
+        .select('stops!inner(stop_name, latitude, longitude)')
         .eq('route_id', routeId)
         .order('stop_sequence');
 
       if (stopsData && stopsData.length > 0) {
         const waypoints = stopsData
-          .map(rs => (rs.stops ? L.latLng(rs.stops.latitude, rs.stops.longitude) : null))
-          .filter((wp): wp is L.LatLng => wp !== null);
+          .map(rs => {
+            const stop = Array.isArray(rs.stops) ? rs.stops[0] : rs.stops;
+            if (!stop || !stop.latitude || !stop.longitude) return null;
+            return L.latLng(parseFloat(stop.latitude), parseFloat(stop.longitude));
+          })
+          .filter((wp): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
         
-        if (stopsData[0].stops) {
-          setStartStop({lat: stopsData[0].stops.latitude, lng: stopsData[0].stops.longitude, name: stopsData[0].stops.stop_name});
+        const firstStopData = Array.isArray(stopsData[0].stops) ? stopsData[0].stops[0] : stopsData[0].stops;
+        if (firstStopData && 'latitude' in firstStopData) {
+          setStartStop({lat: parseFloat(firstStopData.latitude), lng: parseFloat(firstStopData.longitude), name: firstStopData.stop_name});
         }
-        if (stopsData[stopsData.length - 1].stops) {
-          setEndStop({lat: stopsData[stopsData.length - 1].stops.latitude, lng: stopsData[stopsData.length - 1].stops.longitude, name: stopsData[stopsData.length - 1].stops.stop_name});
+        
+        const lastStopData = Array.isArray(stopsData[stopsData.length - 1].stops) ? stopsData[stopsData.length - 1].stops[0] : stopsData[stopsData.length - 1].stops;
+        if (lastStopData && 'latitude' in lastStopData) {
+          setEndStop({lat: parseFloat(lastStopData.latitude), lng: parseFloat(lastStopData.longitude), name: lastStopData.stop_name});
         }
         
         if (waypoints.length > 1) {

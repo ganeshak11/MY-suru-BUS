@@ -1,8 +1,6 @@
-'use client';
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps } from 'react';
 
-// Note: There is no 'BusIcon' in Heroicons, so we use 'TruckIcon' as a replacement.
-import { TruckIcon as HeroTruckIcon } from '@heroicons/react/24/outline';
-
-export default function BusIcon(props: React.ComponentProps<typeof HeroTruckIcon>) {
-  return <HeroTruckIcon {...props} />;
+export default function BusIcon(props: Omit<ComponentProps<typeof Ionicons>, 'name'>) {
+  return <Ionicons name="bus" {...props} />;
 }

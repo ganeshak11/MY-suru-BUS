@@ -72,20 +72,53 @@ export default function Home() {
         return;
       }
 
-      // 2. Fetch the next scheduled or en route trip (today only)
-      const today = dayjs().format('YYYY-MM-DD');
+      // 2. Get today's trips directly
+      const today = new Date().toISOString().split('T')[0];
       const { data: trips, error: tripsError } = await supabase
-        .from("trips")
-        .select("*, schedules(route_id, start_time, routes(route_name)), buses!fk_trips_bus(bus_no)")
-        .eq("driver_id", driverIdValue)
-        .eq("trip_date", today)
-        .in("status", ["Scheduled", "En Route"])
-        .order("schedules(start_time)", { ascending: true })
-        .limit(1);
+        .from('trips')
+        .select(`
+          trip_id, status, bus_id,
+          schedules!inner(start_time, routes!inner(route_name))
+        `)
+        .eq('driver_id', driverIdValue)
+        .eq('trip_date', today)
+        .in('status', ['Scheduled', 'En Route']);
       
       if (tripsError) throw new Error(tripsError.message);
 
-      setNextTrip(trips?.[0] || null);
+      // Find active trip first (En Route), then scheduled
+      let nextTripData = trips?.find((t: any) => t.status === 'En Route');
+      if (!nextTripData) {
+        nextTripData = trips?.find((t: any) => t.status === 'Scheduled');
+      }
+
+      if (nextTripData) {
+        // Get bus number
+        const { data: busData } = await supabase
+          .from('buses')
+          .select('bus_no')
+          .eq('bus_id', nextTripData.bus_id)
+          .single();
+
+        const schedules = Array.isArray(nextTripData.schedules) ? nextTripData.schedules[0] : nextTripData.schedules;
+        const routes = Array.isArray(schedules.routes) ? schedules.routes[0] : schedules.routes;
+        
+        setNextTrip({
+          trip_id: nextTripData.trip_id,
+          status: nextTripData.status,
+          schedules: {
+            start_time: schedules.start_time,
+            routes: {
+              route_name: routes.route_name
+            }
+          },
+          buses: {
+            bus_no: busData?.bus_no
+          }
+        });
+      } else {
+        setNextTrip(null);
+      }
 
     } catch (e: any) {
       console.error("Fetch error:", e);

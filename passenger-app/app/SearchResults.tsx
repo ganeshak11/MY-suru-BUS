@@ -10,7 +10,7 @@ interface BusResult {
   bus_id: string;
   bus_no: string;
   route_id?: string;
-  driver_id?: string;
+  driver_id?: string | null;
   routes?: { route_id: string; route_name: string; }[] | null;
   current_trip: {
     trip_id: number;

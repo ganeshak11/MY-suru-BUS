@@ -28,14 +28,12 @@ Deno.serve(async (req: Request) => {
         schedule_id,
         route_id,
         start_time,
-        day_of_week,
         routes (
           route_id,
           route_name
         )
       `
       )
-      .order("day_of_week", { ascending: true })
       .order("start_time", { ascending: true });
 
     if (routeId) {

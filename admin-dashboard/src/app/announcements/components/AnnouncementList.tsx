@@ -110,7 +110,7 @@ export default function AnnouncementList() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="h-full overflow-y-auto pr-2 space-y-4">
       {announcements.map((item) => (
         <div 
           key={item.announcement_id} 

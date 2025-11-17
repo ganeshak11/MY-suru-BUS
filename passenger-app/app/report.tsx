@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -13,6 +13,38 @@ const ReportPage: React.FC = () => {
   const [reportType, setReportType] = useState('Driver Behavior');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [selectedTripId, setSelectedTripId] = useState<string>('');
+
+  useEffect(() => {
+    fetchActiveTrips();
+  }, []);
+
+  const fetchActiveTrips = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('trips')
+        .select(`
+          trip_id,
+          bus_id,
+          driver_id,
+          schedules!inner(route_id, routes!inner(route_name)),
+          buses!fk_trips_bus!inner(bus_no),
+          drivers!inner(name)
+        `)
+        .eq('trip_date', new Date().toISOString().split('T')[0])
+        .in('status', ['En Route', 'Scheduled'])
+        .order('trip_id');
+
+      if (error) throw error;
+      setTrips(data || []);
+    } catch (error) {
+      console.error('Error fetching trips:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!message.trim()) {
@@ -20,13 +52,24 @@ const ReportPage: React.FC = () => {
       return;
     }
 
+    if (!selectedTripId) {
+      Alert.alert('Error', 'Please select a bus and route.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const selectedTrip = trips.find(t => t.trip_id.toString() === selectedTripId);
+      
       const { error } = await supabase.from('passenger_reports').insert([
         {
           report_type: reportType,
           message: message,
+          trip_id: selectedTrip.trip_id,
+          bus_id: selectedTrip.bus_id,
+          driver_id: selectedTrip.driver_id,
+          route_id: selectedTrip.schedules.route_id,
         },
       ]);
 
@@ -82,24 +125,51 @@ const ReportPage: React.FC = () => {
     }
   });
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={currentColors.primaryAccent} />
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Header showBackButton />
       <Text style={styles.header}>Submit a Report</Text>
+
+      <Text style={styles.label}>Select Bus & Route</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={selectedTripId}
+          onValueChange={(itemValue) => setSelectedTripId(itemValue)}
+          style={styles.picker}
+          dropdownIconColor={currentColors.primaryText}
+        >
+          <Picker.Item label="-- Select Bus & Route --" value="" />
+          {trips.map((trip) => (
+            <Picker.Item
+              key={trip.trip_id}
+              label={`Bus ${trip.buses.bus_no} - ${trip.schedules.routes.route_name}`}
+              value={trip.trip_id.toString()}
+            />
+          ))}
+        </Picker>
+      </View>
 
       <Text style={styles.label}>Report Category</Text>
       <View style={styles.pickerContainer}>
         <Picker
-            selectedValue={reportType}
-            onValueChange={(itemValue) => setReportType(itemValue)}
-            style={styles.picker}
-            dropdownIconColor={currentColors.primaryText}
+          selectedValue={reportType}
+          onValueChange={(itemValue) => setReportType(itemValue)}
+          style={styles.picker}
+          dropdownIconColor={currentColors.primaryText}
         >
-            <Picker.Item label="Driver Behavior" value="Driver Behavior" />
-            <Picker.Item label="Bus Condition" value="Bus Condition" />
-            <Picker.Item label="Scheduling Issue" value="Scheduling Issue" />
-            <Picker.Item label="App Bug / Suggestion" value="App Bug / Suggestion" />
-            <Picker.Item label="Other" value="Other" />
+          <Picker.Item label="Driver Behavior" value="Driver Behavior" />
+          <Picker.Item label="Bus Condition" value="Bus Condition" />
+          <Picker.Item label="Scheduling Issue" value="Scheduling Issue" />
+          <Picker.Item label="App Bug / Suggestion" value="App Bug / Suggestion" />
+          <Picker.Item label="Other" value="Other" />
         </Picker>
       </View>
 
@@ -120,7 +190,7 @@ const ReportPage: React.FC = () => {
       <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
         <Text style={styles.cancelText}>Cancel</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 

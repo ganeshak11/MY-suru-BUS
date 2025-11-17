@@ -1,4 +1,3 @@
-// src/app/components/ThemeToggleButton.tsx
 'use client';
 
 import { useTheme } from 'next-themes';
@@ -14,21 +13,23 @@ export function ThemeToggleButton() {
   }, []);
 
   if (!mounted) {
-    return <div className="h-6 w-6" />;
+    return <div className="w-12 h-12" />;
   }
 
   return (
     <button
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      // SUGGESTION: Themed hover and focus rings
-      className="p-2 rounded-md text-foreground hover:bg-primary/10 hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
+      className="relative p-3 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-2 border-white/20 dark:border-slate-700/50 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group overflow-hidden"
       aria-label="Toggle theme"
     >
-      {theme === 'light' ? (
-        <MoonIcon className="h-6 w-6" />
-      ) : (
-        <SunIcon className="h-6 w-6" />
-      )}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-400/20 to-orange-400/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <div className="relative">
+        {theme === 'light' ? (
+          <MoonIcon className="h-6 w-6 text-slate-700 dark:text-slate-300 group-hover:rotate-12 transition-transform" />
+        ) : (
+          <SunIcon className="h-6 w-6 text-amber-500 group-hover:rotate-90 transition-transform" />
+        )}
+      </div>
     </button>
   );
 }

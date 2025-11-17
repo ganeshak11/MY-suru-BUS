@@ -129,57 +129,61 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard</h1>
-        <p className="text-secondary text-lg">Welcome back! Here's what's happening with your bus fleet.</p>
+      <div className="mb-10">
+        <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-primary via-blue-600 to-indigo-600 bg-clip-text text-transparent">Dashboard</h1>
+        <p className="text-secondary text-lg font-medium">Welcome back! Here's what's happening with your bus fleet.</p>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="relative flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm font-medium mb-1">Active Trips</p>
-              <p className="text-4xl font-bold">{stats.activeTrips}</p>
+              <p className="text-blue-100 text-sm font-semibold mb-2 uppercase tracking-wide">Active Trips</p>
+              <p className="text-5xl font-bold">{stats.activeTrips}</p>
             </div>
-            <div className="bg-white/20 p-3 rounded-xl">
-              <MapIcon className="h-8 w-8" />
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl group-hover:scale-110 transition-transform">
+              <MapIcon className="h-9 w-9" />
             </div>
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="relative flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm font-medium mb-1">Total Buses</p>
-              <p className="text-4xl font-bold">{stats.totalBuses}</p>
+              <p className="text-emerald-100 text-sm font-semibold mb-2 uppercase tracking-wide">Total Buses</p>
+              <p className="text-5xl font-bold">{stats.totalBuses}</p>
             </div>
-            <div className="bg-white/20 p-3 rounded-xl">
-              <BusIcon className="h-8 w-8" />
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl group-hover:scale-110 transition-transform">
+              <BusIcon className="h-9 w-9" />
             </div>
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden bg-gradient-to-br from-violet-500 via-violet-600 to-violet-700 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="relative flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm font-medium mb-1">Total Drivers</p>
-              <p className="text-4xl font-bold">{stats.totalDrivers}</p>
+              <p className="text-violet-100 text-sm font-semibold mb-2 uppercase tracking-wide">Total Drivers</p>
+              <p className="text-5xl font-bold">{stats.totalDrivers}</p>
             </div>
-            <div className="bg-white/20 p-3 rounded-xl">
-              <UsersIcon className="h-8 w-8" />
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl group-hover:scale-110 transition-transform">
+              <UsersIcon className="h-9 w-9" />
             </div>
           </div>
         </div>
         
-        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+          <div className="relative flex items-center justify-between">
             <div>
-              <p className="text-red-100 text-sm font-medium mb-1">New Reports</p>
-              <p className="text-4xl font-bold">{stats.newReports}</p>
+              <p className="text-rose-100 text-sm font-semibold mb-2 uppercase tracking-wide">New Reports</p>
+              <p className="text-5xl font-bold">{stats.newReports}</p>
             </div>
-            <div className="bg-white/20 p-3 rounded-xl">
-              <UsersIcon className="h-8 w-8" />
+            <div className="bg-white/20 backdrop-blur-sm p-4 rounded-2xl group-hover:scale-110 transition-transform">
+              <UsersIcon className="h-9 w-9" />
             </div>
           </div>
         </div>
@@ -187,7 +191,8 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-4">Quick Actions</h2>
+        <h2 className="text-3xl font-bold text-foreground mb-1">Quick Actions</h2>
+        <p className="text-secondary">Access key features and management tools</p>
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -195,26 +200,30 @@ export default function DashboardPage() {
           <Link
             href={feature.href}
             key={feature.name}
-            className="group relative bg-card rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-border/50 hover:border-primary/50"
+            className="group relative bg-card rounded-2xl p-7 shadow-soft hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-2 border-border/50 hover:border-primary/50 overflow-hidden"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="bg-primary/10 p-3 rounded-xl group-hover:bg-primary/20 transition-colors">
-                {feature.icon}
+            <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full -mr-20 -mt-20 group-hover:scale-150 transition-transform duration-500"></div>
+            
+            <div className="relative">
+              <div className="flex items-start justify-between mb-5">
+                <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-4 rounded-2xl group-hover:from-primary/20 group-hover:to-primary/10 transition-all group-hover:scale-110 shadow-sm">
+                  {feature.icon}
+                </div>
               </div>
-            </div>
-            
-            <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">
-              {feature.name}
-            </h3>
-            <p className="text-sm text-secondary leading-relaxed">
-              {feature.description}
-            </p>
-            
-            <div className="mt-4 flex items-center text-primary text-sm font-medium">
-              <span>Open</span>
-              <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              
+              <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                {feature.name}
+              </h3>
+              <p className="text-sm text-secondary leading-relaxed mb-4">
+                {feature.description}
+              </p>
+              
+              <div className="flex items-center text-primary text-sm font-semibold group-hover:gap-2 transition-all">
+                <span>Open</span>
+                <svg className="w-4 h-4 ml-1 group-hover:translate-x-2 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </div>
             </div>
           </Link>
         ))}
