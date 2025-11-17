@@ -3,8 +3,13 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useParams } from 'next/navigation';
-import RouteMap from './components/RouteMap';
+import dynamic from 'next/dynamic';
 import RouteStopManager from './components/RouteStopManager';
+
+const RouteMap = dynamic(() => import('./components/RouteMapClient'), {
+  ssr: false,
+  loading: () => <div className="h-full w-full bg-card flex items-center justify-center text-secondary">Loading map...</div>
+});
 
 interface Route {
   route_id: number;

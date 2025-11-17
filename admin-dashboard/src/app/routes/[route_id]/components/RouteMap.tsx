@@ -1,19 +1,14 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 import { useEffect, useState, useRef } from 'react';
-import { MapMarkers } from '../../../components/MapMarkers';
-// import { supabase } from '@/lib/supabaseClient';
+import dynamic from 'next/dynamic';
 
-// Fix for default Leaflet icons not appearing (assuming this is needed)
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: '/leaflet/images/marker-icon-2x.png',
-  iconUrl: '/leaflet/images/marker-icon.png',
-  shadowUrl: '/leaflet/images/marker-shadow.png',
-});
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.MapContainer })), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.TileLayer })), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Marker })), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Popup })), { ssr: false });
+const Polyline = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Polyline })), { ssr: false });
 
 // ... (Interfaces - moved to page.tsx, but kept here for self-containment)
 
@@ -35,32 +30,49 @@ interface RouteMapProps {
   stops: RouteStop[]; 
 }
 
-// Custom hook to update map view when props change
-function MapUpdater({ center, zoom }: { center: L.LatLngExpression; zoom: number }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, zoom);
-  }, [center, zoom, map]);
-  return null;
-}
+
 
 export default function RouteMap({ routeId, stops }: RouteMapProps) {
-  const [routePolyline, setRoutePolyline] = useState<L.LatLngExpression[]>([]);
-  const [loading, setLoading] = useState(false); // Loading is controlled by parent now
+  const [routePolyline, setRoutePolyline] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
+  const [isClient, setIsClient] = useState(false);
+  const [L, setL] = useState<any>(null);
+  const [MapMarkers, setMapMarkers] = useState<any>(null);
+  const mapRef = useRef<any>(null);
 
-  const defaultCenter: L.LatLngExpression = [12.2958, 76.6552]; // Center of Mysore
+  const defaultCenter: [number, number] = [12.2958, 76.6552];
   const defaultZoom = 13;
 
+  useEffect(() => {
+    // Initialize Leaflet on client side only
+    const initLeaflet = async () => {
+      const leaflet = await import('leaflet');
+      const mapMarkers = await import('../../../components/MapMarkers');
+      
+      // Fix for default Leaflet icons
+      delete (leaflet.default.Icon.Default.prototype as any)._getIconUrl;
+      leaflet.default.Icon.Default.mergeOptions({
+        iconRetinaUrl: '/leaflet/images/marker-icon-2x.png',
+        iconUrl: '/leaflet/images/marker-icon.png',
+        shadowUrl: '/leaflet/images/marker-shadow.png',
+      });
+      
+      setL(leaflet.default);
+      setMapMarkers(mapMarkers.MapMarkers);
+      setIsClient(true);
+    };
+    
+    initLeaflet();
+  }, []);
+
   const fetchOSRMRoute = async () => {
-    if (stops.length < 2) {
+    if (stops.length < 2 || !L) {
       setRoutePolyline([]);
       return;
     }
     setLoading(true);
 
-    // 1. Format coordinates: lng,lat;lng,lat
     const coordinates = stops.map(stop => `${stop.longitude},${stop.latitude}`).join(';');
     const osrmUrl = `http://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
 
@@ -73,10 +85,9 @@ export default function RouteMap({ routeId, stops }: RouteMapProps) {
         const polylineCoords = routeGeoJSON.coordinates.map((coord: [number, number]) => [
           coord[1],
           coord[0],
-        ]); // OSRM [lon, lat] -> Leaflet [lat, lon]
+        ]);
         setRoutePolyline(polylineCoords);
 
-        // Fit map to bounds of the route after OSRM call
         if (mapRef.current && polylineCoords.length > 0) {
           const bounds = L.latLngBounds(polylineCoords);
           mapRef.current.fitBounds(bounds, { padding: [20, 20], maxZoom: 16 });
@@ -96,23 +107,27 @@ export default function RouteMap({ routeId, stops }: RouteMapProps) {
   };
 
   useEffect(() => {
-    // 1. Clear old route and try fetching the new one whenever stops array changes
-    fetchOSRMRoute();
+    if (isClient && L) {
+      fetchOSRMRoute();
 
-    // 2. Fallback: If OSRM fails or has <2 stops, just center the map on the stops
-    if (mapRef.current && stops.length > 0 && stops.length < 2) {
-      const allLatLngs = stops.map(stop => [stop.latitude, stop.longitude]) as L.LatLngExpression[];
-      const bounds = L.latLngBounds(allLatLngs);
-      mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: defaultZoom });
+      if (mapRef.current && stops.length > 0 && stops.length < 2) {
+        const allLatLngs = stops.map(stop => [stop.latitude, stop.longitude]);
+        const bounds = L.latLngBounds(allLatLngs);
+        mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: defaultZoom });
+      }
     }
-  }, [stops]);
+  }, [stops, isClient, L]);
+
+  if (!isClient) {
+    return <div className="h-full w-full bg-card flex items-center justify-center text-secondary">Loading map...</div>;
+  }
 
   if (loading) {
     return <div className="h-full w-full bg-card flex items-center justify-center text-secondary">Calculating road path...</div>;
   }
 
   if (error) {
-    return <div className="h-full w-full bg-card flex items-center justify-center text-danger">Error: {error}</div>; // --- THEME COLOR
+    return <div className="h-full w-full bg-card flex items-center justify-center text-danger">Error: {error}</div>;
   }
 
   // ... inside RouteMap.tsx return
@@ -130,7 +145,7 @@ export default function RouteMap({ routeId, stops }: RouteMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" // <-- Ensure this is correct
       />
-      {stops.map((stop, index) => {
+      {MapMarkers && stops.map((stop, index) => {
         const isStart = index === 0;
         const isEnd = index === stops.length - 1 && stops.length > 1;
         let icon = MapMarkers.intermediateStop;

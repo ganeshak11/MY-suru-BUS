@@ -203,16 +203,61 @@ export default function SchedulesPage() {
     const targetSchedule = scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId);
     if (!targetSchedule) return;
     
+    // First, check if there are any trips referencing this schedule
+    const { data: trips, error: tripsError } = await supabase
+      .from('trips')
+      .select('trip_id')
+      .eq('schedule_id', targetSchedule.schedule_id);
+    
+    if (tripsError) {
+      console.error('Error checking trips:', tripsError);
+      setError('Failed to check for dependent trips.');
+      return;
+    }
+    
+    if (trips && trips.length > 0) {
+      // Delete trip_stop_times first, then trips
+      for (const trip of trips) {
+        const { error: deleteStopTimesError } = await supabase
+          .from('trip_stop_times')
+          .delete()
+          .eq('trip_id', trip.trip_id);
+        
+        if (deleteStopTimesError) {
+          console.error('Error deleting trip stop times:', deleteStopTimesError);
+          setError(`Cannot delete schedule: Failed to remove trip dependencies.`);
+          return;
+        }
+      }
+      
+      // Now delete the trips
+      const { error: deleteTripsError } = await supabase
+        .from('trips')
+        .delete()
+        .eq('schedule_id', targetSchedule.schedule_id);
+      
+      if (deleteTripsError) {
+        console.error('Error deleting dependent trips:', deleteTripsError);
+        setError(`Cannot delete schedule: Failed to remove trips.`);
+        return;
+      }
+    }
+    
+    // Now delete the schedule
     const { error } = await supabase.from('schedules').delete().eq('schedule_id', targetSchedule.schedule_id);
 
     if (error) {
       console.error('Error deleting schedule:', error);
-      setError(`Failed to delete schedule: ${error.message}`);
+      if (error.code === '23503') {
+        setError('Cannot delete schedule: It is still being used by other records. Please remove all dependencies first.');
+      } else {
+        setError(`Failed to delete schedule: ${error.message}`);
+      }
+    } else {
+      setIsDeleteModalOpen(false);
+      setScheduleToDelete(null);
+      setAvailableSchedules([]);
     }
-    
-    setIsDeleteModalOpen(false);
-    setScheduleToDelete(null);
-    setAvailableSchedules([]);
   };
   // --- END UPDATED ---
 
@@ -463,9 +508,19 @@ export default function SchedulesPage() {
           <p className="text-sm text-secondary">
             Are you sure you want to delete the schedule for route <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.routes?.route_name || 'N/A'}</strong> at <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.start_time}</strong>?
           </p>
-          <p className="mt-2 text-sm font-semibold text-danger">
-            Warning: This may automatically delete any future scheduled trips associated with this time slot.
-          </p>
+          <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              ⚠️ Warning: This will also delete all trips that use this schedule.
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+              Any active or future trips scheduled at this time will be permanently removed.
+            </p>
+          </div>
+          {error && (
+            <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          )}
           <div className="mt-6 flex justify-end space-x-4">
             <button 
               type="button" 

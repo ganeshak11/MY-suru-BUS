@@ -1,11 +1,14 @@
 'use client';
 
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { useState, useEffect, useCallback } from 'react';
 import { Stop } from '../../../lib/database.types';
-import { useState, useEffect, useCallback } from 'react'; // --- ADDED
-import { MapMarkers } from '../../components/MapMarkers';
+import dynamic from 'next/dynamic';
+
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.MapContainer })), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.TileLayer })), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Marker })), { ssr: false });
+const Popup = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Popup })), { ssr: false });
+const Polyline = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Polyline })), { ssr: false });
 
 interface Props {
   allStops: Stop[];
@@ -14,16 +17,24 @@ interface Props {
 }
 
 export default function RoutePlannerMap({ allStops, selectedStops, onAddStopToRoute }: Props) {
-  const mapCenter: [number, number] = [12.2958, 76.6394]; // Mysore, India
-  
-  // --- ADDED: State for OSRM route ---
-  const [routePolyline, setRoutePolyline] = useState<L.LatLngExpression[]>([]);
+  const mapCenter: [number, number] = [12.2958, 76.6394];
+  const [routePolyline, setRoutePolyline] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+  const [MapMarkers, setMapMarkers] = useState<any>(null);
   const selectedStopIds = new Set(selectedStops.map(s => s.stop_id));
 
-  // --- ADDED: OSRM Fetch Logic ---
+  useEffect(() => {
+    const initClient = async () => {
+      const mapMarkers = await import('../../components/MapMarkersClient');
+      setMapMarkers(mapMarkers.MapMarkersClient);
+      setIsClient(true);
+    };
+    initClient();
+  }, []);
+
   const fetchOSRMRoute = useCallback(async () => {
     if (selectedStops.length < 2) {
-      setRoutePolyline([]); // Clear route if not enough stops
+      setRoutePolyline([]);
       return;
     }
     
@@ -43,14 +54,18 @@ export default function RoutePlannerMap({ allStops, selectedStops, onAddStopToRo
       }
     } catch (err) {
       console.error('Error fetching OSRM route:', err);
-      // Don't clear the polyline, just log error, maybe it's a temp network issue
     }
   }, [selectedStops]);
 
-  // --- ADDED: Effect to fetch route when stops change ---
   useEffect(() => {
-    fetchOSRMRoute();
-  }, [fetchOSRMRoute]);
+    if (isClient) {
+      fetchOSRMRoute();
+    }
+  }, [fetchOSRMRoute, isClient]);
+
+  if (!isClient) {
+    return <div className="h-full w-full bg-card flex items-center justify-center text-secondary">Loading map...</div>;
+  }
 
   return (
     <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }} className="z-10">
@@ -59,11 +74,9 @@ export default function RoutePlannerMap({ allStops, selectedStops, onAddStopToRo
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       />
 
-      {/* --- UPDATED: Draw the *real* OSRM route --- */}
       {routePolyline.length > 1 && <Polyline positions={routePolyline} color="#0ea5e9" weight={5} opacity={0.8} />}
 
-      {/* Display all available stops */}
-      {allStops.map((stop, index) => {
+      {MapMarkers && allStops.map((stop, index) => {
         const isSelected = selectedStopIds.has(stop.stop_id);
         const isStart = isSelected && index === 0;
         const isEnd = isSelected && index === selectedStops.length - 1 && selectedStops.length > 1;
@@ -80,7 +93,6 @@ export default function RoutePlannerMap({ allStops, selectedStops, onAddStopToRo
             key={stop.stop_id} 
             position={[stop.latitude, stop.longitude]} 
             icon={icon}
-            // --- ADDED: Make unselected stops semi-transparent ---
             opacity={isSelected ? 1.0 : 0.6}
             zIndexOffset={isSelected ? 1000 : 0}
           >
@@ -88,7 +100,6 @@ export default function RoutePlannerMap({ allStops, selectedStops, onAddStopToRo
               <b>{stop.stop_name}</b>
               <br />
               {!isSelected && (
-                // --- UPDATED: Use theme colors for button ---
                 <button 
                   onClick={() => onAddStopToRoute(stop)}
                   className="mt-2 px-3 py-1 text-primary-foreground bg-primary rounded-md hover:bg-primary/80 text-sm"
