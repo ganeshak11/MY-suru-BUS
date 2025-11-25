@@ -24,6 +24,11 @@
         "ACCESS_COARSE_LOCATION",
         "NOTIFICATIONS",
         "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
@@ -59,6 +64,10 @@
       "eas": {
         "projectId": "9bb7a8b2-1a61-49cb-ac49-0d556121a3d2"
       }
-    }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9bb7a8b2-1a61-49cb-ac49-0d556121a3d2"
+    },
+    "ios": {}
   }
 }
