@@ -46,7 +46,7 @@ const createCustomIcon = (color: string, type: 'start' | 'end' | 'intermediate' 
       break;
   }
   
-  const svgUrl = `data:image/svg+xml;base64,${btoa(svgContent)}`;
+  const svgUrl = `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
   
   return new L.Icon({
     iconUrl: svgUrl,

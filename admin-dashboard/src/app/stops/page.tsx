@@ -130,18 +130,32 @@ export default function StopsPage() {
     e.preventDefault();
     setError(null);
 
-    const { stop_name, latitude, longitude } = formState;
+    const trimmedStopName = formState.stop_name.trim();
+    const { latitude, longitude } = formState;
 
-    if (!stop_name || !latitude || !longitude) {
+    if (!trimmedStopName || !latitude || !longitude) {
         setError("Stop Name, Latitude, and Longitude are required.");
+        return;
+    }
+
+    if (trimmedStopName.length < 2) {
+        setError("Stop Name must be at least 2 characters.");
+        return;
+    }
+
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    if (isNaN(lat) || isNaN(lng)) {
+        setError("Invalid coordinates.");
         return;
     }
 
     let result;
     if (modalMode === 'add') {
-      result = await supabase.from('stops').insert([{ stop_name, latitude: parseFloat(latitude), longitude: parseFloat(longitude) }]).select();
+      result = await supabase.from('stops').insert([{ stop_name: trimmedStopName, latitude: lat, longitude: lng }]).select();
     } else if (selectedStop) {
-      result = await supabase.from('stops').update({ stop_name, latitude: parseFloat(latitude), longitude: parseFloat(longitude) }).eq('stop_id', selectedStop.stop_id).select();
+      result = await supabase.from('stops').update({ stop_name: trimmedStopName, latitude: lat, longitude: lng }).eq('stop_id', selectedStop.stop_id).select();
     }
 
     const { data, error: submissionError } = result || {};
@@ -335,6 +349,7 @@ export default function StopsPage() {
                           onClick={() => openModal('edit', stop)} 
                           className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                           title="Edit stop"
+                          aria-label={`Edit stop ${stop.stop_name}`}
                         >
                           <PencilIcon className="h-5 w-5" />
                         </button>
@@ -342,6 +357,7 @@ export default function StopsPage() {
                           onClick={() => handleDelete(stop)} 
                           className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                           title="Delete stop"
+                          aria-label={`Delete stop ${stop.stop_name}`}
                         >
                           <TrashIcon className="h-5 w-5" />
                         </button>

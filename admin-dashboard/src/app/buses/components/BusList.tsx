@@ -126,6 +126,7 @@ export default function BusList({ buses, loading, error, openModal, handleDelete
                       onClick={() => openModal('edit', bus)} 
                       className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                       title="Edit bus"
+                      aria-label={`Edit bus ${bus.bus_no}`}
                     >
                       <PencilIcon className="h-4 w-4" />
                     </button>
@@ -133,6 +134,7 @@ export default function BusList({ buses, loading, error, openModal, handleDelete
                       onClick={() => handleDelete(bus)} 
                       className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                       title="Delete bus"
+                      aria-label={`Delete bus ${bus.bus_no}`}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>

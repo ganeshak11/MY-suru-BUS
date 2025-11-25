@@ -17,10 +17,6 @@ const nextConfig = {
     // Fix network timeout issues
     experimental: {
         serverComponentsExternalPackages: ['@supabase/ssr']
-    },
-    // Disable telemetry to avoid network calls
-    telemetry: {
-        enabled: false
     }
 };
 

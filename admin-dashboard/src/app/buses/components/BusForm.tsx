@@ -30,12 +30,13 @@ export default function BusForm({ initialData, onSubmit, error, modalMode, close
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prevState => ({ ...prevState, [name]: value }));
+    setFormData(prevState => ({ ...prevState, [name]: value.toUpperCase() }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    const trimmedData = { bus_no: formData.bus_no.trim() };
+    onSubmit(trimmedData);
   };
 
   return (
@@ -52,8 +53,11 @@ export default function BusForm({ initialData, onSubmit, error, modalMode, close
               value={formData.bus_no} 
               onChange={handleChange} 
               required 
+              maxLength={20}
+              placeholder="e.g., KA-01-1234"
               className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" 
             />
+            <p className="text-xs text-secondary mt-1">Max 20 characters</p>
           </div>
         </div>
       </div>

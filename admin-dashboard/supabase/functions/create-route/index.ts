@@ -1,10 +1,15 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// @deno-types="https://esm.sh/@supabase/supabase-js@2"
+import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface CreateRoutePayload {
   routeName: string;
-  stops: number[]; // Array of stop_ids
+  stops: Array<{
+    stop_id: number;
+    stop_sequence: number;
+    time_offset_from_start: string;
+  }>;
 }
 
 Deno.serve(async (req: Request) => {
@@ -39,10 +44,21 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "At least two valid stop IDs are required to create a route.",
+          error: "At least two valid stops are required to create a route.",
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
+    }
+
+    // Validate stop structure
+    for (let i = 0; i < stops.length; i++) {
+      const stop = stops[i];
+      if (!stop.stop_id || typeof stop.stop_id !== "number") {
+        return new Response(
+          JSON.stringify({ success: false, error: `Invalid stop_id at index ${i}` }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
     }
 
     // Initialize Supabase client
@@ -69,16 +85,12 @@ Deno.serve(async (req: Request) => {
     }
 
     // Build route_stops payload
-    const routeStopsData = stops.map((stopId, index) => {
-      if (typeof stopId !== "number") {
-        throw new Error(`Invalid stop ID at index ${index}. Must be a number.`);
-      }
-      return {
-        route_id: newRoute.route_id,
-        stop_id: stopId,
-        stop_sequence: index + 1,
-      };
-    });
+    const routeStopsData = stops.map((stop) => ({
+      route_id: newRoute.route_id,
+      stop_id: stop.stop_id,
+      stop_sequence: stop.stop_sequence,
+      time_offset_from_start: stop.time_offset_from_start || '00:00:00',
+    }));
 
     // Insert stops into route_stops
     const { error: stopsError } = await supabase

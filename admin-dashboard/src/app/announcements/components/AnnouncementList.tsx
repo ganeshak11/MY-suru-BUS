@@ -64,7 +64,7 @@ export default function AnnouncementList() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, []);
 
   // UPDATED: HandleDelete to open modal
   const handleDeleteClick = (announcement: Announcement) => {
@@ -97,19 +97,19 @@ export default function AnnouncementList() {
   };
 
   if (loading) {
-    return <div className="text-center p-4 text-secondary">Loading announcements...</div>;
+    return <div className="text-center p-4 text-secondary" role="status" aria-live="polite">Loading announcements...</div>;
   }
 
   if (error) {
-    return <div className="text-center p-4 text-danger">{error}</div>;
+    return <div className="text-center p-4 text-danger" role="alert">{error}</div>;
   }
 
   if (announcements.length === 0) {
-    return <div className="text-center p-4 border border-secondary/50 rounded-lg bg-card text-secondary">No announcements found.</div>;
+    return <div className="text-center p-4 border border-secondary/50 rounded-lg bg-card text-secondary" role="status">No announcements found.</div>;
   }
 
   return (
-    <div className="h-full overflow-y-auto pr-2 space-y-4">
+    <div className="h-full overflow-y-auto pr-2 space-y-4" role="list" aria-label="Recent announcements">
       {announcements.map((item) => (
         <div 
           key={item.announcement_id} 
@@ -124,9 +124,10 @@ export default function AnnouncementList() {
           </div>
           
           <button 
-            onClick={() => handleDeleteClick(item)} // UPDATED to use new handler
+            onClick={() => handleDeleteClick(item)}
             className="text-danger hover:text-danger/80 p-1 rounded-full flex-shrink-0 ml-4"
             title="Delete Announcement"
+            aria-label={`Delete announcement: ${item.title}`}
           >
             <TrashIcon className="h-5 w-5" />
           </button>

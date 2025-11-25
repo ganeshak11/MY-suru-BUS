@@ -1,23 +1,23 @@
 'use client';
 
-import { Stop } from '../../../lib/database.types';
-// --- ADDED: Icons for buttons ---
-import { ArrowUpIcon, ArrowDownIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import { StopWithOffset } from './RoutePlannerMap';
+import { ArrowUpIcon, ArrowDownIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/solid';
 
 interface Props {
   routeName: string;
   setRouteName: (name: string) => void;
-  selectedStops: Stop[];
+  selectedStops: StopWithOffset[];
   onRemoveStop: (stopId: number) => void;
-  onReorderStops: (reorderedStops: Stop[]) => void;
+  onReorderStops: (reorderedStops: StopWithOffset[]) => void;
+  onUpdateTimeOffset: (stopId: number, timeOffset: string) => void;
   onSave: () => void;
-  onCancel: () => void; // --- ADDED
+  onCancel: () => void;
   isSaving: boolean;
-  error: string | null; // --- ADDED
+  error: string | null;
 }
 
 export default function RoutePlannerPanel({ 
-  routeName, setRouteName, selectedStops, onRemoveStop, onReorderStops, onSave, onCancel, isSaving, error 
+  routeName, setRouteName, selectedStops, onRemoveStop, onReorderStops, onUpdateTimeOffset, onSave, onCancel, isSaving, error 
 }: Props) {
 
   const handleMove = (index: number, direction: 'up' | 'down') => {
@@ -56,22 +56,34 @@ export default function RoutePlannerPanel({
           {selectedStops.length === 0 && <p className="text-sm text-secondary">No stops added yet.</p>}
           
           {selectedStops.map((stop, index) => (
-            <div key={stop.stop_id} className="flex items-center justify-between p-2 rounded-md bg-background">
-              <span className="font-medium text-foreground truncate" title={stop.stop_name}>{index + 1}. {stop.stop_name}</span>
-              <div className="flex items-center space-x-2 flex-shrink-0">
-                {/* --- UPDATED: Icon buttons for reordering --- */}
-                <div className="flex flex-col">
-                  <button onClick={() => handleMove(index, 'up')} disabled={index === 0} className="disabled:opacity-20 text-secondary hover:text-foreground">
-                    <ArrowUpIcon className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => handleMove(index, 'down')} disabled={index === selectedStops.length - 1} className="disabled:opacity-20 text-secondary hover:text-foreground">
-                    <ArrowDownIcon className="h-4 w-4" />
+            <div key={stop.stop_id} className="p-3 rounded-md bg-background border border-secondary/30 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-foreground truncate" title={stop.stop_name}>{index + 1}. {stop.stop_name}</span>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                  <div className="flex flex-col">
+                    <button onClick={() => handleMove(index, 'up')} disabled={index === 0} className="disabled:opacity-20 text-secondary hover:text-foreground" aria-label="Move up">
+                      <ArrowUpIcon className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => handleMove(index, 'down')} disabled={index === selectedStops.length - 1} className="disabled:opacity-20 text-secondary hover:text-foreground" aria-label="Move down">
+                      <ArrowDownIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button onClick={() => onRemoveStop(stop.stop_id)} className="text-danger hover:text-danger/80" aria-label="Remove stop">
+                    <XMarkIcon className="h-5 w-5" />
                   </button>
                 </div>
-                {/* --- UPDATED: Icon button for remove --- */}
-                <button onClick={() => onRemoveStop(stop.stop_id)} className="text-danger hover:text-danger/80">
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <ClockIcon className="h-4 w-4 text-secondary flex-shrink-0" />
+                <input
+                  type="time"
+                  step="60"
+                  value={stop.time_offset?.substring(0, 5) || '00:00'}
+                  onChange={(e) => onUpdateTimeOffset(stop.stop_id, `${e.target.value}:00`)}
+                  className="flex-1 px-2 py-1 text-sm border border-secondary/50 rounded bg-card text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                  aria-label={`Time offset for ${stop.stop_name}`}
+                />
+                <span className="text-xs text-secondary whitespace-nowrap">from start</span>
               </div>
             </div>
           ))}

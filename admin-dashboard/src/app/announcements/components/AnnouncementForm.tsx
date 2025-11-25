@@ -13,8 +13,22 @@ export default function AnnouncementForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !message) {
+    
+    const trimmedTitle = title.trim();
+    const trimmedMessage = message.trim();
+    
+    if (!trimmedTitle || !trimmedMessage) {
       setError('Title and message cannot be empty.');
+      return;
+    }
+    
+    if (trimmedTitle.length > 100) {
+      setError('Title must be 100 characters or less.');
+      return;
+    }
+    
+    if (trimmedMessage.length > 500) {
+      setError('Message must be 500 characters or less.');
       return;
     }
     setIsSubmitting(true);
@@ -23,7 +37,7 @@ export default function AnnouncementForm() {
 
     const { error: insertError } = await supabase
       .from('announcements')
-      .insert({ title, message });
+      .insert({ title: trimmedTitle, message: trimmedMessage });
 
     setIsSubmitting(false);
 
@@ -47,9 +61,12 @@ export default function AnnouncementForm() {
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          maxLength={100}
           className="w-full p-2 border border-secondary/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary"
           placeholder="e.g., Service Update"
+          aria-describedby="title-hint"
         />
+        <p id="title-hint" className="text-xs text-secondary mt-1">{title.length}/100 characters</p>
       </div>
       <div>
         <label htmlFor="message" className="block text-sm font-medium mb-1 text-secondary">Message</label>
@@ -57,16 +74,20 @@ export default function AnnouncementForm() {
           id="message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          className="w-full p-2 border border-secondary/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary"
+          maxLength={500}
+          className="w-full p-2 border border-secondary/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary resize-y"
           rows={4}
           placeholder="e.g., Route 5 will be temporarily diverted..."
+          aria-describedby="message-hint"
         />
+        <p id="message-hint" className="text-xs text-secondary mt-1">{message.length}/500 characters</p>
       </div>
       <div>
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !title.trim() || !message.trim()}
           className="w-full px-4 py-2 font-semibold text-primary-foreground bg-primary rounded-md hover:bg-primary/80 disabled:bg-secondary/50 disabled:cursor-not-allowed transition-colors"
+          aria-busy={isSubmitting}
         >
           {isSubmitting ? 'Sending...' : 'Send Announcement'}
         </button>

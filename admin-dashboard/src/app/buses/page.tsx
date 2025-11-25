@@ -82,20 +82,39 @@ export default function BusesPage() {
 
   const closeModal = () => {
     setIsModalOpen(false);
+    setError(null);
   };
 
   const handleSave = async (formData: FormState) => {
     setError(null);
     const { bus_no } = formData;
-    if (!bus_no) {
+    const trimmedBusNo = bus_no.trim();
+    
+    if (!trimmedBusNo) {
         setError("Bus Number is required.");
+        return;
+    }
+    
+    if (trimmedBusNo.length < 2) {
+        setError("Bus Number must be at least 2 characters.");
+        return;
+    }
+    
+    // Check for duplicate
+    const isDuplicate = buses.some(b => 
+      b.bus_no.toLowerCase() === trimmedBusNo.toLowerCase() && 
+      b.bus_id !== selectedBus?.bus_id
+    );
+    
+    if (isDuplicate) {
+        setError(`Bus number "${trimmedBusNo}" already exists.`);
         return;
     }
     let result;
     if (modalMode === 'add') {
-      result = await supabase.from('buses').insert([{ bus_no }]).select();
+      result = await supabase.from('buses').insert([{ bus_no: trimmedBusNo }]).select();
     } else if (selectedBus) {
-      result = await supabase.from('buses').update({ bus_no }).eq('bus_id', selectedBus.bus_id).select();
+      result = await supabase.from('buses').update({ bus_no: trimmedBusNo }).eq('bus_id', selectedBus.bus_id).select();
     }
     const { data, error: submissionError } = result || {};
     if (submissionError) {
@@ -155,13 +174,6 @@ export default function BusesPage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => fetchBuses()}
-            className="px-5 py-2.5 text-sm font-semibold text-secondary hover:text-foreground border-2 border-border rounded-xl hover:bg-card transition-all hover:shadow-md hover:border-primary/30"
-          >
-            Refresh
-          </button>
-          <button
-            type="button"
             onClick={() => openModal('add')}
             className="inline-flex items-center gap-2 bg-gradient-to-r from-primary to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-xl transition-all hover:-translate-y-0.5 hover:scale-105"
           >
@@ -188,11 +200,11 @@ export default function BusesPage() {
         />
       </Modal>
 
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirm Deletion">
+      <Modal isOpen={isDeleteModalOpen} onClose={() => { setIsDeleteModalOpen(false); setError(null); }} title="Confirm Deletion">
         {busToDelete && (
           <div>
             <p className="text-sm text-secondary">Are you sure you want to delete bus number <strong>{busToDelete.bus_no}</strong>? This action cannot be undone.</p>
-            {/* --- UPDATED: Theme-aware buttons --- */}
+            {error && <p className="mt-4 text-sm text-danger">{error}</p>}
             <div className="mt-6 flex justify-end space-x-4">
               <button 
                 type="button" 

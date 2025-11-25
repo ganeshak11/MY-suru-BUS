@@ -28,8 +28,7 @@ export default function DriverForm({ formState, handleFormChange, handleSubmit, 
         <div className="sm:col-span-6">
           <label htmlFor="name" className="block text-sm font-medium text-secondary">Full Name</label>
           <div className="mt-1">
-            {/* --- UPDATED: Theme-aware border --- */}
-            <input type="text" name="name" id="name" value={formState.name} onChange={handleFormChange} required className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" />
+            <input type="text" name="name" id="name" value={formState.name} onChange={handleFormChange} required maxLength={100} className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" placeholder="e.g., John Doe" />
           </div>
         </div>
         <div className="sm:col-span-6">
@@ -42,8 +41,7 @@ export default function DriverForm({ formState, handleFormChange, handleSubmit, 
         <div className="sm:col-span-6">
           <label htmlFor="phone_number" className="block text-sm font-medium text-secondary">Phone Number</label>
           <div className="mt-1">
-            {/* --- UPDATED: Theme-aware border --- */}
-            <input type="text" name="phone_number" id="phone_number" value={formState.phone_number} onChange={handleFormChange} required className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" />
+            <input type="tel" name="phone_number" id="phone_number" value={formState.phone_number} onChange={handleFormChange} required pattern="[0-9+\-\s()]{10,15}" maxLength={15} className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" placeholder="e.g., +91 9876543210" title="Enter a valid phone number (10-15 digits)" />
           </div>
         </div>
       </div>

@@ -56,20 +56,27 @@ export default function ScheduleForm({ formState, handleFormChange, handleSubmit
 
         {/* Start Time */}
         <div className="sm:col-span-6">
-          <label htmlFor="start_time" className="block text-sm font-medium text-secondary">Start Time (HH:MM:SS)</label>
+          <label htmlFor="start_time" className="block text-sm font-medium text-secondary">Start Time</label>
           <div className="mt-1">
             <input
-              type="text"
+              type="time"
               name="start_time"
               id="start_time"
-              value={formState.start_time}
-              onChange={handleFormChange}
-              placeholder="HH:MM:SS"
-              pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"
-              title="Format: HH:MM:SS"
+              value={formState.start_time.substring(0, 5)}
+              onChange={(e) => {
+                const timeValue = e.target.value;
+                handleFormChange({
+                  target: {
+                    name: 'start_time',
+                    value: `${timeValue}:00`
+                  }
+                } as any);
+              }}
               required
+              step="60"
               className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground"
             />
+            <p className="text-xs text-secondary mt-1">Select the departure time for this schedule</p>
           </div>
         </div>
 

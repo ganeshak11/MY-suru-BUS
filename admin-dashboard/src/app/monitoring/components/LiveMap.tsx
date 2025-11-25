@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import type { Bus } from './types'; 
 // --- FIX 1: Import useTheme from next-themes ---
 import { useTheme } from 'next-themes'; 
-import { MapMarkers } from '../../components/MapMarkers';
+import { MapMarkersClient as MapMarkers } from '../../components/MapMarkersClient';
 
 // --- Prop Interface (No change) ---
 interface LiveMapProps {

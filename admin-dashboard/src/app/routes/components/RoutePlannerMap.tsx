@@ -10,9 +10,13 @@ const Marker = dynamic(() => import('react-leaflet').then(mod => ({ default: mod
 const Popup = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Popup })), { ssr: false });
 const Polyline = dynamic(() => import('react-leaflet').then(mod => ({ default: mod.Polyline })), { ssr: false });
 
+export interface StopWithOffset extends Stop {
+  time_offset?: string;
+}
+
 interface Props {
   allStops: Stop[];
-  selectedStops: Stop[];
+  selectedStops: StopWithOffset[];
   onAddStopToRoute: (stop: Stop) => void;
 }
 
@@ -97,16 +101,18 @@ export default function RoutePlannerMap({ allStops, selectedStops, onAddStopToRo
             zIndexOffset={isSelected ? 1000 : 0}
           >
             <Popup>
-              <b>{stop.stop_name}</b>
-              <br />
-              {!isSelected && (
-                <button 
-                  onClick={() => onAddStopToRoute(stop)}
-                  className="mt-2 px-3 py-1 text-primary-foreground bg-primary rounded-md hover:bg-primary/80 text-sm"
-                >
-                  Add to Route
-                </button>
-              )}
+              <div className="min-w-[200px]">
+                <b>{stop.stop_name}</b>
+                <br />
+                {!isSelected && (
+                  <button 
+                    onClick={() => onAddStopToRoute(stop)}
+                    className="mt-2 w-full px-3 py-1 text-primary-foreground bg-primary rounded-md hover:bg-primary/80 text-sm"
+                  >
+                    Add to Route
+                  </button>
+                )}
+              </div>
             </Popup>
           </Marker>
         );

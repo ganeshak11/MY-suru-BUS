@@ -109,16 +109,31 @@ export default function DriversPage() {
     e.preventDefault();
     setError(null);
 
-    if (!formState.name || !formState.phone_number) {
+    const trimmedName = formState.name.trim();
+    const trimmedPhone = formState.phone_number.trim();
+    const trimmedEmail = formState.email?.trim();
+
+    if (!trimmedName || !trimmedPhone) {
         setError("Name and Phone Number are required.");
         return;
     }
 
+    if (trimmedName.length < 2) {
+        setError("Name must be at least 2 characters.");
+        return;
+    }
+
+    const updatedFormState = {
+      name: trimmedName,
+      phone_number: trimmedPhone,
+      email: trimmedEmail || null
+    };
+
     let result;
     if (modalMode === 'add') {
-      result = await supabase.from('drivers').insert([formState]).select();
+      result = await supabase.from('drivers').insert([updatedFormState]).select();
     } else if (selectedDriver) {
-      result = await supabase.from('drivers').update(formState).eq('driver_id', selectedDriver.driver_id).select();
+      result = await supabase.from('drivers').update(updatedFormState).eq('driver_id', selectedDriver.driver_id).select();
     }
 
     const { data, error: submissionError } = result || {};
@@ -301,6 +316,7 @@ export default function DriversPage() {
                             onClick={() => openModal('edit', driver)} 
                             className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
                             title="Edit driver"
+                            aria-label={`Edit driver ${driver.name}`}
                           >
                             <PencilIcon className="h-5 w-5" />
                           </button>
@@ -308,6 +324,7 @@ export default function DriversPage() {
                             onClick={() => handleDelete(driver)} 
                             className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                             title="Delete driver"
+                            aria-label={`Delete driver ${driver.name}`}
                           >
                             <TrashIcon className="h-5 w-5" />
                           </button>

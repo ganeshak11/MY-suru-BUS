@@ -37,8 +37,7 @@ export default function StopForm({ formState, handleFormChange, handleSubmit, er
         <div className="sm:col-span-6">
           <label htmlFor="stop_name" className="block text-sm font-medium text-secondary">Stop Name</label>
           <div className="mt-1">
-            {/* --- UPDATED: Theme-aware border --- */}
-            <input type="text" name="stop_name" id="stop_name" value={formState.stop_name} onChange={handleFormChange} required className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" />
+            <input type="text" name="stop_name" id="stop_name" value={formState.stop_name} onChange={handleFormChange} required maxLength={100} className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" placeholder="e.g., K.R. Circle" />
           </div>
         </div>
         <div className="sm:col-span-6">

@@ -17,16 +17,42 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Authentication failed');
+        setLoading(false);
+        return;
+      }
+
+      const { data: admin, error: adminError } = await supabase
+        .from('admins')
+        .select('admin_id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (adminError || !admin) {
+        await supabase.auth.signOut();
+        setError('Access denied. Admin credentials required.');
+        setLoading(false);
+        return;
+      }
+
       router.push('/');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+      setLoading(false);
     }
   };
 

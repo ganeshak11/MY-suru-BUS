@@ -5,7 +5,8 @@ import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabaseClient';
 import RoutePlannerPanel from './RoutePlannerPanel';
 import { Stop } from '../../../lib/database.types';
-import { useRouter } from 'next/navigation'; // --- ADDED: For navigation
+import { StopWithOffset } from './RoutePlannerMap';
+import { useRouter } from 'next/navigation';
 
 // --- UPDATED: Add props for canceling or succeeding ---
 interface RoutePlannerProps {
@@ -18,7 +19,7 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
   const router = useRouter(); // --- ADDED
 
   const [allStops, setAllStops] = useState<Stop[]>([]);
-  const [selectedStops, setSelectedStops] = useState<Stop[]>([]);
+  const [selectedStops, setSelectedStops] = useState<StopWithOffset[]>([]);
   const [routeName, setRouteName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
@@ -40,9 +41,9 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
   }, [supabase]);
 
   const handleAddStopToRoute = (stop: Stop) => {
-    setError(null); // Clear error on interaction
+    setError(null);
     if (!selectedStops.find(s => s.stop_id === stop.stop_id)) {
-      setSelectedStops(prev => [...prev, stop]);
+      setSelectedStops(prev => [...prev, { ...stop, time_offset: '00:00:00' }]);
     }
   };
 
@@ -50,8 +51,14 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
     setSelectedStops(prev => prev.filter(s => s.stop_id !== stopId));
   };
 
-  const handleReorderStops = (reorderedStops: Stop[]) => {
+  const handleReorderStops = (reorderedStops: StopWithOffset[]) => {
     setSelectedStops(reorderedStops);
+  };
+
+  const handleUpdateTimeOffset = (stopId: number, timeOffset: string) => {
+    setSelectedStops(prev => prev.map(s => 
+      s.stop_id === stopId ? { ...s, time_offset: timeOffset } : s
+    ));
   };
 
   const handleSaveRoute = async () => {
@@ -69,8 +76,11 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
 
     const payload = {
       routeName: routeName,
-      // --- FIX: Send only the stop IDs ---
-      stops: selectedStops.map(stop => stop.stop_id),
+      stops: selectedStops.map((stop, index) => ({
+        stop_id: stop.stop_id,
+        stop_sequence: index + 1,
+        time_offset_from_start: stop.time_offset || '00:00:00'
+      })),
     };
 
     // --- UPDATED: Assumes 'create-route' is the new function name ---
@@ -116,10 +126,11 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
             selectedStops={selectedStops}
             onRemoveStop={handleRemoveStopFromRoute}
             onReorderStops={handleReorderStops}
+            onUpdateTimeOffset={handleUpdateTimeOffset}
             onSave={handleSaveRoute}
-            onCancel={onCancel} // --- ADDED ---
+            onCancel={onCancel}
             isSaving={isSaving}
-            error={error} // --- ADDED ---
+            error={error}
           />
         </div>
       </div>

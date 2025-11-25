@@ -1,7 +1,7 @@
 // src/app/components/SideNav.tsx
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
@@ -44,10 +44,22 @@ const navigation = [
 
 export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }: { isOpen: boolean; onClose: () => void; onMouseEnter: () => void; onMouseLeave: () => void }) {
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.refresh();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('Failed to logout. Please try again.');
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -144,14 +156,15 @@ export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }:
               <div className="p-4 border-t-2 border-primary/20 shrink-0 bg-gradient-to-t from-slate-50/50 dark:from-slate-900/50">
                 <button
                   onClick={handleLogout}
-                  className="group relative flex items-center w-full px-4 py-3.5 text-sm font-semibold rounded-xl text-foreground hover:bg-gradient-to-r hover:from-red-600 hover:to-rose-600 hover:text-white transition-all duration-300 hover:shadow-lg overflow-hidden"
+                  disabled={isLoggingOut}
+                  className="group relative flex items-center w-full px-4 py-3.5 text-sm font-semibold rounded-xl text-foreground hover:bg-gradient-to-r hover:from-red-600 hover:to-rose-600 hover:text-white transition-all duration-300 hover:shadow-lg overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <div className="relative flex items-center w-full">
                     <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-red-500/10 group-hover:bg-white/20 transition-all">
                       <LogoutIcon className="h-5 w-5" />
                     </div>
-                    <span className="ml-3">Logout</span>
+                    <span className="ml-3">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
                   </div>
                 </button>
               </div>

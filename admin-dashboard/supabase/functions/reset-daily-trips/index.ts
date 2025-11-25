@@ -1,7 +1,4 @@
-// Edge Function: Create daily trips at midnight
-// Call via external cron service (cron-job.org, GitHub Actions, etc.)
-
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req: Request) => {
@@ -21,7 +18,6 @@ Deno.serve(async (req: Request) => {
 
     if (schedErr) throw schedErr;
 
-    // Use local timezone instead of UTC
     const now = new Date();
     const today = now.getFullYear() + '-' + 
       String(now.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -75,9 +71,10 @@ Deno.serve(async (req: Request) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: message }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500

@@ -48,7 +48,7 @@ export default function RouteMap({ routeId, stops }: RouteMapProps) {
     // Initialize Leaflet on client side only
     const initLeaflet = async () => {
       const leaflet = await import('leaflet');
-      const mapMarkers = await import('../../../components/MapMarkers');
+      const mapMarkers = await import('../../../components/MapMarkersClient');
       
       // Fix for default Leaflet icons
       delete (leaflet.default.Icon.Default.prototype as any)._getIconUrl;
@@ -59,7 +59,7 @@ export default function RouteMap({ routeId, stops }: RouteMapProps) {
       });
       
       setL(leaflet.default);
-      setMapMarkers(mapMarkers.MapMarkers);
+      setMapMarkers(mapMarkers.MapMarkersClient);
       setIsClient(true);
     };
     

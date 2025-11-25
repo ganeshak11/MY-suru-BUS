@@ -30,7 +30,7 @@ export default function AnnouncementsPage() {
           </div>
           <AnnouncementForm />
         </div>
-        <div className="bg-gradient-to-br from-card to-slate-50 dark:to-slate-900 rounded-2xl border-2 border-border p-6 shadow-soft hover:shadow-xl transition-all flex flex-col h-[450px]">
+        <div className="bg-gradient-to-br from-card to-slate-50 dark:to-slate-900 rounded-2xl border-2 border-border p-6 shadow-soft hover:shadow-xl transition-all flex flex-col min-h-[450px] max-h-[600px]">
           <div className="flex items-center gap-3 mb-6 flex-shrink-0">
             <div className="bg-gradient-to-br from-emerald-600 to-teal-600 p-3 rounded-xl shadow-lg">
               <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">

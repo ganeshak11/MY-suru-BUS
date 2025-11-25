@@ -15,7 +15,14 @@ interface Route {
 interface Schedule {
   schedule_id: number;
   start_time: string;
+  route_id: number;
   routes?: Route; // Single object join
+}
+
+interface ScheduleGroup {
+  route_id: number;
+  route_name: string;
+  schedules: Schedule[];
 }
 
 interface Bus {
@@ -40,7 +47,7 @@ interface Trip {
   drivers?: Driver;     // Single object join
 }
 
-type FormState = Omit<Trip, 'trip_id' | 'schedules' | 'buses' | 'drivers'>;
+type FormState = Omit<Trip, 'trip_id' | 'schedules' | 'buses' | 'drivers'> & { route_id: number };
 
 const tripStatuses = ['Scheduled', 'En Route', 'Completed', 'Cancelled'];
 
@@ -65,6 +72,7 @@ export default function TripsPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [scheduleGroups, setScheduleGroups] = useState<ScheduleGroup[]>([]);
   const [buses, setBuses] = useState<Bus[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,6 +80,7 @@ export default function TripsPage() {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [formState, setFormState] = useState<FormState>({
+    route_id: 0,
     schedule_id: 0,
     bus_id: 0,
     driver_id: 0,
@@ -111,8 +120,19 @@ export default function TripsPage() {
 }, []);
  // Dependency array ensures cleanup works for the initial setup
 
+  const markOldTripsCompleted = async () => {
+    try {
+      const now = new Date();
+      const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+      await supabase.from('trips').update({ status: 'Completed' }).lt('trip_date', today).eq('status', 'Scheduled');
+    } catch (error) {
+      console.error('Error marking old trips as completed:', error);
+    }
+  };
+
   const fetchTrips = async () => {
     setLoading(true);
+    await markOldTripsCompleted();
     // --- UPDATED: Use alias syntax for correct joins (single object) ---
     const { data, error } = await supabase
       .from('trips')
@@ -156,9 +176,28 @@ export default function TripsPage() {
     // Fetch Schedules (Use alias syntax for correct joins)
     const { data: schedulesData, error: schedulesError } = await supabase
       .from('schedules')
-      .select(`schedule_id, start_time, routes:route_id (route_id, route_name)`);
+      .select(`schedule_id, start_time, route_id, routes:route_id (route_id, route_name)`);
     if (schedulesError) console.error('Error fetching schedules:', schedulesError);
-    else setSchedules(schedulesData as unknown as Schedule[]);
+    else {
+      setSchedules(schedulesData as unknown as Schedule[]);
+      // Group schedules by route
+      const grouped = (schedulesData as unknown as Schedule[]).reduce((acc, schedule) => {
+        const routeName = schedule.routes?.route_name || 'Unknown';
+        const routeId = schedule.route_id;
+        const existing = acc.find(g => g.route_id === routeId);
+        if (existing) {
+          existing.schedules.push(schedule);
+        } else {
+          acc.push({
+            route_id: routeId,
+            route_name: routeName,
+            schedules: [schedule]
+          });
+        }
+        return acc;
+      }, [] as ScheduleGroup[]);
+      setScheduleGroups(grouped);
+    }
 
     // Fetch Buses
     const { data: busesData, error: busesError } = await supabase
@@ -181,6 +220,7 @@ export default function TripsPage() {
     if (mode === 'edit' && trip) {
       setSelectedTrip(trip);
       setFormState({
+        route_id: trip.schedules?.route_id || 0,
         schedule_id: trip.schedule_id,
         bus_id: trip.bus_id,
         driver_id: trip.driver_id,
@@ -190,7 +230,8 @@ export default function TripsPage() {
     } else {
       setSelectedTrip(null);
       setFormState({
-        schedule_id: schedules.length > 0 ? schedules[0].schedule_id : 0,
+        route_id: scheduleGroups.length > 0 ? scheduleGroups[0].route_id : 0,
+        schedule_id: 0,
         bus_id: buses.length > 0 ? buses[0].bus_id : 0,
         driver_id: drivers.length > 0 ? drivers[0].driver_id : 0,
         trip_date: (() => {
@@ -211,39 +252,67 @@ export default function TripsPage() {
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormState(prevState => ({
-      ...prevState,
-      // Ensure numerical fields are parsed correctly
-      [name]: name === 'schedule_id' || name === 'bus_id' || name === 'driver_id' ? parseInt(value) : value,
-    }));
+    setFormState(prevState => {
+      const updated = {
+        ...prevState,
+        [name]: name === 'route_id' || name === 'schedule_id' || name === 'bus_id' || name === 'driver_id' ? parseInt(value) : value,
+      };
+      // Reset schedule_id when route changes
+      if (name === 'route_id') {
+        updated.schedule_id = 0;
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const { schedule_id, bus_id, driver_id, trip_date, status } = formState;
+    const { route_id, bus_id, driver_id, trip_date, status } = formState;
 
-    if (!schedule_id || !bus_id || !driver_id || !trip_date || !status) {
+    if (!route_id || !bus_id || !driver_id || !trip_date || !status) {
         setError("All fields are required.");
         return;
     }
 
-    let result;
     if (modalMode === 'add') {
-      result = await supabase.from('trips').insert([{ schedule_id, bus_id, driver_id, trip_date, status }]).select();
+      // Get all schedules for the selected route
+      const selectedGroup = scheduleGroups.find(g => g.route_id === route_id);
+      if (!selectedGroup || selectedGroup.schedules.length === 0) {
+        setError("No schedules found for the selected route.");
+        return;
+      }
+
+      // Create trips for all schedules in the route
+      const tripsToCreate = selectedGroup.schedules.map(schedule => ({
+        schedule_id: schedule.schedule_id,
+        bus_id,
+        driver_id,
+        trip_date,
+        status
+      }));
+
+      const result = await supabase.from('trips').insert(tripsToCreate).select();
+      const { data, error: submissionError } = result;
+
+      if (submissionError) {
+        console.error('Error adding trips:', submissionError);
+        setError(`Failed to create trips: ${submissionError.message}`);
+      } else if (data) {
+        closeModal();
+      }
     } else if (selectedTrip) {
-      result = await supabase.from('trips').update({ schedule_id, bus_id, driver_id, trip_date, status }).eq('trip_id', selectedTrip.trip_id).select();
-    }
+      // Edit mode - update single trip
+      const result = await supabase.from('trips').update({ bus_id, driver_id, trip_date, status }).eq('trip_id', selectedTrip.trip_id).select();
+      const { data, error: submissionError } = result;
 
-    const { data, error: submissionError } = result || {};
-
-    if (submissionError) {
-      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} trip:`, submissionError);
-      setError(`Failed to ${modalMode} trip: ${submissionError.message}`);
-    } else if (data) {
-      // fetchTrips(); // Handled by real-time listener
-      closeModal();
+      if (submissionError) {
+        console.error('Error updating trip:', submissionError);
+        setError(`Failed to update trip: ${submissionError.message}`);
+      } else if (data) {
+        closeModal();
+      }
     }
   };
 
@@ -257,9 +326,8 @@ export default function TripsPage() {
   const generateDailyTrips = async () => {
     setIsGenerating(true);
     setError(null);
-    
     try {
-      // Use local timezone instead of UTC
+      await markOldTripsCompleted();
       const now = new Date();
       const today = now.getFullYear() + '-' + 
         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -277,11 +345,8 @@ export default function TripsPage() {
         setIsGenerating(false);
         return;
       }
-      
-      // Get all schedules
-      const { data: schedules, error: schedulesError } = await supabase
-        .from('schedules')
-        .select('schedule_id');
+      await supabase.from('trips').update({ status: 'Completed' }).eq('trip_date', today).eq('status', 'Scheduled');
+      const { data: schedules, error: schedulesError } = await supabase.from('schedules').select('schedule_id');
       
       if (schedulesError) throw schedulesError;
       
@@ -343,8 +408,7 @@ export default function TripsPage() {
         .select();
       
       if (createError) throw createError;
-      
-      // Success - trips will be updated via real-time listener
+      await fetchTrips();
       console.log(`Created ${createdTrips.length} trips for ${today}`);
       
     } catch (error: any) {
@@ -568,30 +632,54 @@ export default function TripsPage() {
                 <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-card px-4 pt-5 pb-4 text-left shadow-xl transition-all w-full max-w-sm sm:max-w-lg sm:p-6">
                   <form onSubmit={handleSubmit}>
                     <div>
-                      <h3 className="text-lg font-medium leading-6 text-foreground">{modalMode === 'add' ? 'Add New Trip' : 'Edit Trip'}</h3>
+                      <h3 className="text-lg font-medium leading-6 text-foreground">{modalMode === 'add' ? 'Create Trips for Route' : 'Edit Trip'}</h3>
                       <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                         
-                        {/* Schedule Selection */}
-                        <div className="sm:col-span-6">
-                          <label htmlFor="schedule_id" className="block text-sm font-medium text-secondary">Schedule</label>
-                          <div className="mt-1">
-                            <select
-                              id="schedule_id"
-                              name="schedule_id"
-                              value={formState.schedule_id}
-                              onChange={handleFormChange}
-                              required
-                              className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground"
-                            >
-                              <option value={0}>-- Select a Schedule --</option>
-                              {schedules.map(schedule => (
-                                <option key={schedule.schedule_id} value={schedule.schedule_id}>
-                                  {getScheduleDisplay(schedule)}
-                                </option>
-                              ))}
-                            </select>
+                        {/* Route Selection (for add mode) */}
+                        {modalMode === 'add' && (
+                          <div className="sm:col-span-6">
+                            <label htmlFor="route_id" className="block text-sm font-medium text-secondary">Route</label>
+                            <div className="mt-1">
+                              <select
+                                id="route_id"
+                                name="route_id"
+                                value={formState.route_id}
+                                onChange={handleFormChange}
+                                required
+                                className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground"
+                              >
+                                <option value={0}>-- Select a Route --</option>
+                                {scheduleGroups.map(group => (
+                                  <option key={group.route_id} value={group.route_id}>
+                                    {group.route_name} ({group.schedules.length} schedules)
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <p className="mt-2 text-xs text-secondary">Trips will be created for all schedules of this route</p>
                           </div>
-                        </div>
+                        )}
+
+                        {/* Schedule Selection (for edit mode) */}
+                        {modalMode === 'edit' && (
+                          <div className="sm:col-span-6">
+                            <label htmlFor="schedule_id" className="block text-sm font-medium text-secondary">Schedule</label>
+                            <div className="mt-1">
+                              <select
+                                id="schedule_id"
+                                name="schedule_id"
+                                value={formState.schedule_id}
+                                onChange={handleFormChange}
+                                disabled
+                                className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground opacity-50 cursor-not-allowed"
+                              >
+                                <option value={formState.schedule_id}>
+                                  {getScheduleDisplay(selectedTrip?.schedules)}
+                                </option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Bus Selection */}
                         <div className="sm:col-span-6">
@@ -682,7 +770,7 @@ export default function TripsPage() {
                         type="submit"
                         className="inline-flex w-full justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-base font-medium text-primary-foreground shadow-sm hover:bg-primary/80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 sm:col-start-2 sm:text-sm"
                       >
-                        {modalMode === 'add' ? 'Create Trip' : 'Save Changes'}
+                        {modalMode === 'add' ? 'Create All Trips' : 'Save Changes'}
                       </button>
                       <button
                         type="button"

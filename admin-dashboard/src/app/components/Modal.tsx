@@ -39,10 +39,10 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
               leaveFrom="opacity-100 translate-y-0 sm:scale-100"
               leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
             >
-              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-card px-4 pt-5 pb-4 text-left shadow-xl transition-all w-full max-w-sm sm:max-w-lg sm:p-6">
-                <div>
-                  <h3 className="text-xl font-bold leading-6 text-foreground border-b border-secondary/30 pb-3">{title}</h3>
-                  <div className="mt-6">
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-card px-4 pt-5 pb-4 text-left shadow-xl transition-all w-full max-w-sm sm:max-w-lg sm:p-6 max-h-[90vh] flex flex-col">
+                <div className="flex flex-col max-h-full">
+                  <h3 className="text-xl font-bold leading-6 text-foreground border-b border-secondary/30 pb-3 flex-shrink-0">{title}</h3>
+                  <div className="mt-6 overflow-y-auto flex-1">
                     {children}
                   </div>
                 </div>
