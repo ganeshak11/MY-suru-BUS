@@ -12,10 +12,7 @@ import { ThemeToggleButton } from "../components/ThemeToggleButton";
 import { LinearGradient } from "expo-linear-gradient";
 import dayjs from "dayjs";
 
-// --- Helper Function ---
-// Formats the time to a readable format (e.g., 10:30 AM)
 const formatTripTime = (time: string) => {
-  // time is in format "HH:mm:ss", convert to 12-hour format
   const [hours, minutes] = time.split(':');
   const hour = parseInt(hours);
   const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -23,11 +20,8 @@ const formatTripTime = (time: string) => {
   return `${displayHour}:${minutes} ${ampm}`;
 };
 
-// --- Component ---
 export default function Home() {
   const { colors } = useTheme();
-  // Using useCallback for styles helps ensure they don't change unnecessarily, 
-  // though typically createStyles memoizes well with useTheme context change.
   const styles = createStyles(colors); 
   const router = useRouter();
   const { user, signOut } = useSession();
@@ -53,7 +47,6 @@ export default function Home() {
     setNextTrip(null);
 
     try {
-      // 1. Fetch driver_id and name
       const { data: driverRow, error: driverError } = await supabase
         .from("drivers")
         .select("driver_id, name")
@@ -64,7 +57,6 @@ export default function Home() {
       
       const driverIdValue = driverRow?.driver_id;
       setDriverId(driverIdValue);
-      // Set name, falling back to email if name is null
       setDriverName(driverRow?.name || user.email); 
 
       if (!driverIdValue) {
@@ -72,7 +64,6 @@ export default function Home() {
         return;
       }
 
-      // 2. Get today's trips directly (using local timezone)
       const now = new Date();
       const today = now.getFullYear() + '-' + 
         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -89,21 +80,30 @@ export default function Home() {
       
       if (tripsError) throw new Error(tripsError.message);
 
+      // Flatten schedules array and sort by start_time
+      const flatTrips = trips?.map((trip: any) => ({
+        ...trip,
+        schedules: Array.isArray(trip.schedules) ? trip.schedules[0] : trip.schedules,
+      }));
+
+      const sortedTrips = flatTrips?.sort((a: any, b: any) => {
+        return a.schedules.start_time.localeCompare(b.schedules.start_time);
+      });
+
       // Find active trip first (En Route), then scheduled
-      let nextTripData = trips?.find((t: any) => t.status === 'En Route');
+      let nextTripData = sortedTrips?.find((t: any) => t.status === 'En Route');
       if (!nextTripData) {
-        nextTripData = trips?.find((t: any) => t.status === 'Scheduled');
+        nextTripData = sortedTrips?.find((t: any) => t.status === 'Scheduled');
       }
 
       if (nextTripData) {
-        // Get bus number
         const { data: busData } = await supabase
           .from('buses')
           .select('bus_no')
           .eq('bus_id', nextTripData.bus_id)
           .single();
 
-        const schedules = Array.isArray(nextTripData.schedules) ? nextTripData.schedules[0] : nextTripData.schedules;
+        const schedules = nextTripData.schedules;
         const routes = Array.isArray(schedules.routes) ? schedules.routes[0] : schedules.routes;
         
         setNextTrip({
@@ -139,7 +139,6 @@ export default function Home() {
     fetchDriverAndTrip();
   }, [fetchDriverAndTrip]);
 
-  // Handle Sign Out with Confirmation (UX Improvement)
   const handleSignOut = () => {
     Alert.alert(
       "Sign Out",
@@ -157,7 +156,6 @@ export default function Home() {
     );
   };
 
-  // 1. Initial Loading/Auth Check
   if (!user) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -180,7 +178,6 @@ export default function Home() {
             />
           }
         >
-          {/* --- Header Section --- */}
           <View style={styles.headerContainer}>
             <ThemeToggleButton />
             <View style={styles.headerTitleContainer}>
@@ -195,13 +192,11 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* --- Welcome Message --- */}
           <View style={styles.welcomeContainer}>
             <Ionicons name="bus" size={40} color="#050505ff" />
             <Text style={styles.welcomeText}>Welcome, {driverName || 'Driver'}</Text>
           </View>
 
-          {/* --- Quick Actions --- */}
           <View style={styles.quickActions}>
             <TouchableOpacity style={styles.actionButton} onPress={() => router.push("/history")}>
               <View style={[styles.iconCircle, { backgroundColor: colors.primaryAccent + '20' }]}>
@@ -223,7 +218,6 @@ export default function Home() {
             </TouchableOpacity>
           </View>
 
-          {/* --- Main Content Card --- */}
           <Card style={styles.cardShadow}>
             <View style={styles.titleContainer}>
               <Ionicons name="navigate-circle" size={24} color={colors.primaryAccent} />
@@ -323,8 +317,6 @@ export default function Home() {
   );
 }
 
-// --- Styles ---
-
 const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
   container: {
     flex: 1,
@@ -333,7 +325,7 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
-  centerContent: { // For initial loading screen
+  centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -363,12 +355,12 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 22, // Adjusted size
+    fontSize: 22,
     fontWeight: 'bold',
     color: colors.primaryText,
   },
   headerSubtitle: {
-    fontSize: 13, // Adjusted size
+    fontSize: 13,
     color: colors.secondaryText,
     marginTop: 2,
   },
@@ -462,7 +454,7 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
     textAlign: 'right',
   },
   tripValueTime: {
-    color: colors.accent, // Highlight time
+    color: colors.accent,
     fontWeight: '700',
     fontSize: 17,
   },

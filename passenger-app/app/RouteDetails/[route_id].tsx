@@ -52,7 +52,6 @@ const RouteDetailsPage: React.FC = () => {
         if (bus?.current_latitude && bus?.current_longitude) {
           const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
 
-          // Track current stop
           for (let i = 0; i < stops.length; i++) {
             if (stops[i].status === 'Completed') continue;
             const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
@@ -186,7 +185,7 @@ const RouteDetailsPage: React.FC = () => {
 
     load();
 
-    const subscription = supabase
+    const busSubscription = supabase
       .channel('public:buses')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'buses' }, (payload) => {
         setBusLocations((prev) => {
@@ -199,10 +198,28 @@ const RouteDetailsPage: React.FC = () => {
       })
       .subscribe();
 
+    const tripStopSubscription = activeTripId ? supabase
+      .channel(`trip_stop_times:${activeTripId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trip_stop_times', filter: `trip_id=eq.${activeTripId}` }, (payload) => {
+        const arrivedStopId = payload.new.stop_id;
+        setStops((prev) => {
+          const updatedStops = prev.map((s) => s.stop_id === arrivedStopId ? { ...s, status: 'Completed' } : s);
+          const nextIndex = updatedStops.findIndex((s) => s.status === 'Pending');
+          if (nextIndex !== -1) {
+            setCurrentStopIndex(nextIndex);
+          }
+          return updatedStops;
+        });
+      })
+      .subscribe() : null;
+
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeChannel(busSubscription);
+      if (tripStopSubscription) {
+        supabase.removeChannel(tripStopSubscription);
+      }
     };
-  }, [route_id]);
+  }, [route_id, activeTripId]);
 
   const styles = React.useMemo(() => StyleSheet.create({
     container: { flex: 1, padding: 16 },
@@ -448,6 +465,7 @@ const RouteDetailsPage: React.FC = () => {
             tripStartTime={route?.start_time} 
             currentLocation={activeScheduleId && selectedStartTime === schedules.find(s => s.schedule_id === activeScheduleId)?.start_time ? busLocation : undefined}
             tripId={activeScheduleId && selectedStartTime === schedules.find(s => s.schedule_id === activeScheduleId)?.start_time ? activeTripId || undefined : undefined}
+            busSpeed={busLocations[0]?.current_speed_kmh}
           />
         </View>
       </ScrollView>

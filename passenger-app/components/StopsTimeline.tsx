@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import { supabase } from '../lib/supabaseClient';
+import { calculateETAs } from '../lib/etaCalculator';
 
 type Stop = {
   stop_id: number;
@@ -22,6 +22,7 @@ interface StopsTimelineProps {
   tripStartTime?: string;
   currentLocation?: { latitude: number; longitude: number };
   tripId?: number;
+  busSpeed?: number | null;
 }
 
 export const StopsTimeline: React.FC<StopsTimelineProps> = ({
@@ -30,60 +31,30 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
   tripStartTime,
   currentLocation,
   tripId,
+  busSpeed,
 }) => {
   const { colors } = useTheme();
   const [predictedTimes, setPredictedTimes] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    if (!tripId) return;
+    if (!currentLocation || stops.length === 0) return;
 
-    const fetchPredictedTimes = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('trip_stop_times')
-          .select('stop_id, predicted_arrival_time')
-          .eq('trip_id', tripId);
-        
-        if (error) {
-          console.error('Error fetching predicted times:', error);
-          return;
-        }
-        
-        if (data) {
-          const times: Record<number, string> = {};
-          data.forEach(item => {
-            if (item.predicted_arrival_time) {
-              times[item.stop_id] = item.predicted_arrival_time;
-            }
-          });
-          setPredictedTimes(times);
-        }
-      } catch (error) {
-        console.error('Error in fetchPredictedTimes:', error);
-      }
-    };
+    const etas = calculateETAs(
+      currentLocation.latitude,
+      currentLocation.longitude,
+      stops,
+      busSpeed
+    );
 
-    fetchPredictedTimes();
-
-    const subscription = supabase
-      .channel(`trip_stop_times:${tripId}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'trip_stop_times',
-        filter: `trip_id=eq.${tripId}`
-      }, () => {
-        fetchPredictedTimes();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
-  }, [tripId]);
+    const times: Record<number, string> = {};
+    Object.entries(etas).forEach(([stopId, etaDate]) => {
+      times[Number(stopId)] = etaDate.toISOString();
+    });
+    setPredictedTimes(times);
+  }, [currentLocation, stops, busSpeed]);
 
   const isCompleted = (index: number) => stops[index]?.status === 'Completed';
-  const isCurrent = (index: number) => index === currentStopIndex;
+  const isCurrent = (index: number) => index === currentStopIndex && currentLocation !== undefined;
 
   return (
     <View style={{ paddingVertical: 16, paddingHorizontal: 20 }}>
@@ -147,21 +118,24 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                       );
                     })()}
                     {(() => {
-                      if (!completed && predictedTimes[stop.stop_id] && tripStartTime && stop.time_offset_from_start !== undefined) {
+                      if (!completed && predictedTimes[stop.stop_id] && currentLocation) {
                         const predictedTime = new Date(predictedTimes[stop.stop_id]);
-                        const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
-                        const startTotalMinutes = (startHours * 60) + startMinutes;
-                        const scheduledTotalMinutes = startTotalMinutes + stop.time_offset_from_start;
-                        const scheduledTime = new Date();
-                        scheduledTime.setHours(Math.floor(scheduledTotalMinutes / 60) % 24, scheduledTotalMinutes % 60, 0, 0);
-                        const isOnTime = predictedTime.getTime() <= scheduledTime.getTime();
                         const etaHours = predictedTime.getHours();
                         const etaMinutes = predictedTime.getMinutes();
-                        return (
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: isOnTime ? '#10b981' : '#ef4444' }}>
-                            {etaHours}:{String(etaMinutes).padStart(2, '0')}
-                          </Text>
-                        );
+                        
+                        if (tripStartTime && stop.time_offset_from_start !== undefined) {
+                          const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
+                          const startTotalMinutes = (startHours * 60) + startMinutes;
+                          const scheduledTotalMinutes = startTotalMinutes + stop.time_offset_from_start;
+                          const scheduledTime = new Date();
+                          scheduledTime.setHours(Math.floor(scheduledTotalMinutes / 60) % 24, scheduledTotalMinutes % 60, 0, 0);
+                          const isOnTime = predictedTime.getTime() <= scheduledTime.getTime();
+                          return (
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: isOnTime ? '#10b981' : '#ef4444' }}>
+                              {etaHours}:{String(etaMinutes).padStart(2, '0')}
+                            </Text>
+                          );
+                        }
                       }
                       return null;
                     })()}

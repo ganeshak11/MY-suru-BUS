@@ -205,9 +205,19 @@ export default function TripScreen() {
         console.error("Failed to update bus trip:", busUpdateError);
       }
 
-      // Start background tracking
+      // Start background tracking with trip stops
       if (tripData.bus_id) {
-        const trackingStarted = await startLocationTracking(tripData.bus_id);
+        const trackingStarted = await startLocationTracking(
+          tripData.bus_id,
+          id,
+          formattedStops.map(s => ({
+            stop_id: s.stop_id,
+            latitude: s.latitude,
+            longitude: s.longitude,
+            geofence_radius_meters: s.geofence_radius_meters,
+            completed: false
+          }))
+        );
         if (!trackingStarted) {
           Alert.alert(
             "Warning",
