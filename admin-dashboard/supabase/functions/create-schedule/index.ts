@@ -1,5 +1,5 @@
-// deno-lint-ignore-file no-explicit-any
-import { createClient } from "@supabase/supabase-js";
+// deno-lint-ignore-file no-explicit-any no-import-prefix
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 Deno.serve(async (req: Request) => {

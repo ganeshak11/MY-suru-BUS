@@ -1,6 +1,5 @@
-// deno-lint-ignore-file no-explicit-any
-// @deno-types="https://esm.sh/@supabase/supabase-js@2"
-import { createClient } from "@supabase/supabase-js";
+// deno-lint-ignore-file no-explicit-any no-import-prefix
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface CreateRoutePayload {
