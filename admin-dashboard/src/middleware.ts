@@ -55,16 +55,23 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
 
-  // if user is not signed in and the current path is not /login, redirect the user to /login
-  if (!session && req.nextUrl.pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', req.url));
-  }
+    // if user is not signed in and the current path is not /login, redirect the user to /login
+    if (!session && req.nextUrl.pathname !== '/login') {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
 
-  // if user is signed in and the current path is /login, redirect the user to /
-  if (session && req.nextUrl.pathname === '/login') {
-    return NextResponse.redirect(new URL('/', req.url));
+    // if user is signed in and the current path is /login, redirect the user to /
+    if (session && req.nextUrl.pathname === '/login') {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+  } catch (error) {
+    // Handle auth errors gracefully - redirect to login
+    if (req.nextUrl.pathname !== '/login') {
+      return NextResponse.redirect(new URL('/login', req.url));
+    }
   }
 
   return response;

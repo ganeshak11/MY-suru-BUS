@@ -44,7 +44,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
   const fetchOSRMRoute = useCallback(async (waypoints: L.LatLng[]) => {
     if (waypoints.length < 2) return;
     const coordinates = waypoints.map(wp => `${wp.lng},${wp.lat}`).join(';');
-    const osrmUrl = `http://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
     try {
       const response = await fetch(osrmUrl);
       const data = await response.json();

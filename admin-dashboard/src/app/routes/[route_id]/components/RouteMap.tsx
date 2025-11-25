@@ -74,7 +74,7 @@ export default function RouteMap({ routeId, stops }: RouteMapProps) {
     setLoading(true);
 
     const coordinates = stops.map(stop => `${stop.longitude},${stop.latitude}`).join(';');
-    const osrmUrl = `http://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`;
 
     try {
       const response = await fetch(osrmUrl);

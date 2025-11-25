@@ -1,5 +1,3 @@
-// components/types.ts
-
 export interface Bus {
   bus_id: number;
   bus_no: string;
