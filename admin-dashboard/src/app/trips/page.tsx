@@ -373,7 +373,7 @@ export default function TripsPage() {
           .select('trip_id')
           .eq('schedule_id', schedule.schedule_id)
           .eq('trip_date', today)
-          .single();
+          .maybeSingle();
         
         if (existingTrip) continue; // Skip if already exists
         
@@ -383,7 +383,7 @@ export default function TripsPage() {
           .select('bus_id, driver_id')
           .eq('schedule_id', schedule.schedule_id)
           .eq('trip_date', yesterdayStr)
-          .single();
+          .maybeSingle();
         
         if (prevTrip) {
           tripsToCreate.push({

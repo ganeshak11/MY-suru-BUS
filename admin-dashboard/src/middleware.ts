@@ -52,18 +52,15 @@ export async function middleware(req: NextRequest) {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      await supabase.auth.signOut();
       return NextResponse.redirect(new URL('/login', req.url));
     }
 
-    const { data: admin, error: adminError } = await supabase.from('admins').select('admin_id').eq('auth_user_id', user.id).single();
+    const { data: admin, error: adminError } = await supabase.from('admins').select('admin_id').eq('auth_user_id', user.id).maybeSingle();
     if (adminError || !admin) {
-      await supabase.auth.signOut();
       return NextResponse.redirect(new URL('/login', req.url));
     }
   } catch (error) {
     console.error('Middleware auth error:', error);
-    await supabase.auth.signOut();
     return NextResponse.redirect(new URL('/login', req.url));
   }
 

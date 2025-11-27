@@ -93,7 +93,7 @@ export default function MonitoringDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, []);
 
   // --- Derived State (Auto-updates when state changes) ---
 
