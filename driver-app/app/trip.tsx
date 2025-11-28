@@ -60,25 +60,39 @@ export default function TripScreen() {
 
   // start foreground watcher on mount
   useEffect(() => {
-    watchForegroundLocation().catch((e) => {
-      console.error("[Trip] Foreground location watch error:", e);
-      // Don't crash if foreground watch fails - background tracking continues
-    });
+    let locationSubscription: any = null;
+    
+    const startWatching = async () => {
+      try {
+        locationSubscription = await watchForegroundLocation();
+      } catch (e: any) {
+        const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+        console.error("[Trip] Foreground location watch error:", errorMsg);
+        // Don't crash if foreground watch fails - background tracking continues
+      }
+    };
+    
+    startWatching();
 
     // Process queue on mount
-    processArrivalQueue().catch((e) =>
-      console.error("Queue processing error:", e)
-    );
+    processArrivalQueue().catch((e: any) => {
+      const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+      console.error("Queue processing error:", errorMsg);
+    });
 
     // Set up a timer to process the queue periodically
     const queueProcessor = setInterval(() => {
-      processArrivalQueue().catch((e) =>
-        console.error("Queue processing error:", e)
-      );
+      processArrivalQueue().catch((e: any) => {
+        const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+        console.error("Queue processing error:", errorMsg);
+      });
     }, 30000); // every 30 seconds
 
     return () => {
       clearInterval(queueProcessor);
+      if (locationSubscription && locationSubscription.remove) {
+        locationSubscription.remove();
+      }
     };
   }, []);
 
@@ -113,6 +127,9 @@ export default function TripScreen() {
     };
   }, []);
 
+  const [lastTriggerTime, setLastTriggerTime] = useState<number>(0);
+  const [previousDistance, setPreviousDistance] = useState<number | null>(null);
+
   useEffect(() => {
     if (
       !location || stops.length === 0 || currentStopIndex >= stops.length ||
@@ -120,23 +137,41 @@ export default function TripScreen() {
     ) return;
     const nextStop = stops[currentStopIndex];
     if (nextStop.status === "Completed") return;
-    const d = getDistance(location.coords, {
-      latitude: Number(nextStop.latitude),
-      longitude: Number(nextStop.longitude),
-    });
+    
+    let d: number;
+    try {
+      d = getDistance(location.coords, {
+        latitude: Number(nextStop.latitude),
+        longitude: Number(nextStop.longitude),
+      });
+    } catch (e: any) {
+      const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+      console.error("Distance calculation error:", errorMsg);
+      return;
+    }
 
     // Calculate ETA using actual speed or fallback to 50 km/h
     const currentSpeedMps = location.coords.speed || 0;
     const currentSpeedKmh = currentSpeedMps * 3.6;
-    const speedKmh = currentSpeedKmh > 5 ? currentSpeedKmh : 50; // Use actual speed if moving, else default
+    const speedKmh = currentSpeedKmh > 5 ? currentSpeedKmh : 50;
     const distanceKm = d / 1000;
     const timeHours = distanceKm / speedKmh;
     const timeMinutes = Math.round(timeHours * 60);
     setEta(timeMinutes > 0 ? `${timeMinutes} min` : "Arriving");
 
+    // Geofence trigger with debounce and direction check
     if (d < nextStop.geofence_radius_meters) {
-      handleStopArrival(nextStop, currentStopIndex);
+      const now = Date.now();
+      const isApproaching = previousDistance === null || d < previousDistance;
+      const debounceTime = 5000; // 5 seconds
+      
+      if (isApproaching && (now - lastTriggerTime) > debounceTime) {
+        setLastTriggerTime(now);
+        handleStopArrival(nextStop, currentStopIndex);
+      }
     }
+    
+    setPreviousDistance(d);
   }, [location, stops, currentStopIndex, isPaused]);
 
   const fetchTripAndStops = async (id: number) => {
@@ -188,7 +223,8 @@ export default function TripScreen() {
           .eq("trip_id", id);
 
         if (statusError) {
-          console.error("Failed to update trip status:", statusError);
+          const errorMsg = statusError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+          console.error("Failed to update trip status:", errorMsg);
         } else {
           console.log("Trip status updated to En Route");
           tripData.status = "En Route";
@@ -202,7 +238,8 @@ export default function TripScreen() {
         .eq("bus_id", tripData.bus_id);
 
       if (busUpdateError) {
-        console.error("Failed to update bus trip:", busUpdateError);
+        const errorMsg = busUpdateError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+        console.error("Failed to update bus trip:", errorMsg);
       }
 
       // Start background tracking with trip stops
@@ -233,6 +270,7 @@ export default function TripScreen() {
     }
   };
 
+  // amazonq-ignore-next-line
   const handleStopArrival = async (stop: StopDetails, index: number) => {
     // Immediately update the UI
     setStops((prev) =>
@@ -263,7 +301,11 @@ export default function TripScreen() {
     }
 
     try {
-      const { error } = await supabase.from("passenger_reports").insert({
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+      
+      const insertPromise = supabase.from("passenger_reports").insert({
         report_type: "Delay",
         message: `Trip ${trip_id}: ${delayReason}`,
         trip_id: Number(trip_id),
@@ -271,15 +313,20 @@ export default function TripScreen() {
         status: "New",
       });
 
-      if (error) throw error;
+      const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
+
+      if (error) {
+        throw new Error(error.message || 'Failed to report delay');
+      }
 
       Alert.alert("Success", "Delay reported successfully");
       setShowDelayModal(false);
       setDelayReason("");
     } catch (e: any) {
+      console.error('Report delay error:', e);
       Alert.alert(
         "Error",
-        `Failed to report delay: ${e?.message || "Unknown error"}`,
+        e?.message || "Failed to report delay. Please try again.",
       );
     }
   };
@@ -287,8 +334,23 @@ export default function TripScreen() {
   const handlePauseTrip = async () => {
     if (isPaused) {
       setIsPaused(false);
-      if (trip?.bus_id) {
-        await startLocationTracking(trip.bus_id);
+      if (trip?.bus_id && trip_id) {
+        const success = await startLocationTracking(
+          trip.bus_id,
+          Number(trip_id),
+          stops.map(s => ({
+            stop_id: s.stop_id,
+            latitude: s.latitude,
+            longitude: s.longitude,
+            geofence_radius_meters: s.geofence_radius_meters,
+            completed: s.status === "Completed"
+          }))
+        );
+        if (!success) {
+          Alert.alert("Error", "Failed to resume tracking");
+          setIsPaused(true);
+          return;
+        }
       }
       Alert.alert("Trip Resumed", "Location tracking resumed");
     } else {
@@ -315,10 +377,11 @@ export default function TripScreen() {
             try {
               try {
                 await processArrivalQueue();
-              } catch (queueError) {
+              } catch (queueError: any) {
+                const errorMsg = queueError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
                 console.error(
                   "Queue processing failed during trip stop:",
-                  queueError,
+                  errorMsg,
                 );
               }
               const { error: tripError } = await supabase.from("trips").update({
@@ -333,10 +396,11 @@ export default function TripScreen() {
               if (busError) throw busError;
               try {
                 await stopLocationTracking();
-              } catch (locationError) {
+              } catch (locationError: any) {
+                const errorMsg = locationError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
                 console.error(
                   "Failed to stop location tracking:",
-                  locationError,
+                  errorMsg,
                 );
               }
               router.replace("/home");
@@ -366,17 +430,21 @@ export default function TripScreen() {
   }
 
   return (
-    <LinearGradient
-      colors={[colors.primaryAccent + "30", colors.mainBackground]}
-      style={styles.container}
-    >
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color={colors.primaryText} />
-      </TouchableOpacity>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+          <Ionicons name="arrow-back" size={24} color={colors.primaryText} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Live Trip</Text>
+        <View style={styles.headerButton} />
+      </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-         <LocationDebug location={location} isTracking={true} />
-         <Card style={styles.mapCard}>
+        {/* GPS Status */}
+        <LocationDebug location={location} isTracking={true} />
+        
+        {/* Map Card */}
+        <Card style={styles.mapCard}>
           <View style={styles.cardHeader}>
             <Ionicons
               name="location"
@@ -398,50 +466,55 @@ export default function TripScreen() {
             )}
         </Card>
 
+        {/* Route Stops Card */}
         <Card style={styles.stopsCard}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="list" size={22} color={colors.primaryAccent} />
-            <Text style={styles.cardTitle}>Route Stops</Text>
-            {trip?.schedules?.start_time && stops.length > 0 && currentStopIndex < stops.length && stops[currentStopIndex]?.time_offset_from_start !== undefined && (() => {
-              const currentStop = stops[currentStopIndex];
-              const now = new Date();
-              const today = now.getFullYear() + '-' + 
-                String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                String(now.getDate()).padStart(2, '0');
-              const tripStart = new Date(`${today}T${trip.schedules.start_time}`);
-              const elapsedMinutes = Math.round((now.getTime() - tripStart.getTime()) / 60000);
-              const delayMinutes = elapsedMinutes - (currentStop.time_offset_from_start || 0);
-              const isDelayed = delayMinutes > 0;
-              const isEarly = delayMinutes < -2;
-              
-              return (
-                <View style={[styles.delayBadge, isDelayed ? styles.delayBadgeDelayed : isEarly ? styles.delayBadgeEarly : styles.delayBadgeOnTime]}>
-                  <Ionicons name={isDelayed ? "alert-circle" : isEarly ? "time" : "checkmark-circle"} size={12} color="#fff" />
-                  <Text style={styles.delayText}>
-                    {(() => {
-                      const absMinutes = Math.abs(delayMinutes);
-                      const hours = Math.floor(absMinutes / 60);
-                      const mins = absMinutes % 60;
-                      const sign = isDelayed ? '+' : '';
-                      return hours > 0 ? `${sign}${hours}:${mins.toString().padStart(2, '0')}` : `${sign}${mins} min`;
-                    })()}
+          <View style={styles.stopsHeader}>
+            <View style={styles.stopsHeaderLeft}>
+              <Ionicons name="list" size={20} color={colors.primaryAccent} />
+              <Text style={styles.stopsTitle}>Route Stops</Text>
+            </View>
+            <View style={styles.stopsHeaderRight}>
+              {trip?.schedule?.start_time && stops.length > 0 && currentStopIndex < stops.length && stops[currentStopIndex]?.time_offset_from_start !== undefined && (() => {
+                const currentStop = stops[currentStopIndex];
+                const now = new Date();
+                const today = now.getFullYear() + '-' + 
+                  String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                  String(now.getDate()).padStart(2, '0');
+                const tripStart = new Date(`${today}T${trip.schedule.start_time}`);
+                const elapsedMinutes = Math.round((now.getTime() - tripStart.getTime()) / 60000);
+                const delayMinutes = elapsedMinutes - (currentStop.time_offset_from_start || 0);
+                const isDelayed = delayMinutes > 0;
+                const isEarly = delayMinutes < -2;
+                
+                return (
+                  <View style={[styles.delayBadge, isDelayed ? styles.delayBadgeDelayed : isEarly ? styles.delayBadgeEarly : styles.delayBadgeOnTime]}>
+                    <Ionicons name={isDelayed ? "alert-circle" : isEarly ? "time" : "checkmark-circle"} size={11} color="#FFFFFF" />
+                    <Text style={styles.delayText}>
+                      {(() => {
+                        const absMinutes = Math.abs(delayMinutes);
+                        const hours = Math.floor(absMinutes / 60);
+                        const mins = absMinutes % 60;
+                        const sign = isDelayed ? '+' : '';
+                        return hours > 0 ? `${sign}${hours}:${mins.toString().padStart(2, '0')}` : `${sign}${mins} min`;
+                      })()}
+                    </Text>
+                  </View>
+                );
+              })()}
+              {stops.length > 0 && (
+                <View style={styles.progressBadge}>
+                  <Text style={styles.progressText}>
+                    {currentStopIndex + 1}/{stops.length}
                   </Text>
                 </View>
-              );
-            })()}
-            {stops.length > 0 && (
-              <View style={styles.progressBadge}>
-                <Text style={styles.progressText}>
-                  {currentStopIndex + 1}/{stops.length}
-                </Text>
-              </View>
-            )}
+              )}
+            </View>
           </View>
           <StopsTimeline
             stops={stops}
             currentStopIndex={currentStopIndex}
             eta={eta || undefined}
-            tripStartTime={trip?.schedules?.start_time}
+            tripStartTime={trip?.schedule?.start_time}
             distanceToStop={
               location && currentStopIndex < stops.length
                 ? getDistance(location.coords, {
@@ -454,36 +527,40 @@ export default function TripScreen() {
           />
         </Card>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.delayButton}
-            onPress={() => setShowDelayModal(true)}
-          >
-            <Ionicons name="warning" size={20} color="#f59e0b" />
-            <Text style={styles.delayButtonText}>Delay</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.pauseButton, isPaused && styles.pauseButtonActive]}
-            onPress={handlePauseTrip}
-          >
-            <Ionicons
-              name={isPaused ? "play" : "pause"}
-              size={20}
-              color="#fff"
-            />
-            <Text style={styles.pauseButtonText}>
-              {isPaused ? "Resume" : "Pause"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.stopButton}
-            onPress={handleStopTrip}
-          >
-            <Ionicons name="stop-circle" size={20} color="#fff" />
-            <Text style={styles.stopButtonText}>Stop</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Bottom spacing for button bar */}
+        <View style={{ height: 80 }} />
       </ScrollView>
+
+      {/* Bottom Action Bar */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => setShowDelayModal(true)}
+        >
+          <Ionicons name="warning" size={18} color="#ea580c" />
+          <Text style={styles.actionButtonTextDelay}>Delay</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.actionButtonPrimary, isPaused && styles.actionButtonSuccess]}
+          onPress={handlePauseTrip}
+        >
+          <Ionicons
+            name={isPaused ? "play" : "pause"}
+            size={18}
+            color="#FFFFFF"
+          />
+          <Text style={styles.actionButtonTextWhite}>
+            {isPaused ? "Resume" : "Pause"}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.actionButtonDanger]}
+          onPress={handleStopTrip}
+        >
+          <Ionicons name="stop-circle" size={18} color="#FFFFFF" />
+          <Text style={styles.actionButtonTextWhite}>Stop</Text>
+        </TouchableOpacity>
+      </View>
 
       <Modal visible={showDelayModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -493,7 +570,7 @@ export default function TripScreen() {
             }]}
           >
             <View style={styles.modalHeader}>
-              <Ionicons name="warning" size={28} color="#f59e0b" />
+              <Ionicons name="warning" size={28} color={colors.secondaryText} />
               <Text style={[styles.modalTitle, { color: colors.primaryText }]}>
                 Report Delay
               </Text>
@@ -529,84 +606,126 @@ export default function TripScreen() {
                 }]}
                 onPress={handleReportDelay}
               >
-                <Text style={{ color: "#fff", fontWeight: "700" }}>Submit</Text>
+                <Text style={{ color: colors.cardBackground, fontWeight: "700" }}>Submit</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </LinearGradient>
+    </View>
   );
 }
 
 const createStyles = (colors: typeof themeTokens.light) =>
   StyleSheet.create({
-    container: { flex: 1, padding: 16 },
-    backButton: {
-      position: "absolute",
-      top: 16,
-      left: 16,
+    container: { 
+      flex: 1, 
+      backgroundColor: colors.mainBackground 
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: 86,
+      paddingTop: Platform.OS === 'ios' ? 44 : 26,
+      paddingHorizontal: 16,
+      backgroundColor: colors.tableBackground,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
       zIndex: 10,
-      backgroundColor: colors.cardBackground,
-      borderRadius: 16,
-      padding: 14,
       ...Platform.select({
         ios: {
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.25,
-          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
         },
-        android: { elevation: 8 },
+        android: { elevation: 1 },
       }),
+    },
+    headerButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.primaryText,
+      marginLeft: 12,
     },
     mapCard: {
       marginBottom: 16,
-      borderRadius: 20,
+      borderRadius: 16,
       overflow: "hidden",
       ...Platform.select({
         ios: {
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.2,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
         },
-        android: { elevation: 12 },
+        android: { elevation: 1 },
       }),
     },
     stopsCard: {
       marginBottom: 16,
-      borderRadius: 20,
+      borderRadius: 16,
       ...Platform.select({
         ios: {
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.2,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
         },
-        android: { elevation: 12 },
+        android: { elevation: 1 },
       }),
     },
     scrollContent: {
-      paddingTop: 60,
+      paddingTop: 16,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
     },
     cardHeader: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 16,
-      paddingBottom: 14,
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      borderBottomWidth: 2,
-      borderBottomColor: colors.primaryAccent + "30",
-      backgroundColor: colors.primaryAccent + "08",
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border + '20',
     },
     cardTitle: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: "700",
       color: colors.primaryText,
       marginLeft: 8,
       flex: 1,
+    },
+    stopsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border + "20",
+    },
+    stopsHeaderLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    stopsHeaderRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    stopsTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.primaryText,
     },
     cardText: { fontSize: 14, color: colors.secondaryText, marginLeft: 8 },
     loadingContainer: {
@@ -619,37 +738,23 @@ const createStyles = (colors: typeof themeTokens.light) =>
       alignItems: "center",
       borderRadius: 16,
       paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingVertical: 5,
       gap: 4,
-      zIndex: 1002,
-      ...Platform.select({
-        ios: {
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
-        },
-        android: { elevation: 1002 },
-      }),
     },
     delayBadgeOnTime: {
       backgroundColor: "#10b981",
-      ...Platform.select({
-        ios: { shadowColor: "#10b981" },
-      }),
     },
     delayBadgeEarly: {
-      backgroundColor: "#3b82f6",
-      ...Platform.select({
-        ios: { shadowColor: "#3b82f6" },
-      }),
+      backgroundColor: "#06b6d4",
     },
     delayBadgeDelayed: {
-      backgroundColor: "#ef4444",
-      ...Platform.select({
-        ios: { shadowColor: "#ef4444" },
-      }),
+      backgroundColor: "#f97316",
     },
-    delayText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+    delayText: { 
+      color: "#FFFFFF", 
+      fontSize: 11, 
+      fontWeight: "700" 
+    },
     etaBadge: {
       flexDirection: "row",
       alignItems: "center",
@@ -669,99 +774,100 @@ const createStyles = (colors: typeof themeTokens.light) =>
         android: { elevation: 4 },
       }),
     },
-    etaText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+    etaText: { color: colors.cardBackground, fontSize: 12, fontWeight: "700" },
     progressBadge: {
       backgroundColor: colors.primaryAccent,
       borderRadius: 16,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    progressText: { 
+      color: "#FFFFFF", 
+      fontSize: 12, 
+      fontWeight: "700" 
+    },
+
+    // Bottom Action Bar
+    bottomBar: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+      backgroundColor: colors.tableBackground,
+      borderTopWidth: 1,
+      borderTopColor: colors.border + "20",
       ...Platform.select({
         ios: {
-          shadowColor: colors.primaryAccent,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
         },
         android: { elevation: 4 },
       }),
     },
-    progressText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-
-    buttonContainer: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginBottom: 16 },
-    delayButton: {
+    actionButton: {
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "#fef3c7",
-      padding: 16,
-      borderRadius: 16,
-      gap: 8,
-      borderWidth: 2,
-      borderColor: "#fbbf24",
+      backgroundColor: colors.tableBackground,
+      height: 48,
+      paddingHorizontal: 12,
+      borderRadius: 14,
+      gap: 6,
       ...Platform.select({
         ios: {
-          shadowColor: "#f59e0b",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 6,
         },
-        android: { elevation: 6 },
+        android: { elevation: 2 },
       }),
     },
-    delayButtonText: { color: "#d97706", fontWeight: "700", fontSize: 15 },
-    pauseButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#3b82f6",
-      padding: 16,
-      borderRadius: 16,
-      gap: 8,
+    actionButtonPrimary: {
+      backgroundColor: colors.primaryAccent,
       ...Platform.select({
         ios: {
-          shadowColor: "#3b82f6",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
+          shadowColor: colors.primaryAccent,
+          shadowOpacity: 0.25,
         },
-        android: { elevation: 6 },
       }),
     },
-    pauseButtonActive: {
+    actionButtonSuccess: {
       backgroundColor: "#10b981",
       ...Platform.select({
         ios: {
           shadowColor: "#10b981",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
+          shadowOpacity: 0.25,
         },
-        android: { elevation: 6 },
       }),
     },
-    pauseButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-    stopButton: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#ef4444",
-      padding: 16,
-      borderRadius: 16,
-      gap: 8,
+    actionButtonDanger: {
+      backgroundColor: "#dc2626",
       ...Platform.select({
         ios: {
-          shadowColor: "#ef4444",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
+          shadowColor: "#dc2626",
+          shadowOpacity: 0.25,
         },
-        android: { elevation: 6 },
       }),
     },
-    stopButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    actionButtonTextDelay: { 
+      color: "#ea580c", 
+      fontWeight: "600", 
+      fontSize: 14 
+    },
+    actionButtonTextWhite: { 
+      color: "#FFFFFF", 
+      fontWeight: "600", 
+      fontSize: 14 
+    },
     modalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0,0,0,0.7)",
@@ -769,11 +875,11 @@ const createStyles = (colors: typeof themeTokens.light) =>
       padding: 20,
     },
     modalContent: {
-      borderRadius: 24,
-      padding: 28,
+      borderRadius: 16,
+      padding: 24,
       ...Platform.select({
         ios: {
-          shadowColor: "#000",
+          shadowColor: colors.primaryText,
           shadowOffset: { width: 0, height: 12 },
           shadowOpacity: 0.4,
           shadowRadius: 20,
@@ -805,7 +911,7 @@ const createStyles = (colors: typeof themeTokens.light) =>
       alignItems: "center",
       ...Platform.select({
         ios: {
-          shadowColor: "#000",
+          shadowColor: colors.primaryText,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.15,
           shadowRadius: 4,

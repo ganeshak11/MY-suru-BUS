@@ -59,6 +59,16 @@ const getDistance = (coords1: { latitude: number; longitude: number }, coords2: 
   return R * c;
 };
 
+const formatTimestamp = (): string => {
+  const now = new Date();
+  return now.getFullYear() + '-' + 
+    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(now.getDate()).padStart(2, '0') + 'T' + 
+    String(now.getHours()).padStart(2, '0') + ':' + 
+    String(now.getMinutes()).padStart(2, '0') + ':' + 
+    String(now.getSeconds()).padStart(2, '0');
+};
+
 const processLocationQueue = async () => {
   try {
     const rawQueue = await AsyncStorage.getItem(LOCATION_QUEUE_KEY);
@@ -224,30 +234,46 @@ export const useDriverLocation = () => {
 TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
   try {
     if (!task || !task.data) {
+      console.log("[BG TASK] No task or data");
       return;
     }
 
     const { locations, error } = task.data;
     
-    if (error || !locations || !Array.isArray(locations) || locations.length === 0) {
+    if (error) {
+      console.error("[BG TASK] Location error:", error);
+      return;
+    }
+    
+    if (!locations || !Array.isArray(locations) || locations.length === 0) {
+      console.log("[BG TASK] No locations available");
       return;
     }
 
     const location = locations[0];
-    if (!location || !location.coords) {
+    if (!location || !location.coords || 
+        typeof location.coords.latitude !== 'number' || 
+        typeof location.coords.longitude !== 'number') {
+      console.log("[BG TASK] Invalid location coords");
       return;
     }
 
     const busIdStr = await AsyncStorage.getItem(ASYNC_STORAGE_BUS_ID_KEY);
-    const tripIdStr = await AsyncStorage.getItem(CURRENT_TRIP_ID_KEY);
     if (!busIdStr) {
+      console.log("[BG TASK] No bus ID in storage");
       return;
     }
 
     const busId = Number(busIdStr);
-    const tripId = tripIdStr ? Number(tripIdStr) : null;
-    if (isNaN(busId)) {
+    if (isNaN(busId) || busId <= 0) {
+      console.error("[BG TASK] Invalid bus ID:", busIdStr);
       return;
+    }
+
+    const tripIdStr = await AsyncStorage.getItem(CURRENT_TRIP_ID_KEY);
+    const tripId = tripIdStr ? Number(tripIdStr) : null;
+    if (tripId && (isNaN(tripId) || tripId <= 0)) {
+      console.error("[BG TASK] Invalid trip ID:", tripIdStr);
     }
 
     const speedKmh = location.coords.speed ? location.coords.speed * 3.6 : 0;
@@ -255,30 +281,34 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
       bus_id: busId,
       current_latitude: location.coords.latitude,
       current_longitude: location.coords.longitude,
-      last_updated: (() => {
-        const now = new Date();
-        return now.getFullYear() + '-' + 
-          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(now.getDate()).padStart(2, '0') + 'T' + 
-          String(now.getHours()).padStart(2, '0') + ':' + 
-          String(now.getMinutes()).padStart(2, '0') + ':' + 
-          String(now.getSeconds()).padStart(2, '0');
-      })(),
+      last_updated: formatTimestamp(),
       current_speed_kmh: speedKmh > 0 ? speedKmh : null,
     };
 
     try {
-      const { error: supabaseError } = await supabase
+      // Add timeout to prevent hanging
+      const updatePromise = supabase
         .from("buses")
         .update(payload)
         .eq("bus_id", busId);
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Supabase timeout')), 10000)
+      );
+      
+      const { error: supabaseError } = await Promise.race([
+        updatePromise,
+        timeoutPromise
+      ]) as any;
 
       if (supabaseError) {
+        console.log("[BG TASK] Supabase error, queuing:", supabaseError.message);
         await addUpdateToQueue(payload);
       } else {
         await processLocationQueue();
       }
-    } catch (dbError) {
+    } catch (dbError: any) {
+      console.error("[BG TASK] DB error:", dbError?.message || dbError);
       await addUpdateToQueue(payload);
     }
 
@@ -286,7 +316,11 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
     if (tripId) {
       try {
         const tripsStopsStr = await AsyncStorage.getItem(TRIP_STOPS_KEY);
-        const tripStops = tripsStopsStr ? JSON.parse(tripsStopsStr) : [];
+        if (!tripsStopsStr) {
+          console.log("[BG TASK] No trip stops in storage");
+          return;
+        }
+        const tripStops = JSON.parse(tripsStopsStr);
 
         if (tripStops.length > 0) {
           const busLocation = { latitude: location.coords.latitude, longitude: location.coords.longitude };
@@ -303,20 +337,16 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
               const updatedStops = tripStops.map((s: any) =>
                 s.stop_id === stop.stop_id ? { ...s, completed: true } : s
               );
-              await AsyncStorage.setItem(TRIP_STOPS_KEY, JSON.stringify(updatedStops));
+              try {
+                await AsyncStorage.setItem(TRIP_STOPS_KEY, JSON.stringify(updatedStops));
+              } catch (storageError) {
+                console.error("[BG TASK] Failed to update stops:", storageError);
+              }
 
               await queueArrival({
                 trip_id: tripId,
                 stop_id: stop.stop_id,
-                actual_arrival_time: (() => {
-                  const now = new Date();
-                  return now.getFullYear() + '-' + 
-                    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                    String(now.getDate()).padStart(2, '0') + 'T' + 
-                    String(now.getHours()).padStart(2, '0') + ':' + 
-                    String(now.getMinutes()).padStart(2, '0') + ':' + 
-                    String(now.getSeconds()).padStart(2, '0');
-                })(),
+                actual_arrival_time: formatTimestamp(),
               });
 
               break;

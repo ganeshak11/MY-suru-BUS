@@ -7,16 +7,35 @@ import { Card } from "../components/Card";
 import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 
+interface Trip {
+  trip_id: number;
+  trip_date: string;
+  status: string;
+  driver_id: number;
+  schedules?: {
+    start_time: string;
+    routes?: {
+      route_name: string;
+    };
+  };
+  buses?: {
+    bus_no: string;
+  };
+}
+
 export default function History() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { user } = useSession();
-  const [trips, setTrips] = useState<any[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetchHistory();
+    fetchHistory().catch((e) => {
+      console.error('Initial fetch error:', e);
+      setLoading(false);
+    });
   }, []);
 
   const fetchHistory = async (isRefresh = false) => {
@@ -27,15 +46,28 @@ export default function History() {
       setLoading(true);
     }
     try {
-      const { data: driverRow } = await supabase
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+      
+      const driverPromise = supabase
         .from("drivers")
         .select("driver_id")
         .eq("auth_user_id", user.id)
         .single();
 
-      if (!driverRow) return;
+      const { data: driverRow, error: driverError } = await Promise.race([driverPromise, timeoutPromise]) as any;
 
-      const { data } = await supabase
+      if (driverError) {
+        throw new Error(driverError.message || 'Failed to fetch driver');
+      }
+
+      if (!driverRow) {
+        setTrips([]);
+        return;
+      }
+
+      const tripsPromise = supabase
         .from("trips")
         .select("*, schedules(start_time, routes(route_name)), buses!fk_trips_bus(bus_no)")
         .eq("driver_id", driverRow.driver_id)
@@ -43,9 +75,16 @@ export default function History() {
         .order("trip_date", { ascending: false })
         .limit(20);
 
+      const { data, error } = await Promise.race([tripsPromise, timeoutPromise]) as any;
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch trips');
+      }
+
       setTrips(data || []);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('Fetch history error:', e);
+      setTrips([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -78,35 +117,41 @@ export default function History() {
             colors={[colors.primaryAccent]}
           />
         }
-        renderItem={({ item }) => (
-          <Card style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+        renderItem={({ item }) => {
+          const routeName = item?.schedules?.routes?.route_name || 'Unknown Route';
+          const busNo = item?.buses?.bus_no || 'N/A';
+          const startTime = item?.schedules?.start_time ? item.schedules.start_time.slice(0, 5) : 'N/A';
+          
+          return (
+            <Card style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.iconCircle}>
+                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                </View>
+                <View style={styles.cardHeaderText}>
+                  <Text style={styles.routeName}>{routeName}</Text>
+                  <Text style={styles.tripId}>Trip #{item.trip_id}</Text>
+                </View>
               </View>
-              <View style={styles.cardHeaderText}>
-                <Text style={styles.routeName}>{item.schedules.routes.route_name}</Text>
-                <Text style={styles.tripId}>Trip #{item.trip_id}</Text>
+              <View style={styles.divider} />
+              <View style={styles.detailRow}>
+                <Ionicons name="bus" size={16} color={colors.secondaryText} />
+                <Text style={styles.detailLabel}>Bus:</Text>
+                <Text style={styles.detailValue}>{busNo}</Text>
               </View>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.detailRow}>
-              <Ionicons name="bus" size={16} color={colors.secondaryText} />
-              <Text style={styles.detailLabel}>Bus:</Text>
-              <Text style={styles.detailValue}>{item.buses.bus_no}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="calendar" size={16} color={colors.secondaryText} />
-              <Text style={styles.detailLabel}>Date:</Text>
-              <Text style={styles.detailValue}>{dayjs(item.trip_date).format("MMM D, YYYY")}</Text>
-            </View>
-            <View style={styles.detailRow}>
-              <Ionicons name="time" size={16} color={colors.secondaryText} />
-              <Text style={styles.detailLabel}>Time:</Text>
-              <Text style={styles.detailValue}>{item.schedules.start_time ? item.schedules.start_time.slice(0, 5) : 'N/A'}</Text>
-            </View>
-          </Card>
-        )}
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar" size={16} color={colors.secondaryText} />
+                <Text style={styles.detailLabel}>Date:</Text>
+                <Text style={styles.detailValue}>{dayjs(item.trip_date).format("MMM D, YYYY")}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="time" size={16} color={colors.secondaryText} />
+                <Text style={styles.detailLabel}>Time:</Text>
+                <Text style={styles.detailValue}>{startTime}</Text>
+              </View>
+            </Card>
+          );
+        }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="folder-open-outline" size={64} color={colors.secondaryText} />
@@ -136,20 +181,11 @@ const createStyles = (colors: typeof themeTokens.light) =>
       color: colors.primaryText,
     },
     listContent: {
-      padding: 16,
+      padding: 20,
       paddingTop: 0,
     },
     card: {
       marginBottom: 16,
-      ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-        },
-        android: { elevation: 8 },
-      }),
     },
     cardHeader: {
       flexDirection: "row",

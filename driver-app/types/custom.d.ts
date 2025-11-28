@@ -17,9 +17,16 @@ export type Trip = {
   driver_id: number;
   trip_date: string;
   status: 'Scheduled' | 'En Route' | 'Completed' | 'Cancelled';
-  schedules: {
+  schedule: {
     route_id: number;
-    start_time: string; // <-- Add this line
+    start_time: string;
+    routes?: {
+      route_name: string;
+    };
+  };
+  buses?: {
+    bus_id: number;
+    bus_no: string;
   };
 };
 

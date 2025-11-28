@@ -3,12 +3,15 @@ import { Stack, router, useSegments } from 'expo-router';
 import { SessionProvider, useSession } from '../contexts/SessionContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 function AuthLayout() {
   const { session, isLoading } = useSession();
   const { colors } = useTheme();
   const segments = useSegments(); // Gets the current URL path
+
+  const segmentsKey = useMemo(() => segments.join('/'), [segments]);
 
   useEffect(() => {
     if (isLoading) {
@@ -30,7 +33,7 @@ function AuthLayout() {
     if (session && atLogin) {
       router.replace('/home'); // Force redirect to dashboard
     }
-  }, [session, isLoading, segments]);
+  }, [session, isLoading, segmentsKey]);
 
   if (isLoading) {
     return (
@@ -50,17 +53,14 @@ function AuthLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="home" options={{ title: 'Driver Dashboard' }} />
+      <Stack.Screen name="home" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="history" options={{ title: 'Trip History' }} />
       <Stack.Screen name="announcements" options={{ title: 'Announcements' }} />
       <Stack.Screen name="report" options={{ title: 'Report to Admin' }} />
       <Stack.Screen
         name="trip"
-        options={{
-          title: 'Live Trip',
-          headerBackVisible: false,
-        }}
+        options={{ headerShown: false }}
       />
     </Stack>
   );
@@ -69,11 +69,13 @@ function AuthLayout() {
 // The root layout just provides the contexts
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <ThemeProvider>
-        <AuthLayout />
-      </ThemeProvider>
-    </SessionProvider>
+    <ErrorBoundary>
+      <SessionProvider>
+        <ThemeProvider>
+          <AuthLayout />
+        </ThemeProvider>
+      </SessionProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -6,8 +6,8 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "build:dev:android": "eas build --profile development --platform android",
     "build:dev:ios": "eas build --profile development --platform ios",
@@ -20,13 +20,14 @@
   "dependencies": {
     "@babel/helpers": "^7.28.4",
     "@babel/runtime": "^7.28.4",
-    "@expo/config-plugins": "^54.0.2",
+    "@expo/config-plugins": "~8.0.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "^2.43.1",
     "dayjs": "^1.11.10",
     "expo": "^51.0.17",
     "expo-constants": "~16.0.2",
     "expo-dev-client": "~4.0.29",
+    "expo-image-picker": "~15.1.0",
     "expo-linear-gradient": "~13.0.2",
     "expo-linking": "~6.3.1",
     "expo-location": "~17.0.1",
@@ -44,8 +45,8 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
-    "@expo/prebuild-config": "^8.0.4",
-    "@types/react": "^18.3.26",
+    "@expo/prebuild-config": "~7.0.0",
+    "@types/react": "~18.2.79",
     "@types/react-native": "^0.72.8",
     "typescript": "~5.3.3"
   },

@@ -1,8 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { calculateETAs } from '../lib/etaCalculator';
+
+const getDistance = (from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }): number => {
+  const R = 6371e3;
+  const φ1 = (from.latitude * Math.PI) / 180;
+  const φ2 = (to.latitude * Math.PI) / 180;
+  const Δφ = ((to.latitude - from.latitude) * Math.PI) / 180;
+  const Δλ = ((to.longitude - from.longitude) * Math.PI) / 180;
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 type Stop = {
   stop_id: number;
@@ -35,6 +46,38 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
 }) => {
   const { colors } = useTheme();
   const [predictedTimes, setPredictedTimes] = useState<Record<number, string>>({});
+  const busPositionAnim = useRef(new Animated.Value(0)).current;
+
+  const calculateBusPosition = (): number => {
+    if (!currentLocation || currentStopIndex >= stops.length) return currentStopIndex * 64;
+    if (currentStopIndex === 0) return 0;
+
+    const prevStop = stops[currentStopIndex - 1];
+    const nextStop = stops[currentStopIndex];
+
+    const totalDistance = getDistance(
+      { latitude: prevStop.latitude, longitude: prevStop.longitude },
+      { latitude: nextStop.latitude, longitude: nextStop.longitude }
+    );
+
+    const distanceFromPrev = getDistance(
+      { latitude: prevStop.latitude, longitude: prevStop.longitude },
+      currentLocation
+    );
+
+    const progress = Math.min(Math.max(distanceFromPrev / totalDistance, 0), 1);
+    return (currentStopIndex - 1 + progress) * 64;
+  };
+
+  useEffect(() => {
+    const targetPosition = calculateBusPosition();
+    Animated.spring(busPositionAnim, {
+      toValue: targetPosition,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 8,
+    }).start();
+  }, [currentLocation, currentStopIndex]);
 
   useEffect(() => {
     if (!currentLocation || stops.length === 0) return;
@@ -57,50 +100,81 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
   const isCurrent = (index: number) => index === currentStopIndex && currentLocation !== undefined;
 
   return (
-    <View style={{ paddingVertical: 16, paddingHorizontal: 20 }}>
+    <View style={{ paddingVertical: 16, paddingHorizontal: 20, position: 'relative' }}>
+      {/* Vertical Timeline Line */}
+      <View style={{ position: 'absolute', left: 48, top: 48, width: 3, height: '100%' }}>
+        {stops.map((_, index) => {
+          if (index === stops.length - 1) return null;
+          const isCompleted = index < currentStopIndex;
+          return (
+            <View
+              key={`line-${index}`}
+              style={[
+                { width: 3, height: 64 },
+                isCompleted
+                  ? { backgroundColor: colors.primaryAccent }
+                  : { borderLeftWidth: 3, borderLeftColor: colors.primaryAccent + '40', borderStyle: 'dotted' },
+              ]}
+            />
+          );
+        })}
+      </View>
+
+      {/* Animated Bus Icon */}
+      {currentLocation && (
+        <Animated.View
+          style={[
+            { position: 'absolute', left: 32, top: 32, zIndex: 10 },
+            { transform: [{ translateY: busPositionAnim }] },
+          ]}
+        >
+          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primaryAccent, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: colors.cardBackground, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 }}>
+            <Ionicons name="bus" size={18} color="#fff" />
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Stops */}
       {stops.map((stop, index) => {
         const completed = isCompleted(index);
         const current = isCurrent(index);
 
         return (
-          <View key={`${stop.stop_id}-${stop.stop_sequence}`} style={{ marginBottom: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 8 }}>
-              <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center', width: 56, height: 56, flexShrink: 0 }}>
+          <View key={`${stop.stop_id}-${stop.stop_sequence}`} style={{ height: 64, justifyContent: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: 56, height: 56, flexShrink: 0 }}>
                 <View style={{
-                  width: current ? 56 : 48,
-                  height: current ? 56 : 48,
-                  borderRadius: current ? 28 : 24,
-                  backgroundColor: completed ? '#10b981' : current ? colors.primaryAccent : colors.primaryAccent + '20',
-                  borderWidth: 2,
-                  borderColor: completed ? '#10b981' : colors.primaryAccent,
+                  width: current ? 48 : 40,
+                  height: current ? 48 : 40,
+                  borderRadius: current ? 24 : 20,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  borderWidth: current ? 4 : 3,
+                  borderColor: completed || current ? colors.primaryAccent : colors.primaryAccent + '60',
+                  backgroundColor: completed || current ? colors.primaryAccent : colors.cardBackground,
+                  shadowColor: current ? colors.primaryAccent : undefined,
+                  shadowOffset: current ? { width: 0, height: 0 } : undefined,
+                  shadowOpacity: current ? 0.6 : undefined,
+                  shadowRadius: current ? 12 : undefined,
+                  elevation: current ? 8 : undefined,
                 }}>
                   {completed ? (
-                    <Text style={{ fontSize: 24, color: '#10b981', fontWeight: '700' }}>✓</Text>
+                    <Ionicons name="checkmark" size={20} color="#fff" />
                   ) : (
-                    <Text style={{ fontSize: current ? 20 : 18, fontWeight: '700', color: current ? '#fff' : colors.primaryAccent }}>
+                    <Text style={{ fontSize: current ? 18 : 16, fontWeight: '700', color: current ? '#fff' : colors.primaryAccent }}>
                       {stop.stop_sequence}
                     </Text>
                   )}
                 </View>
-                {current && (
-                  <View style={{ position: 'absolute', right: -8, top: -8 }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primaryAccent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' }}>
-                      <Ionicons name="bus" size={16} color="#fff" />
-                    </View>
-                  </View>
-                )}
               </View>
 
-              <View style={{ flex: 1, paddingVertical: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
                   <Text style={{
-                    fontSize: current ? 16 : 15,
+                    fontSize: current ? 17 : 15,
                     fontWeight: current ? '700' : '600',
-                    color: completed ? colors.secondaryText : current ? colors.primaryAccent : colors.primaryText,
+                    color: completed ? colors.secondaryText : current ? colors.primaryText : colors.primaryText,
                     flex: 1,
-                    textDecorationLine: completed ? 'line-through' : 'none',
                   }} numberOfLines={2}>
                     {stop.stop_name}
                   </Text>
@@ -112,7 +186,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                       const scheduledHours = Math.floor(scheduledTotalMinutes / 60) % 24;
                       const scheduledMinutes = scheduledTotalMinutes % 60;
                       return (
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.secondaryText }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: completed ? '#10b981' : current ? colors.primaryText : colors.secondaryText }}>
                           {scheduledHours}:{String(scheduledMinutes).padStart(2, '0')}
                         </Text>
                       );

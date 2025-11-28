@@ -6,10 +6,17 @@ import { Card } from "../components/Card";
 import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 
+interface Announcement {
+  announcement_id: number;
+  title: string;
+  message: string;
+  created_at: string;
+}
+
 export default function Announcements() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -24,15 +31,26 @@ export default function Announcements() {
       setLoading(true);
     }
     try {
-      const { data } = await supabase
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+      
+      const fetchPromise = supabase
         .from("announcements")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(20);
 
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+
+      if (error) {
+        throw new Error(error.message || 'Failed to fetch announcements');
+      }
+
       setAnnouncements(data || []);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('Fetch announcements error:', e);
+      setAnnouncements([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -112,20 +130,11 @@ const createStyles = (colors: typeof themeTokens.light) =>
       color: colors.primaryText,
     },
     listContent: {
-      padding: 16,
+      padding: 20,
       paddingTop: 0,
     },
     card: {
       marginBottom: 16,
-      ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 8,
-        },
-        android: { elevation: 8 },
-      }),
     },
     cardHeader: {
       flexDirection: "row",

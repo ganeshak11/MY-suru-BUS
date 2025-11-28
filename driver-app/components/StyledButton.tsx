@@ -21,7 +21,7 @@ export const StyledButton: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   return (
     <TouchableOpacity
@@ -42,7 +42,7 @@ export const DangerButton: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   return (
     <TouchableOpacity
@@ -59,29 +59,34 @@ export const DangerButton: React.FC<ButtonProps> = ({
 const createStyles = (colors: typeof themeTokens.light) =>
   StyleSheet.create({
     buttonBase: {
-      paddingVertical: 14,
-      paddingHorizontal: 20,
-      borderRadius: 8,
+      paddingVertical: 18,
+      paddingHorizontal: 24,
+      borderRadius: 20,
       alignItems: 'center',
       justifyContent: 'center',
       marginVertical: 8,
+      width: '100%',
     },
     // Primary Button Style (for "Start Trip")
     primaryButton: {
       backgroundColor: colors.primaryAccent,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 6,
     },
     primaryText: {
       color: colors.buttonText,
-      fontSize: 16,
-      fontWeight: 'bold',
+      fontSize: 17,
+      fontWeight: '700',
     },
     // Danger Button Style (for "Stop Trip")
     dangerButton: {
-      backgroundColor: '#dc3545', // Standard red
-      // Or you could add 'danger' to your theme
+      backgroundColor: colors.dangerBackground || '#dc3545',
     },
     dangerText: {
-      color: '#ffffff', // White text for danger
+      color: colors.dangerBackground,
       fontSize: 16,
       fontWeight: 'bold',
     },

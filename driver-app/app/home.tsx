@@ -2,22 +2,27 @@ import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform, Alert, ScrollView, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { useSession } from "../contexts/SessionContext";
-import { Card } from "../components/Card";
 import { StyledButton } from "../components/StyledButton";
 import { useNotifications } from "../hooks/useNotifications";
 import { supabase } from "../lib/supabaseClient";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { ThemeToggleButton } from "../components/ThemeToggleButton";
-import { LinearGradient } from "expo-linear-gradient";
-import dayjs from "dayjs";
 
 const formatTripTime = (time: string) => {
-  const [hours, minutes] = time.split(':');
-  const hour = parseInt(hours);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour % 12 || 12;
-  return `${displayHour}:${minutes} ${ampm}`;
+  try {
+    if (!time || typeof time !== 'string') return 'N/A';
+    const parts = time.split(':');
+    if (parts.length < 2) return 'N/A';
+    const [hours, minutes] = parts;
+    const hour = parseInt(hours);
+    if (isNaN(hour)) return 'N/A';
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  } catch (e) {
+    return 'N/A';
+  }
 };
 
 export default function Home() {
@@ -47,11 +52,17 @@ export default function Home() {
     setNextTrip(null);
 
     try {
-      const { data: driverRow, error: driverError } = await supabase
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 15000)
+      );
+
+      const driverPromise = supabase
         .from("drivers")
         .select("driver_id, name")
         .eq("auth_user_id", user.id)
         .maybeSingle();
+
+      const { data: driverRow, error: driverError } = await Promise.race([driverPromise, timeoutPromise]) as any;
 
       if (driverError) throw new Error(driverError.message);
       
@@ -68,7 +79,8 @@ export default function Home() {
       const today = now.getFullYear() + '-' + 
         String(now.getMonth() + 1).padStart(2, '0') + '-' + 
         String(now.getDate()).padStart(2, '0');
-      const { data: trips, error: tripsError } = await supabase
+      
+      const tripsPromise = supabase
         .from('trips')
         .select(`
           trip_id, status, bus_id,
@@ -77,10 +89,11 @@ export default function Home() {
         .eq('driver_id', driverIdValue)
         .eq('trip_date', today)
         .in('status', ['Scheduled', 'En Route']);
+
+      const { data: trips, error: tripsError } = await Promise.race([tripsPromise, timeoutPromise]) as any;
       
       if (tripsError) throw new Error(tripsError.message);
 
-      // Flatten schedules array and sort by start_time
       const flatTrips = trips?.map((trip: any) => ({
         ...trip,
         schedules: Array.isArray(trip.schedules) ? trip.schedules[0] : trip.schedules,
@@ -90,21 +103,22 @@ export default function Home() {
         return a.schedules.start_time.localeCompare(b.schedules.start_time);
       });
 
-      // Find active trip first (En Route), then scheduled
       let nextTripData = sortedTrips?.find((t: any) => t.status === 'En Route');
       if (!nextTripData) {
         nextTripData = sortedTrips?.find((t: any) => t.status === 'Scheduled');
       }
 
       if (nextTripData) {
-        const { data: busData } = await supabase
+        const busPromise = supabase
           .from('buses')
           .select('bus_no')
           .eq('bus_id', nextTripData.bus_id)
           .single();
 
+        const { data: busData } = await Promise.race([busPromise, timeoutPromise]) as any;
+
         const schedules = nextTripData.schedules;
-        const routes = Array.isArray(schedules.routes) ? schedules.routes[0] : schedules.routes;
+        const routes = Array.isArray(schedules?.routes) ? schedules.routes[0] : schedules?.routes;
         
         setNextTrip({
           trip_id: nextTripData.trip_id,
@@ -142,7 +156,7 @@ export default function Home() {
   const handleSignOut = () => {
     Alert.alert(
       "Sign Out",
-      "Are you sure you want to log out of the Driver Portal?",
+      "Are you sure you want to log out?",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Sign Out", style: "destructive", onPress: async () => {
@@ -167,6 +181,21 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.appBar}>
+        <TouchableOpacity onPress={handleSignOut} style={styles.iconButton}>
+          <MaterialIcons name="logout" size={22} color={colors.primaryText} />
+        </TouchableOpacity>
+        <View style={styles.appBarCenter}>
+          <Text style={styles.appBarTitle}>MY(suru) BUS</Text>
+        </View>
+        <View style={styles.appBarRight}>
+          <TouchableOpacity onPress={() => router.push("/profile")} style={styles.iconButton}>
+            <Ionicons name="person-circle-outline" size={24} color={colors.primaryText} />
+          </TouchableOpacity>
+          <ThemeToggleButton />
+        </View>
+      </View>
+
       <ScrollView 
           contentContainerStyle={styles.scrollContent}
           refreshControl={
@@ -178,50 +207,41 @@ export default function Home() {
             />
           }
         >
-          <View style={styles.headerContainer}>
-            <ThemeToggleButton />
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>MY(suru) BUS</Text>
-              <Text style={styles.headerSubtitle}>Driver Portal</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push("/profile")} style={styles.profileButton}>
-              <Ionicons name="person-circle" size={28} color={colors.primaryAccent} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
-              <MaterialIcons name="logout" size={24} color={colors.primaryText} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.welcomeContainer}>
-            <Ionicons name="bus" size={40} color="#050505ff" />
-            <Text style={styles.welcomeText}>Welcome, {driverName || 'Driver'}</Text>
+          <View style={styles.welcomeSection}>
+            <Ionicons name="bus" size={18} color={colors.primaryAccent} style={styles.welcomeIcon} />
+            <Text style={styles.welcomeText}>Welcome back, {driverName || 'Driver'}</Text>
           </View>
 
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push("/history")}>
-              <View style={[styles.iconCircle, { backgroundColor: colors.primaryAccent + '20' }]}>
-                <Ionicons name="time" size={24} color={colors.primaryAccent} />
-              </View>
-              <Text style={styles.actionText}>History</Text>
+            <TouchableOpacity 
+              style={styles.actionCard} 
+              onPress={() => router.push("/history")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="time" size={26} color={colors.primaryText} />
+              <Text style={styles.actionLabel}>History</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push("/announcements")}>
-              <View style={[styles.iconCircle, { backgroundColor: colors.primaryAccent + '20' }]}>
-                <Ionicons name="megaphone" size={24} color={colors.primaryAccent} />
-              </View>
-              <Text style={styles.actionText}>Announcements</Text>
+            <TouchableOpacity 
+              style={styles.actionCard} 
+              onPress={() => router.push("/announcements")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="megaphone" size={26} color={colors.primaryText} />
+              <Text style={styles.actionLabel}>Announcements</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={() => router.push("/report")}>
-              <View style={[styles.iconCircle, { backgroundColor: colors.primaryAccent + '20' }]}>
-                <Ionicons name="flag" size={24} color={colors.primaryAccent} />
-              </View>
-              <Text style={styles.actionText}>Report</Text>
+            <TouchableOpacity 
+              style={styles.actionCard} 
+              onPress={() => router.push("/report")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="flag" size={26} color={colors.primaryText} />
+              <Text style={styles.actionLabel}>Report</Text>
             </TouchableOpacity>
           </View>
 
-          <Card style={styles.cardShadow}>
-            <View style={styles.titleContainer}>
-              <Ionicons name="navigate-circle" size={24} color={colors.primaryAccent} />
-              <Text style={styles.title}>Your Next Trip</Text>
+          <View style={styles.tripCard}>
+            <View style={styles.tripHeader}>
+              <Text style={styles.tripTitle}>Your Next Trip</Text>
             </View>
         
             {loading ? (
@@ -255,63 +275,70 @@ export default function Home() {
               <View>
                 <View style={styles.tripDetailRow}>
                   <View style={styles.tripLabelContainer}>
-                    <Ionicons name="pricetag" size={16} color={colors.secondaryText} />
+                    <Ionicons name="pricetag" size={14} color={colors.secondaryText} />
                     <Text style={styles.tripLabel}>Trip ID</Text>
                   </View>
-                  <Text style={styles.tripValue}>{nextTrip.trip_id}</Text>
+                  <Text style={styles.tripValue}>{nextTrip.trip_id || 'N/A'}</Text>
                 </View>
                 
                 <View style={styles.tripDetailRow}>
                   <View style={styles.tripLabelContainer}>
-                    <Ionicons name="map" size={16} color={colors.secondaryText} />
+                    <Ionicons name="map" size={14} color={colors.secondaryText} />
                     <Text style={styles.tripLabel}>Route</Text>
                   </View>
-                  <Text style={styles.tripValue}>{nextTrip.schedules.routes.route_name}</Text>
+                  <Text style={styles.tripValue}>{nextTrip?.schedules?.routes?.route_name || 'Unknown'}</Text>
                 </View>
                 
                 <View style={styles.tripDetailRow}>
                   <View style={styles.tripLabelContainer}>
-                    <Ionicons name="bus" size={16} color={colors.secondaryText} />
+                    <Ionicons name="bus" size={14} color={colors.secondaryText} />
                     <Text style={styles.tripLabel}>Bus</Text>
                   </View>
-                  <Text style={styles.tripValue}>{nextTrip.buses.bus_no}</Text>
+                  <Text style={styles.tripValue}>{nextTrip?.buses?.bus_no || 'N/A'}</Text>
                 </View>
                 
                 <View style={styles.tripDetailRow}>
                   <View style={styles.tripLabelContainer}>
-                    <Ionicons name="time" size={16} color={colors.secondaryText} />
-                    <Text style={styles.tripLabel}>Time</Text>
+                    <Ionicons name="time" size={14} color={colors.primaryAccent} />
+                    <Text style={[styles.tripLabel, { color: colors.primaryAccent, fontWeight: '600' }]}>Time</Text>
                   </View>
                   <Text style={styles.tripValueTime}>
-                    {nextTrip.schedules.start_time ? formatTripTime(nextTrip.schedules.start_time) : 'N/A'}
+                    {formatTripTime(nextTrip?.schedules?.start_time)}
                   </Text>
                 </View>
                 
-                <View style={styles.tripDetailRow}>
+                <View style={[styles.tripDetailRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
                   <View style={styles.tripLabelContainer}>
-                    <Ionicons name="information-circle" size={16} color={colors.secondaryText} />
+                    <Ionicons name="information-circle" size={14} color={colors.secondaryText} />
                     <Text style={styles.tripLabel}>Status</Text>
                   </View>
                   <View style={[styles.statusBadge, nextTrip.status === "En Route" ? styles.statusActive : styles.statusScheduled]}>
-                    <Text style={styles.statusText}>{nextTrip.status}</Text>
+                    <Text style={styles.statusText}>{nextTrip.status || 'Unknown'}</Text>
                   </View>
                 </View>
                 
-                <StyledButton 
-                  title={nextTrip.status === "En Route" ? "Continue Trip" : "Start Trip"} 
-                  onPress={() => router.push(`/trip?trip_id=${nextTrip.trip_id}`)} 
-                  style={{ marginTop: 20 }}
-                />
+                <TouchableOpacity 
+                  style={styles.startTripButton}
+                  onPress={() => router.push(`/trip?trip_id=${nextTrip.trip_id}`)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.startTripButtonText}>
+                    {nextTrip.status === "En Route" ? "Continue Trip" : "Start Trip"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.noTripContainer}>
-                <Ionicons name="checkmark-circle" size={50} color={colors.primaryAccent} />
-                <Text style={[styles.txt, { textAlign: 'center', marginTop: 12 }]}>
-                  You have no scheduled or en route trips.
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle-outline" size={64} color={colors.accentMint} />
+                <Text style={styles.emptyStateText}>
+                  No scheduled trips today
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  You're all caught up!
                 </Text>
               </View>
             )}
-          </Card>
+          </View>
         </ScrollView>
     </View>
   );
@@ -322,107 +349,127 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.mainBackground,
   },
-  scrollContent: {
-    padding: 16,
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerContainer: {
+  appBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    paddingVertical: 12,
+    paddingTop: Platform.OS === 'ios' ? 48 : 44,
+    paddingBottom: 12,
     paddingHorizontal: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    backgroundColor: colors.tableBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  headerTitleContainer: {
-    alignItems: 'center',
+  appBarCenter: {
     flex: 1,
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  appBarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: colors.primaryText,
   },
-  headerSubtitle: {
-    fontSize: 13,
-    color: colors.secondaryText,
-    marginTop: 2,
-  },
-  profileButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  logoutButton: {
-    padding: 8,
-    marginLeft: 4,
-  },
-  welcomeContainer: {
-    marginBottom: 20,
-    alignItems: 'center',
-    backgroundColor: colors.primaryAccent,
-    borderRadius: 16,
-    padding: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  welcomeText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#000000ff',
-    marginTop: 8,
-  },
-  cardShadow: {
-    marginBottom: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000000ff',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  titleContainer: {
+  appBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primaryAccent + '30',
+    gap: 8,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
+  iconButton: {
+    padding: 6,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  welcomeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: colors.tableBackground,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  welcomeIcon: {
+    marginRight: 12,
+  },
+  welcomeText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.primaryText,
-    marginLeft: 8,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: colors.tableBackground,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  actionLabel: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primaryText,
+    textAlign: 'center',
+  },
+  tripCard: {
+    backgroundColor: colors.tableBackground,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  tripHeader: {
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.border + '30',
+  },
+  tripTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primaryText,
   },
   txt: {
     color: colors.secondaryText,
@@ -431,9 +478,9 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
   tripDetailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border + '40',
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.border + '15',
     alignItems: 'center',
   },
   tripLabelContainer: {
@@ -442,90 +489,73 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
     gap: 8,
   },
   tripLabel: {
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.secondaryText,
-    fontSize: 15,
+    fontSize: 14,
   },
   tripValue: {
     color: colors.primaryText,
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
     flexShrink: 1,
     textAlign: 'right',
   },
   tripValueTime: {
-    color: colors.accent,
+    color: colors.primaryAccent,
     fontWeight: '700',
-    fontSize: 17,
+    fontSize: 15,
   },
   statusBadge: {
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   statusScheduled: {
-    backgroundColor: colors.infoBackground,
+    backgroundColor: colors.primaryAccent + '20',
   },
   statusActive: {
-    backgroundColor: colors.successBackground,
+    backgroundColor: colors.accentMint + '25',
   },
   statusText: {
     color: colors.primaryText,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 11,
   },
-  noTripContainer: {
+  emptyState: {
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  emptyStateText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primaryText,
+    marginTop: 16,
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  emptyStateSubtext: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.secondaryText,
+    marginTop: 4,
+    textAlign: 'center',
   },
   errorBox: {
-    backgroundColor: colors.dangerBackground || '#fee',
+    backgroundColor:'#fee',
     borderRadius: 8,
     padding: 15,
     marginBottom: 15,
     flexDirection: 'row',
     alignItems: 'center',
   },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   loadingText: {
     color: colors.secondaryText,
     marginTop: 10,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionText: {
-    marginTop: 10,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primaryText,
   },
   skeleton: {
     opacity: 0.6,
@@ -533,5 +563,30 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
   skeletonBox: {
     backgroundColor: colors.border,
     borderRadius: 8,
+  },
+  startTripButton: {
+    backgroundColor: colors.primaryAccent,
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primaryAccent,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  startTripButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

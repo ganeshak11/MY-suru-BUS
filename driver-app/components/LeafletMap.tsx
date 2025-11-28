@@ -18,9 +18,10 @@ type LeafletMapProps = {
 export const LeafletMap: React.FC<LeafletMapProps> = ({ location, stops = [] }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { latitude, longitude } = location.coords;
-  const stopsJson = JSON.stringify(stops);
 
-  const html = `
+  const html = React.useMemo(() => {
+    const stopsJson = JSON.stringify(stops);
+    return `
     <!DOCTYPE html>
     <html>
       <head>
@@ -88,8 +89,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({ location, stops = [] }) 
       </body>
     </html>
   `;
+  }, [latitude, longitude, stops]);
 
-  const MapContent = () => (
+  const renderMapContent = () => (
     <>
       <WebView
         originWhitelist={['*']}
@@ -109,11 +111,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({ location, stops = [] }) 
   return (
     <>
       <View style={styles.container}>
-        <MapContent />
+        {renderMapContent()}
       </View>
       <Modal visible={isFullscreen} animationType="slide">
         <View style={styles.fullscreenContainer}>
-          <MapContent />
+          {renderMapContent()}
         </View>
       </Modal>
     </>

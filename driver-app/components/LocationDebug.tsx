@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { LocationObject } from 'expo-location';
 import { useTheme } from '../contexts/ThemeContext';
 
 type Props = {
-  location: any;
+  location: LocationObject | null;
   isTracking: boolean;
 };
 
@@ -18,16 +19,16 @@ export const LocationDebug: React.FC<Props> = ({ location, isTracking }) => {
       <Text style={[styles.text, { color: colors.secondaryText }]}>
         Tracking: {isTracking ? '✓ Active' : '✗ Inactive'}
       </Text>
-      {location && (
+      {location?.coords && (
         <>
           <Text style={[styles.text, { color: colors.secondaryText }]}>
-            Lat: {location.coords.latitude.toFixed(6)}
+            Lat: {typeof location.coords.latitude === 'number' ? location.coords.latitude.toFixed(6) : 'N/A'}
           </Text>
           <Text style={[styles.text, { color: colors.secondaryText }]}>
-            Lng: {location.coords.longitude.toFixed(6)}
+            Lng: {typeof location.coords.longitude === 'number' ? location.coords.longitude.toFixed(6) : 'N/A'}
           </Text>
           <Text style={[styles.text, { color: colors.secondaryText }]}>
-            Accuracy: {location.coords.accuracy?.toFixed(1)}m
+            Accuracy: {typeof location.coords.accuracy === 'number' ? location.coords.accuracy.toFixed(1) : 'N/A'}m
           </Text>
         </>
       )}

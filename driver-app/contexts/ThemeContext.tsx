@@ -2,43 +2,95 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
-// --- THIS LINE IS THE FIX ---
 export const themeTokens = {
   light: {
-    mainBackground: '#f1f1f1ff',
-    cardBackground: '#ffffffff',
-    tableBackground: '#ffffff',
-    tableHeaderBackground: '#f1f1f1',
-    tableRowHoverBackground: '#f9f9f9',
-    primaryAccent: '#C8B6E2',
-    buttonText: '#333333',
-    primaryText: '#2b2020ff',
-    secondaryText: '#888888',
-    activeTabBackground: '#c8b6e2ff',
-    inactiveTabBackground: '#F5F7FA',
-    border: '#e0e0e0',
-    accent: '#C8B6E2',
-    infoBackground: '#e3f2fd',
-    successBackground: '#e8f5e9',
-    dangerBackground: '#ffebee',
+    // Surfaces & Backgrounds
+    mainBackground: '#F3F5FF',      // Indigo-tinted app background
+    cardBackground: '#FFFFFF',      // Elevated cards
+    tableBackground: '#FFFFFF',     // Tables and elevated surfaces
+    tableHeaderBackground: '#F7F8FC', // Subtle header distinction
+    tableRowHoverBackground: '#F3F5FF',
+
+    // Primary Brand Colors
+    primaryAccent: '#4B39FF',       // Deep sleek indigo
+    primaryDark: '#392BCE',         // Primary pressed state
+    primaryLight: '#7F73FF',        // Soft indigo tint for highlights
+    
+    // Functional Colors
+    accentMint: '#34C759',          // Success / On-time / Completed
+    warning: '#FF9F0A',             // Delays / Warnings
+    error: '#FF453A',               // Stop trip / Critical alerts
+    info: '#ADB5BD',                // Secondary icons / Info
+
+    // Button Colors
+    buttonText: '#FFFFFF',
+    buttonPrimary: '#4B39FF',
+    buttonPrimaryPressed: '#392BCE',
+
+    // Text Colors
+    primaryText: '#0A0A16',         // High emphasis
+    secondaryText: '#4B4E5D',       // Medium emphasis
+    hintText: '#8E90A6',            // Placeholders / Hints
+
+    // Input & Interactive
+    inputBackground: '#F7F8FC',
+    border: '#E2E6F2',
+    divider: '#E2E6F2',
+
+    // Tab & Navigation
+    activeTabBackground: '#4B39FF',
+    inactiveTabBackground: '#F7F8FC',
+
+    // Timeline & Map
+    timelineCompleted: '#34C759',   // Completed stops
+    timelineUpcoming: '#7F73FF',    // Upcoming stops
+    timelineActive: '#4B39FF',      // Active bus/route
+    dangerBackground: '#FFF5F5',
   },
+
   dark: {
-    mainBackground: '#1e1e2fff',
-    cardBackground: '#2a2a40',
-    tableBackground: '#2a2a40',
-    tableHeaderBackground: '#1e1e2f',
-    tableRowHoverBackground: '#3c3c55',
-    primaryAccent: '#8a63d2ff',
-    buttonText: '#ffffff',
-    primaryText: '#ffffffff',
-    secondaryText: '#b0b0c0ff',
-    activeTabBackground: '#895fd8ff',
-    inactiveTabBackground: '#7d7dd4ff',
-    border: '#3c3c55',
-    accent: '#8a63d2ff',
-    infoBackground: '#1e3a5f',
-    successBackground: '#1e4620',
-    dangerBackground: '#4a1f1f',
+    // Surfaces & Backgrounds
+    mainBackground: '#0F0F17',      // Deep dark background
+    cardBackground: '#1A1A25',      // Elevated cards
+    tableBackground: '#1A1A25',     // Tables and elevated surfaces
+    tableHeaderBackground: '#1F1F2A', // Subtle header distinction
+    tableRowHoverBackground: '#1C1A33',
+
+    // Primary Brand Colors
+    primaryAccent: '#7F73FF',       // Soft indigo for dark mode
+    primaryDark: '#4B39FF',         // Deeper variant
+    primaryLight: '#9B91FF',        // Lighter tint for highlights
+    
+    // Functional Colors
+    accentMint: '#34C759',          // Success / On-time / Completed
+    warning: '#FF9F0A',             // Delays / Warnings
+    error: '#FF453A',               // Stop trip / Critical alerts
+    info: '#ADB5BD',                // Secondary icons / Info
+
+    // Button Colors
+    buttonText: '#FFFFFF',
+    buttonPrimary: '#7F73FF',
+    buttonPrimaryPressed: '#6B5FE6',
+
+    // Text Colors
+    primaryText: '#FFFFFF',         // High emphasis
+    secondaryText: '#A9AEC4',       // Medium emphasis
+    hintText: '#6E7186',            // Placeholders / Hints
+
+    // Input & Interactive
+    inputBackground: '#1F1F2A',
+    border: '#2E3040',
+    divider: '#2E3040',
+
+    // Tab & Navigation
+    activeTabBackground: '#4B39FF',
+    inactiveTabBackground: '#1F1F2A',
+
+    // Timeline & Map
+    timelineCompleted: '#34C759',   // Completed stops
+    timelineUpcoming: '#7F73FF',    // Upcoming stops
+    timelineActive: '#7F73FF',      // Active bus/route
+    dangerBackground: '#2A1A1A',
   },
 };
 
@@ -57,11 +109,12 @@ const ThemeContext = createContext<ThemeContextShape | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const system = useColorScheme();
-  const initial: ThemeName = system === 'dark' ? 'dark' : 'light';
-  const [theme, setTheme] = useState<ThemeName>(initial);
+  const systemColorScheme = useColorScheme();
+  const initialTheme: ThemeName = systemColorScheme === 'dark' ? 'dark' : 'light';
+  const [theme, setTheme] = useState<ThemeName>(initialTheme);
 
-  const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  const toggleTheme = () =>
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
 
   const isDark = theme === 'dark';
 
@@ -81,5 +134,3 @@ export const useTheme = () => {
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider');
   return ctx;
 };
-
-export default ThemeContext;

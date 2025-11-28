@@ -288,6 +288,7 @@ const RouteDetailsPage: React.FC = () => {
     },
     stopsCard: {
       marginBottom: 16,
+      marginHorizontal: -4,
       borderRadius: 20,
       backgroundColor: colors.cardBackground,
       ...Platform.select({
@@ -303,6 +304,7 @@ const RouteDetailsPage: React.FC = () => {
     cardHeader: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
       marginBottom: 16,
       paddingBottom: 14,
       paddingHorizontal: 20,
@@ -316,7 +318,6 @@ const RouteDetailsPage: React.FC = () => {
       fontWeight: '700',
       color: colors.primaryText,
       marginLeft: 8,
-      flex: 1,
     },
 
     progressBadge: {

@@ -33,6 +33,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
       } else {
         setIsLoading(false);
       }
+    }).catch((err: any) => {
+      console.error('Session fetch error:', err?.message || err);
+      setIsLoading(false);
     });
 
     // 2. Listen for auth changes (login/logout)
@@ -42,7 +45,9 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
       setSession(session);
       // On change, re-fetch profile if logged in, or clear it if logged out
       if (session) {
-        fetchDriverProfile(session.user.id);
+        fetchDriverProfile(session.user.id).catch((err: any) => {
+          console.error('Profile fetch on auth change error:', err?.message || err);
+        });
       } else {
         setDriver(null);
         setIsLoading(false);
@@ -56,16 +61,32 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchDriverProfile = async (auth_user_id: string) => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 15000)
+      );
+      
+      const fetchPromise = supabase
         .from('drivers')
         .select('*')
         .eq('auth_user_id', auth_user_id)
-        .single(); // We expect only one driver for one auth user
+        .single();
+      
+      const { data, error } = await Promise.race([
+        fetchPromise,
+        timeoutPromise
+      ]) as any;
 
-      if (error) throw error;
-      setDriver(data);
-    } catch (err) {
-      console.error('Profile fetch exception:', err);
+      if (error) {
+        const errorMsg = error?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+        console.error('Profile fetch error:', errorMsg);
+        setDriver(null);
+      } else {
+        setDriver(data);
+      }
+    } catch (err: any) {
+      const errorMsg = err?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+      console.error('Profile fetch exception:', errorMsg);
+      setDriver(null);
     } finally {
       setIsLoading(false);
     }
@@ -74,10 +95,15 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (err) {
-      console.error('Sign out error:', err);
-      throw err;
+      if (error) {
+        const errorMsg = error?.message?.replace(/[\r\n]/g, ' ') || 'Sign out failed';
+        console.error('Sign out error:', errorMsg);
+        throw new Error(errorMsg);
+      }
+    } catch (err: any) {
+      const errorMsg = err?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
+      console.error('Sign out exception:', errorMsg);
+      throw new Error(errorMsg);
     }
   };
 

@@ -9,11 +9,12 @@ interface CardProps extends ViewProps {
   children: React.ReactNode;
 }
 
-export const Card: React.FC<CardProps> = ({ children, style }) => {
+export const Card: React.FC<CardProps> = ({ children, style, ...props }) => {
   const { colors } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <View style={[createStyles(colors).card, style]}>
+    <View style={[styles.card, style]} {...props}>
       {children}
     </View>
   );
@@ -25,16 +26,11 @@ const createStyles = (colors: typeof themeTokens.light) =>
     card: {
       backgroundColor: colors.cardBackground,
       borderRadius: 12,
-      padding: 16,
-      marginBottom: 16,
-      // Professional touch: add a subtle shadow
+      padding: 20,
       shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 3.84,
-      elevation: 5,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 3,
     },
   });

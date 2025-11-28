@@ -3,29 +3,21 @@ import MapView, { Marker, Region, UrlTile } from "react-native-maps";
 import { StyleSheet, View, Text } from "react-native";
 import { LocationObject } from "expo-location";
 
-type RouteStop = {
-  id: string | number;
-  name: string;
-  latitude: number;
-  longitude: number;
-};
-
 type LiveMapProps = {
   location: LocationObject;
-  stops?: RouteStop[]; // optional prop for route stops
 };
 
-export const LiveMap: React.FC<LiveMapProps> = ({ location, stops = [] }) => {
+export const LiveMap: React.FC<LiveMapProps> = ({ location }) => {
   const mapRef = useRef<MapView>(null);
   const [mapReady, setMapReady] = useState(false);
   const { latitude, longitude } = location.coords;
 
-  const region: Region = {
+  const region: Region = React.useMemo(() => ({
     latitude,
     longitude,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
-  };
+  }), [latitude, longitude]);
 
   useEffect(() => {
     if (mapRef.current) {
@@ -46,7 +38,9 @@ export const LiveMap: React.FC<LiveMapProps> = ({ location, stops = [] }) => {
         rotateEnabled={false}
         pitchEnabled={false}
       >
+        {/* OpenStreetMap tile layer for map rendering */}
         <UrlTile
+          // Tile URL pattern: {z}=zoom level, {x}=tile column, {y}=tile row
           urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           maximumZ={19}
           minimumZ={1}

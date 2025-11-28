@@ -1,5 +1,5 @@
 // app/index.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   TextInput,
@@ -10,6 +10,9 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,9 +32,40 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // --- ANIMATION ---
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(1)).current;
 
   // --- STYLES ---
   const styles = createStyles(colors);
+  
+  // --- EFFECTS ---
+  useEffect(() => {
+    // Logo scale-in animation
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+    
+    // Logo glow pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1.1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   // --- THE REDIRECT useEffect HAS BEEN REMOVED ---
   // The RootLayout now handles all navigation.
@@ -70,7 +104,7 @@ export default function LoginScreen() {
   // (because _layout is about to redirect them away from this screen)
   if (isSessionLoading || session) {
     return (
-      <View style={styles.container}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.mainBackground }}>
         <ActivityIndicator size="large" color={colors.primaryAccent} />
       </View>
     );
@@ -78,21 +112,49 @@ export default function LoginScreen() {
 
   // Only render form if not loading and no session
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <LinearGradient
-        colors={['#8b5cf6', '#C8B6E2', '#f3f4f6']}
-        style={styles.gradient}
-      >
-        <View style={styles.container}>
-          <View style={styles.logoContainer}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="bus" size={60} color="#fff" />
-            </View>
-            <Text style={styles.title}>MY(suru) BUS</Text>
-            <Text style={styles.subtitle}>Driver Portal</Text>
-          </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <LinearGradient
+          colors={[
+            colors.primaryAccent + 'E6',
+            colors.primaryAccent + '99',
+            colors.mainBackground + 'CC',
+            colors.mainBackground
+          ]}
+          locations={[0, 0.3, 0.6, 1]}
+          style={styles.gradient}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Animated.View
+              style={[
+                styles.logoContainer,
+                {
+                  transform: [{ scale: scaleAnim }],
+                },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.iconCircle,
+                  {
+                    transform: [{ scale: glowAnim }],
+                  },
+                ]}
+              >
+                <Ionicons name="bus" size={54} color="#fff" />
+              </Animated.View>
+              <Text style={styles.title}>MY(suru) BUS</Text>
+              <Text style={styles.subtitle}>Driver Portal</Text>
+            </Animated.View>
 
-          <View style={styles.formContainer}>
+            <View style={styles.formContainer}>
 
             <View style={styles.inputContainer}>
               <Ionicons name="mail-outline" size={20} color={colors.secondaryText} style={styles.inputIcon} />
@@ -133,10 +195,11 @@ export default function LoginScreen() {
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </TouchableOpacity>
             )}
-          </View>
-        </View>
-      </LinearGradient>
-    </TouchableWithoutFeedback>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -146,29 +209,30 @@ const createStyles = (colors: typeof themeTokens.light) =>
     gradient: {
       flex: 1,
     },
-    container: {
-      flex: 1,
+    scrollContent: {
+      flexGrow: 1,
       justifyContent: 'center',
       padding: 24,
+      paddingTop: Platform.OS === 'ios' ? 60 : 40,
     },
     logoContainer: {
       alignItems: 'center',
-      marginBottom: 50,
+      marginBottom: 60,
     },
     iconCircle: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: 'rgba(139, 92, 246, 0.9)',
+      width: 108,
+      height: 108,
+      borderRadius: 54,
+      backgroundColor: colors.primaryAccent,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 20,
+      marginBottom: 24,
       ...Platform.select({
         ios: {
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
+          shadowColor: colors.primaryAccent,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.4,
+          shadowRadius: 12,
         },
         android: {
           elevation: 8,
@@ -178,30 +242,31 @@ const createStyles = (colors: typeof themeTokens.light) =>
     title: {
       fontSize: 32,
       fontWeight: '800',
-      color: '#fff',
+      color: colors.primaryText,
       marginBottom: 8,
-      textShadowColor: 'rgba(0, 0, 0, 0.3)',
+      textShadowColor: 'rgba(0, 0, 0, 0.15)',
       textShadowOffset: { width: 0, height: 2 },
       textShadowRadius: 4,
     },
     subtitle: {
       fontSize: 18,
-      color: '#fff',
+      color: colors.secondaryText,
       fontWeight: '500',
     },
     formContainer: {
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      backgroundColor: colors.tableBackground,
       borderRadius: 20,
       padding: 24,
+      marginTop: -28,
       ...Platform.select({
         ios: {
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
         },
         android: {
-          elevation: 8,
+          elevation: 6,
         },
       }),
     },
@@ -212,20 +277,22 @@ const createStyles = (colors: typeof themeTokens.light) =>
       borderRadius: 12,
       marginBottom: 16,
       paddingHorizontal: 16,
+      paddingVertical: 4,
       borderWidth: 1,
       borderColor: colors.border,
     },
     inputIcon: {
       marginRight: 12,
+      alignSelf: 'center',
     },
     input: {
       flex: 1,
-      height: 50,
+      height: 52,
       color: colors.primaryText,
       fontSize: 16,
     },
     button: {
-      backgroundColor: '#8b5cf6',
+      backgroundColor: colors.primaryAccent,
       paddingVertical: 16,
       borderRadius: 12,
       flexDirection: 'row',
@@ -235,13 +302,13 @@ const createStyles = (colors: typeof themeTokens.light) =>
       gap: 8,
       ...Platform.select({
         ios: {
-          shadowColor: '#8b5cf6',
+          shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 8,
+          shadowOpacity: 0.2,
+          shadowRadius: 10,
         },
         android: {
-          elevation: 6,
+          elevation: 5,
         },
       }),
     },

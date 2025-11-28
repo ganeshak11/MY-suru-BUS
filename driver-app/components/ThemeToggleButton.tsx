@@ -5,11 +5,12 @@ import { useTheme } from '../contexts/ThemeContext';
 
 export const ThemeToggleButton: React.FC = () => {
   const { isDark, toggleTheme, colors } = useTheme();
+  const iconName = isDark ? 'sunny' : 'moon';
 
   return (
     <TouchableOpacity onPress={toggleTheme} style={styles.button}>
       <Ionicons 
-        name={isDark ? 'sunny' : 'moon'} 
+        name={iconName} 
         size={24} 
         color={colors.primaryText} 
       />
