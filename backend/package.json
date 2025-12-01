@@ -1,0 +1,26 @@
+{
+  "name": "my-suru-bus-backend",
+  "version": "1.0.0",
+  "description": "Manual backend for MY(suru) BUS app",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "init-db": "node src/database/init.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.6",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "socket.io": "^4.7.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["bus", "tracking", "api"],
+  "author": "Your Name",
+  "license": "MIT"
+}
