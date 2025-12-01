@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
+import { BusAPI } from '../../lib/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -84,115 +84,31 @@ const RouteDetailsPage: React.FC = () => {
           return;
         }
 
-        const { data: routeData, error: routeErr } = await supabase
-          .from('routes')
-          .select('route_id, route_name')
-          .eq('route_id', rid)
-          .single();
+        const routeData = await BusAPI.getRoute(rid);
         
-        if (routeErr || !routeData) {
-          console.error('Error fetching route:', routeErr);
+        if (!routeData) {
+          console.error('Error fetching route');
           setLoading(false);
           return;
         }
 
-        const { data: stopsData, error: stopsErr } = await supabase
-          .from('route_stops')
-          .select('stop_sequence, time_offset_from_start, stops(stop_id, stop_name, latitude, longitude, geofence_radius_meters)')
-          .eq('route_id', rid)
-          .order('stop_sequence', { ascending: true });
-
-        if (stopsErr) {
-          console.error('Error fetching stops:', stopsErr);
-        } else if (stopsData) {
-          const formattedStops: StopDetails[] = stopsData.map((item: any) => {
-            let offsetMinutes = 0;
-            if (item.time_offset_from_start) {
-              const [hours, minutes] = item.time_offset_from_start.split(':').map(Number);
-              offsetMinutes = (hours * 60) + minutes;
-            }
-            return {
-              ...item.stops,
-              latitude: parseFloat(item.stops.latitude),
-              longitude: parseFloat(item.stops.longitude),
-              geofence_radius_meters: item.stops.geofence_radius_meters || 50,
-              stop_sequence: item.stop_sequence,
-              status: 'Pending' as const,
-              time_offset_from_start: offsetMinutes,
-            };
-          });
+        // Get stops from route data (already included in getRoute response)
+        if (routeData.stops && Array.isArray(routeData.stops)) {
+          const formattedStops: StopDetails[] = routeData.stops.map((stop: any) => ({
+            stop_id: stop.stop_id,
+            stop_name: stop.stop_name,
+            latitude: parseFloat(stop.latitude),
+            longitude: parseFloat(stop.longitude),
+            geofence_radius_meters: stop.geofence_radius_meters || 50,
+            stop_sequence: stop.stop_sequence,
+            status: 'Pending' as const,
+            time_offset_from_start: stop.time_offset_from_start || 0,
+          }));
           setStops(formattedStops);
         }
 
-        const { data: scheduleData, error: schedErr } = await supabase
-          .from('schedules')
-          .select('schedule_id, start_time')
-          .eq('route_id', rid)
-          .order('start_time', { ascending: true });
-        
-        if (!schedErr && scheduleData) {
-          const { data: activeTrips } = await supabase
-            .from('trips')
-            .select('schedule_id, trip_id')
-            .in('schedule_id', scheduleData.map(s => s.schedule_id))
-            .eq('status', 'En Route');
-          
-          const activeScheduleIds = new Set(activeTrips?.map(t => t.schedule_id) || []);
-          const firstActiveScheduleId = activeTrips?.[0]?.schedule_id || null;
-          const firstActiveTripId = activeTrips?.[0]?.trip_id || null;
-          
-          setSchedules(scheduleData.map(s => {
-            const trip = activeTrips?.find(t => t.schedule_id === s.schedule_id);
-            return {
-              schedule_id: s.schedule_id,
-              start_time: s.start_time,
-              isActive: activeScheduleIds.has(s.schedule_id),
-              trip_id: trip?.trip_id
-            };
-          }));
-          
-          setActiveScheduleId(firstActiveScheduleId);
-          setActiveTripId(firstActiveTripId);
-          
-          const initialStartTime = firstActiveScheduleId 
-            ? scheduleData.find(s => s.schedule_id === firstActiveScheduleId)?.start_time || scheduleData[0]?.start_time
-            : scheduleData[0]?.start_time;
-          setSelectedStartTime(initialStartTime);
-          setRoute({ ...routeData, start_time: initialStartTime });
-
-          if (firstActiveTripId) {
-            const { data: arrivalData } = await supabase
-              .from('trip_stop_times')
-              .select('stop_id, actual_arrival_time')
-              .eq('trip_id', firstActiveTripId)
-              .not('actual_arrival_time', 'is', null);
-            
-            if (arrivalData) {
-              setStops(prev => prev.map(stop => {
-                const arrival = arrivalData.find(a => a.stop_id === stop.stop_id);
-                return arrival ? { ...stop, status: 'Completed' as const, actual_arrival_time: arrival.actual_arrival_time } : stop;
-              }));
-            }
-          }
-        } else {
-          setRoute(routeData);
-        }
-
-        const { data: tripsData, error: tripsErr } = await supabase
-          .from('trips')
-          .select('bus_id, schedules!inner(route_id)')
-          .eq('schedules.route_id', rid);
-
-        if (!tripsErr && tripsData) {
-          const busIds = Array.from(new Set(tripsData.map(t => t.bus_id)));
-          if (busIds.length > 0) {
-            const { data: busesData, error: busesErr } = await supabase
-              .from('buses')
-              .select('*')
-              .in('bus_id', busIds);
-            if (!busesErr) setBusLocations(busesData || []);
-          }
-        }
+        // Set route without schedules for now
+        setRoute(routeData);
       } catch (e) {
         console.error(e);
       }
@@ -200,47 +116,8 @@ const RouteDetailsPage: React.FC = () => {
     };
 
     load();
-
-    const busSubscription = supabase
-      .channel('public:buses')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'buses' }, (payload) => {
-        setBusLocations((prev) => {
-          const exists = prev.find(b => b.bus_id === payload.new.bus_id);
-          if (exists) {
-            return prev.map((bus) => bus.bus_id === payload.new.bus_id ? payload.new : bus);
-          }
-          return prev;
-        });
-      })
-      .subscribe();
-
-    const tripStopSubscription = activeTripId ? supabase
-      .channel(`trip_stop_times:${activeTripId}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trip_stop_times', filter: `trip_id=eq.${activeTripId}` }, (payload) => {
-        const arrivedStopId = payload.new.stop_id;
-        const actualArrivalTime = payload.new.actual_arrival_time;
-        setStops((prev) => {
-          const updatedStops = prev.map((s) => 
-            s.stop_id === arrivedStopId 
-              ? { ...s, status: 'Completed' as const, actual_arrival_time: actualArrivalTime } 
-              : s
-          );
-          const nextIndex = updatedStops.findIndex((s) => s.status === 'Pending');
-          if (nextIndex !== -1) {
-            setCurrentStopIndex(nextIndex);
-          }
-          return updatedStops;
-        });
-      })
-      .subscribe() : null;
-
-    return () => {
-      supabase.removeChannel(busSubscription);
-      if (tripStopSubscription) {
-        supabase.removeChannel(tripStopSubscription);
-      }
-    };
-  }, [route_id, activeTripId]);
+    // Real-time updates will be added later with WebSocket
+  }, [route_id]);
 
   const styles = React.useMemo(() => StyleSheet.create({
     container: { flex: 1, padding: 16 },

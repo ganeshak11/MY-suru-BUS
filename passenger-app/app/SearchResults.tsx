@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, FlatList, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../lib/supabaseClient';
+import { BusAPI } from '../lib/apiClient';
 import { Icon } from 'react-native-elements';
 import { useTheme } from '../contexts/ThemeContext';
 import { Header } from '../components/Header';
@@ -98,15 +98,8 @@ const SearchResults = () => {
     const fetchBusData = async () => {
       setLoading(true);
       setError(null);
-      let busQuery = supabase.from('buses').select(`
-        bus_id,
-        bus_no,
-        current_trip:trips!current_trip_id(
-          schedule:schedules(
-            route:routes(route_id, route_name, route_no)
-          )
-        )
-      `);
+      // Fetch all buses from API
+      let allBuses = await BusAPI.getAllBuses();
 
       if (type === 'route' && query) {
         // query is expected like "Source to Destination" from the main screen

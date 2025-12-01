@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, ScrollView, FlatList, Alert, RefreshControl, Share, Platform } from 'react-native';
 import { Icon, Input } from 'react-native-elements';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabaseClient';
+import { BusAPI } from '../lib/apiClient';
 import SplashScreen from './SplashScreen';
 import { useTheme } from '../contexts/ThemeContext';
 import { Header } from '../components/Header';
@@ -33,19 +33,10 @@ const App: React.FC = () => {
 
   const fetchRouteData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('routes')
-        .select('route_id, route_no, route_name');
-      
-      if (error) {
-        console.error('Error fetching route details:', error);
-        setAllRouteDetails([]);
-        return;
-      }
-      
+      const data = await BusAPI.getAllRoutes();
       setAllRouteDetails(data || []);
     } catch (e) {
-      console.error(e);
+      console.error('Error fetching routes:', e);
       setAllRouteDetails([]);
     }
   };
@@ -83,26 +74,11 @@ const App: React.FC = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('stops')
-        .select('stop_name');
-
-      if (error) {
-        console.error('Suggestion fetch error', error);
-        setSuggestions([]);
-        return;
-      }
-
-      const queryWords = query.toLowerCase().split(/\s+/);
-      const filtered = (data || []).filter((d: any) => {
-        const stopName = d.stop_name.toLowerCase();
-        return queryWords.every(word => stopName.includes(word));
-      });
-
-      const unique = Array.from(new Set(filtered.map((d: any) => d.stop_name))).filter(Boolean);
+      const data = await BusAPI.searchStops(query);
+      const unique = Array.from(new Set(data.map((d: any) => d.stop_name))).filter(Boolean);
       setSuggestions(type === 'destination' && source ? unique.filter(s => s !== source) : unique);
     } catch (e) {
-      console.error(e);
+      console.error('Error fetching suggestions:', e);
       setSuggestions([]);
     }
   }, [source]);
