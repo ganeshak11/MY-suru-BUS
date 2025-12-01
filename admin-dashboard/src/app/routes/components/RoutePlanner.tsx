@@ -21,6 +21,7 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
   const [allStops, setAllStops] = useState<Stop[]>([]);
   const [selectedStops, setSelectedStops] = useState<StopWithOffset[]>([]);
   const [routeName, setRouteName] = useState('');
+  const [routeNo, setRouteNo] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
   // --- ADDED: State for errors ---
@@ -62,9 +63,9 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
   };
 
   const handleSaveRoute = async () => {
-    setError(null); // Clear old errors
-    if (!routeName) {
-      setError('Route Name is required.');
+    setError(null);
+    if (!routeNo || !routeName) {
+      setError('Route Number and Route Name are required.');
       return;
     }
     if (selectedStops.length < 2) {
@@ -75,6 +76,7 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
     setIsSaving(true);
 
     const payload = {
+      routeNo: routeNo,
       routeName: routeName,
       stops: selectedStops.map((stop, index) => ({
         stop_id: stop.stop_id,
@@ -93,11 +95,9 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
       console.error('Error saving route:', error);
       setError(`Error saving route: ${error.message}`);
     } else {
-      // --- UPDATED: Use success callback instead of alert ---
-      // alert('Route saved successfully!');
       setRouteName('');
+      setRouteNo('');
       setSelectedStops([]);
-      // Call the success prop (which will trigger setView('list') in the parent)
       onSaveSuccess();
     }
 
@@ -123,6 +123,8 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
           <RoutePlannerPanel 
             routeName={routeName}
             setRouteName={setRouteName}
+            routeNo={routeNo}
+            setRouteNo={setRouteNo}
             selectedStops={selectedStops}
             onRemoveStop={handleRemoveStopFromRoute}
             onReorderStops={handleReorderStops}

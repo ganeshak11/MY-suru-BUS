@@ -10,14 +10,16 @@ interface BusResult {
   bus_id: string;
   bus_no: string;
   route_id?: string;
+  route_no: string;
   driver_id?: string | null;
-  routes?: { route_id: string; route_name: string; }[] | null;
+  routes?: { route_id: string; route_no: string; route_name: string; }[] | null;
   current_trip: {
     trip_id: number;
     schedule: {
       route: {
         route_id: number;
         route_name: string;
+        route_no: string;
       }
     }
   } | null;
@@ -101,7 +103,7 @@ const SearchResults = () => {
         bus_no,
         current_trip:trips!current_trip_id(
           schedule:schedules(
-            route:routes(route_id, route_name)
+            route:routes(route_id, route_name, route_no)
           )
         )
       `);
@@ -232,11 +234,13 @@ const SearchResults = () => {
             return {
               bus_id: b.bus_id,
               bus_no: b.bus_no,
+              route_no: route.route_no,
               driver_id: b.current_trip?.driver_id,
               route_id: route.route_id,
               routes: [{
                 route_id: route.route_id,
                 route_name: route.route_name,
+                route_no: route.route_no,
               }],
               current_trip: b.current_trip
             };
@@ -244,7 +248,7 @@ const SearchResults = () => {
           
           const { data: tripData } = await supabase
             .from('trips')
-            .select('schedules(route_id, routes(route_id, route_name))')
+            .select('schedules(route_id, routes(route_id, route_name, route_no))')
             .eq('bus_id', b.bus_id)
             .limit(1)
             .single();
@@ -254,11 +258,13 @@ const SearchResults = () => {
           return {
             bus_id: b.bus_id,
             bus_no: b.bus_no,
+            route_no: tripRoute?.route_no,
             driver_id: null,
             route_id: tripRoute?.route_id,
             routes: tripRoute ? [{
               route_id: tripRoute.route_id,
               route_name: tripRoute.route_name,
+              route_no: tripRoute.route_no,
             }] : null,
             current_trip: b.current_trip
           };
@@ -298,7 +304,7 @@ const SearchResults = () => {
         }}
       >
         <View style={styles.busCard}>
-          <Text style={styles.busNumber}>{item.bus_no}</Text>
+          <Text style={styles.busNumber}>{item.routes?.[0]?.route_no || item.route_no || 'N/A'}</Text>
           {hasRoute && item.routes?.[0] && <Text style={styles.routeName}>Route: {item.routes[0].route_name}</Text>}
         </View>
       </TouchableOpacity>

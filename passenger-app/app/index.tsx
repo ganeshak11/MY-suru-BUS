@@ -8,102 +8,51 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Header } from '../components/Header';
 
 
-interface BusResult {
-  bus_id: string;
-  bus_no: string;
-  route_id?: string;
-  driver_id?: string;
-  routes?: { route_id: string; route_name: string; }[] | null;
+interface RouteResult {
+  route_id: string;
+  route_no: string;
+  route_name: string;
 }
 
 const App: React.FC = () => {
   // (systemTheme below) removed direct `theme` to allow local override
   const [activeTab, setActiveTab] = useState<'Route Search' | 'Bus Number Search'>('Route Search');
-  const [recentRouteSearches, setRecentRouteSearches] = useState<string[]>([]);
-  const [recentBusNumberSearches, setRecentBusNumberSearches] = useState<string[]>([]);
+
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
-  const [busNumber, setBusNumber] = useState('');
+  const [routeNumber, setRouteNumber] = useState('');
   const [sourceSuggestions, setSourceSuggestions] = useState<string[]>([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState<string[]>([]);
   const [isSourceFocused, setIsSourceFocused] = useState(false);
   const [isDestinationFocused, setIsDestinationFocused] = useState(false);
-  const [allBusDetails, setAllBusDetails] = useState<any[]>([]);
+  const [allRouteDetails, setAllRouteDetails] = useState<RouteResult[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { theme, isDark, toggleTheme, colors: currentColors } = useTheme();
 
-  const fetchBusData = async () => {
+  const fetchRouteData = async () => {
     try {
-      const { data, error } = await supabase.from('buses').select(`
-        bus_id,
-        bus_no,
-        current_trip:trips!current_trip_id (
-          trip_id,
-          driver_id,
-          schedule:schedules (
-            route:routes (
-              route_id,
-              route_name
-            )
-          )
-        )
-      `);
+      const { data, error } = await supabase
+        .from('routes')
+        .select('route_id, route_no, route_name');
+      
       if (error) {
-        console.error('Error fetching all bus details:', error);
-        setAllBusDetails([]);
+        console.error('Error fetching route details:', error);
+        setAllRouteDetails([]);
         return;
-      } else {
-        const busData = data || [];
-        const augmented = await Promise.all(busData.map(async (b: any) => {
-          const route = b.current_trip?.schedule?.route;
-          
-          if (route) {
-            return {
-              bus_id: b.bus_id,
-              bus_no: b.bus_no,
-              driver_id: b.current_trip?.driver_id,
-              route_id: route.route_id,
-              routes: [{
-                route_id: route.route_id,
-                route_name: route.route_name,
-              }]
-            };
-          }
-          
-          const { data: tripData } = await supabase
-            .from('trips')
-            .select('schedules(route_id, routes(route_id, route_name))')
-            .eq('bus_id', b.bus_id)
-            .limit(1)
-            .single();
-          
-          const schedules = tripData?.schedules as any;
-          const tripRoute = schedules?.routes;
-          return {
-            bus_id: b.bus_id,
-            bus_no: b.bus_no,
-            driver_id: null,
-            route_id: tripRoute?.route_id,
-            routes: tripRoute ? [{
-              route_id: tripRoute.route_id,
-              route_name: tripRoute.route_name,
-            }] : null
-          };
-        }));
-
-        setAllBusDetails(augmented || []);
       }
+      
+      setAllRouteDetails(data || []);
     } catch (e) {
       console.error(e);
-      setAllBusDetails([]);
+      setAllRouteDetails([]);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchBusData();
+    await fetchRouteData();
     setRefreshing(false);
   };
 
@@ -121,7 +70,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'Bus Number Search') {
       setLoading(true);
-      fetchBusData().finally(() => setLoading(false));
+      fetchRouteData().finally(() => setLoading(false));
     }
   }, [activeTab]);
 
@@ -161,7 +110,6 @@ const App: React.FC = () => {
   const handleFindRoutes = async () => {
     if (!source || !destination) return;
     const newSearch = `${source} to ${destination}`;
-    setRecentRouteSearches(prev => [newSearch, ...prev.filter(s => s !== newSearch)].slice(0, 5));
     setSource('');
     setDestination('');
     router.push({ pathname: '/SearchResults', params: { query: newSearch, type: 'route' } });
@@ -176,15 +124,15 @@ const App: React.FC = () => {
     setDestination(s);
   };
 
-  // Filter all buses by the current busNumber input (case-insensitive).
-  const filteredBusDetails = useMemo(() => {
-    if (!busNumber) return allBusDetails;
-    const q = busNumber.toString().toLowerCase();
-    return (allBusDetails || []).filter((b: BusResult) => {
-      if (!b || !b.bus_no) return false;
-      return b.bus_no.toLowerCase().includes(q);
+  // Filter all routes by the current routeNumber input (case-insensitive).
+  const filteredRouteDetails = useMemo(() => {
+    if (!routeNumber) return allRouteDetails;
+    const q = routeNumber.toString().toLowerCase();
+    return (allRouteDetails || []).filter((r: RouteResult) => {
+      if (!r || !r.route_no) return false;
+      return r.route_no.toLowerCase().includes(q);
     });
-  }, [allBusDetails, busNumber]);
+  }, [allRouteDetails, routeNumber]);
 
   const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: currentColors.mainBackground, paddingHorizontal: 20, paddingTop: 40 },
@@ -209,11 +157,7 @@ const App: React.FC = () => {
     suggestionsContainer: { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: currentColors.cardBackground, borderRadius: 10, zIndex: 1, maxHeight: 200, overflow: 'hidden', elevation: 3 },
     suggestionItem: { padding: 12 },
     suggestionText: { color: currentColors.primaryText, fontSize: 16 },
-    recentSearchesContainer: { marginTop: 20, backgroundColor: currentColors.cardBackground, borderRadius: 15, padding: 20 },
-    recentSearchesTitle: { fontSize: 18, fontWeight: 'bold', color: currentColors.primaryText, marginBottom: 10 },
-    recentSearchItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: currentColors.secondaryText, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    recentSearchText: { color: currentColors.primaryText, fontSize: 16 },
-    clearButton: { color: currentColors.primaryAccent, fontWeight: 'bold' },
+
     busCard: { 
       backgroundColor: currentColors.cardBackground, 
       padding: 15, 
@@ -225,7 +169,7 @@ const App: React.FC = () => {
       shadowRadius: 4,
       elevation: 3,
     },
-  busNumber: { fontSize: 22, fontWeight: '900', marginBottom: 6, color: currentColors.primaryAccent },
+  routeNumber: { fontSize: 22, fontWeight: '900', marginBottom: 6, color: currentColors.primaryAccent },
     routeName: { fontSize: 16, marginBottom: 5, color: currentColors.primaryText },
     routePoints: { fontSize: 14, color: currentColors.secondaryText, marginBottom: 5 },
     location: { fontSize: 14, color: currentColors.secondaryText },
@@ -244,7 +188,7 @@ const App: React.FC = () => {
       shadowRadius: 6,
       elevation: 4,
     },
-    busListBox: {
+    routeListBox: {
       backgroundColor: currentColors.cardBackground,
       borderRadius: 12,
       padding: 12,
@@ -263,35 +207,7 @@ const App: React.FC = () => {
 
 
 
-  const renderRecentSearches = (searches: string[], type: 'route' | 'bus') => {
-    if (searches.length === 0) return null;
 
-    const handleClear = () => {
-      if (type === 'route') setRecentRouteSearches([]);
-      else setRecentBusNumberSearches([]);
-    };
-
-    return (
-      <View style={styles.recentSearchesContainer}>
-        <Text style={styles.recentSearchesTitle}>Recent {type === 'route' ? 'Route' : 'Bus Number'} Searches</Text>
-        {searches.map((search, index) => (
-          <TouchableOpacity key={index} style={styles.recentSearchItem} onPress={() => {
-            if (type === 'route') {
-              router.push({ pathname: '/SearchResults', params: { query: search, type: 'route' } });
-            } else {
-              router.push({ pathname: '/SearchResults', params: { query: search, type: 'bus' } });
-            }
-          }}>
-            <Text style={styles.recentSearchText}>{search}</Text>
-            <Icon name="arrow-forward" type="material" color={currentColors.secondaryText} size={20} />
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity onPress={handleClear} style={{ marginTop: 10, alignItems: 'center' }}>
-          <Text style={styles.clearButton}>Clear All</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  };
 
   const renderRouteSearch = () => (
     <View>
@@ -374,33 +290,30 @@ const App: React.FC = () => {
       <TouchableOpacity style={styles.button} onPress={handleFindRoutes}>
         <Text style={styles.buttonText}>Find Routes</Text>
       </TouchableOpacity>
-
-      {/* show recent route searches immediately below the search box */}
-      {renderRecentSearches(recentRouteSearches, 'route')}
     </View>
   );
 
-  const renderBusNumberSearch = () => (
+  const renderRouteNumberSearch = () => (
     <View>
       <View style={styles.searchBox}>
         <View style={styles.cardHeader}>
-          <Icon name="directions-bus" type="material" color={currentColors.primaryAccent} />
+          <Icon name="route" type="material" color={currentColors.primaryAccent} />
           <Text style={styles.cardTitle}>Search by Bus Number</Text>
         </View>
         <View style={styles.inputContainer}>
           <Text style={styles.inputLabel}>Bus Number</Text>
           <Input
-            placeholder="Enter bus number (e.g., 150A, 201)"
+            placeholder="Enter Bus number (e.g., 150A, 201)"
             inputStyle={styles.input}
             placeholderTextColor={currentColors.secondaryText}
-            value={busNumber}
-            onChangeText={setBusNumber}
+            value={routeNumber}
+            onChangeText={setRouteNumber}
           />
         </View>
       </View>
 
-      <View style={styles.busListBox}>
-        <Text style={styles.sectionTitle}>All Buses</Text>
+      <View style={styles.routeListBox}>
+        <Text style={styles.sectionTitle}>All Routes</Text>
         {loading ? (
           <View>
             {[1, 2, 3].map((i) => (
@@ -411,43 +324,25 @@ const App: React.FC = () => {
             ))}
           </View>
         ) : (
-          renderAllBusDetails()
+          renderAllRouteDetails()
         )}
       </View>
     </View>
   );
 
-  const renderAllBusDetails = () => {
-    if (!filteredBusDetails || filteredBusDetails.length === 0) {
-      return <Text style={styles.noResultsText}>No buses found.</Text>;
+  const renderAllRouteDetails = () => {
+    if (!filteredRouteDetails || filteredRouteDetails.length === 0) {
+      return <Text style={styles.noResultsText}>No routes found.</Text>;
     }
 
-    const renderBusItem = ({ item }: { item: BusResult }) => {
-      const targetRouteId = item.routes?.[0]?.route_id ?? item.route_id;
-      const hasRoute = item.routes && item.routes.length > 0;
+    const renderRouteItem = ({ item }: { item: RouteResult }) => {
       return (
-    <TouchableOpacity onPress={async () => {
-      try {
-        if (targetRouteId != null) {
-          router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(targetRouteId) } });
-        } else {
-          const { data, error } = await supabase.from('trips').select('schedules(route_id)').eq('bus_id', item.bus_id).limit(1).single();
-          if (error) {
-            console.error('Error fetching route:', error);
-            return;
-          }
-          const schedules = data?.schedules as any;
-          if (schedules?.route_id) {
-            router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(schedules.route_id) } });
-          }
-        }
-      } catch (error) {
-        console.error('Error navigating to route:', error);
-      }
-    }}>
+        <TouchableOpacity onPress={() => {
+          router.push({ pathname: '/RouteDetails/[route_id]', params: { route_id: String(item.route_id) } });
+        }}>
           <View style={styles.busCard}>
-            <Text style={styles.busNumber}>{item.bus_no}</Text>
-            {hasRoute && item.routes?.[0] && <Text style={styles.routeName}>Route: {item.routes[0].route_name}</Text>}
+            <Text style={styles.routeNumber}>{item.route_no}</Text>
+            <Text style={styles.routeName}>{item.route_name}</Text>
           </View>
         </TouchableOpacity>
       );
@@ -455,9 +350,9 @@ const App: React.FC = () => {
 
     return (
       <FlatList
-        data={filteredBusDetails}
-        keyExtractor={(item) => String(item.bus_id)}
-        renderItem={renderBusItem}
+        data={filteredRouteDetails}
+        keyExtractor={(item) => String(item.route_id)}
+        renderItem={renderRouteItem}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[currentColors.primaryAccent]} />
@@ -508,8 +403,9 @@ const App: React.FC = () => {
       </View>
 
       <View style={styles.mainCard}>
-        {activeTab === 'Route Search' ? renderRouteSearch() : renderBusNumberSearch()}
+        {activeTab === 'Route Search' ? renderRouteSearch() : renderRouteNumberSearch()}
       </View>
+
     </SafeAreaView>
   );
 };

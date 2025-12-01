@@ -191,13 +191,16 @@ export default function Profile() {
 
     setPasswordLoading(true);
     try {
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      );
-      
-      const updatePromise = supabase.auth.updateUser({ password: newPassword });
-      
-      const { error } = await Promise.race([updatePromise, timeoutPromise]) as any;
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        throw new Error('Current password is incorrect');
+      }
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       
       if (error) {
         throw new Error(error.message || 'Failed to update password');

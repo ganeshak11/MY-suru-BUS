@@ -25,6 +25,7 @@ type Stop = {
   status?: string;
   time_offset_from_start?: number;
   predicted_arrival_time?: string;
+  actual_arrival_time?: string;
 };
 
 interface StopsTimelineProps {
@@ -49,7 +50,13 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
   const busPositionAnim = useRef(new Animated.Value(0)).current;
 
   const calculateBusPosition = (): number => {
-    if (!currentLocation || currentStopIndex >= stops.length) return currentStopIndex * 64;
+    if (!currentLocation) return 0;
+    
+    // If all stops completed, stay at last stop
+    if (currentStopIndex >= stops.length) {
+      return (stops.length - 1) * 64;
+    }
+    
     if (currentStopIndex === 0) return 0;
 
     const prevStop = stops[currentStopIndex - 1];
@@ -66,7 +73,11 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
     );
 
     const progress = Math.min(Math.max(distanceFromPrev / totalDistance, 0), 1);
-    return (currentStopIndex - 1 + progress) * 64;
+    const position = (currentStopIndex - 1 + progress) * 64;
+    
+    // Limit position to last stop
+    const maxPosition = (stops.length - 1) * 64;
+    return Math.min(position, maxPosition);
   };
 
   useEffect(() => {
@@ -179,6 +190,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                     {stop.stop_name}
                   </Text>
                   <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                    {/* Always show scheduled time in grey */}
                     {stop.time_offset_from_start !== undefined && tripStartTime && (() => {
                       const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
                       const startTotalMinutes = (startHours * 60) + startMinutes;
@@ -186,30 +198,37 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                       const scheduledHours = Math.floor(scheduledTotalMinutes / 60) % 24;
                       const scheduledMinutes = scheduledTotalMinutes % 60;
                       return (
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: completed ? '#10b981' : current ? colors.primaryText : colors.secondaryText }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.secondaryText }}>
                           {scheduledHours}:{String(scheduledMinutes).padStart(2, '0')}
                         </Text>
                       );
                     })()}
-                    {(() => {
-                      if (!completed && predictedTimes[stop.stop_id] && currentLocation) {
-                        const predictedTime = new Date(predictedTimes[stop.stop_id]);
-                        const etaHours = predictedTime.getHours();
-                        const etaMinutes = predictedTime.getMinutes();
-                        
-                        if (tripStartTime && stop.time_offset_from_start !== undefined) {
-                          const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
-                          const startTotalMinutes = (startHours * 60) + startMinutes;
-                          const scheduledTotalMinutes = startTotalMinutes + stop.time_offset_from_start;
-                          const scheduledTime = new Date();
-                          scheduledTime.setHours(Math.floor(scheduledTotalMinutes / 60) % 24, scheduledTotalMinutes % 60, 0, 0);
-                          const isOnTime = predictedTime.getTime() <= scheduledTime.getTime();
-                          return (
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: isOnTime ? '#10b981' : '#ef4444' }}>
-                              {etaHours}:{String(etaMinutes).padStart(2, '0')}
-                            </Text>
-                          );
-                        }
+                    {/* Show actual arrival time for completed, predicted for pending */}
+                    {completed && stop.actual_arrival_time ? (
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#10b981' }}>
+                        {new Date(stop.actual_arrival_time).toLocaleTimeString('en-US', { 
+                          hour: '2-digit', 
+                          minute: '2-digit',
+                          hour12: false 
+                        })}
+                      </Text>
+                    ) : !completed && predictedTimes[stop.stop_id] && currentLocation && (() => {
+                      const predictedTime = new Date(predictedTimes[stop.stop_id]);
+                      const etaHours = predictedTime.getHours();
+                      const etaMinutes = predictedTime.getMinutes();
+                      
+                      if (tripStartTime && stop.time_offset_from_start !== undefined) {
+                        const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
+                        const startTotalMinutes = (startHours * 60) + startMinutes;
+                        const scheduledTotalMinutes = startTotalMinutes + stop.time_offset_from_start;
+                        const scheduledTime = new Date();
+                        scheduledTime.setHours(Math.floor(scheduledTotalMinutes / 60) % 24, scheduledTotalMinutes % 60, 0, 0);
+                        const isOnTime = predictedTime.getTime() <= scheduledTime.getTime();
+                        return (
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: isOnTime ? '#10b981' : '#ef4444' }}>
+                            {etaHours}:{String(etaMinutes).padStart(2, '0')}
+                          </Text>
+                        );
                       }
                       return null;
                     })()}

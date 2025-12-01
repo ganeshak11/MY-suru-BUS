@@ -9,6 +9,7 @@ import ScheduleForm from './components/ScheduleForm';
 interface Route {
   route_id: number;
   route_name: string;
+  route_no: string;
 }
 
 interface Schedule {

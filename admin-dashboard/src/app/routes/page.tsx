@@ -8,10 +8,10 @@ import RoutePlanner from './components/RoutePlanner';
 import Modal from '@/app/components/Modal';
 import RouteForm from './components/RouteForm';
 
-// --- UPDATED: Interface includes new counts ---
 interface Route {
   route_id: number;
   route_name: string;
+  route_no: string;
   route_stops: { count: number }[];
   schedules: { count: number }[];
 }
@@ -26,7 +26,7 @@ export default function RoutesPage() {
   // State for the Edit Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
-  const [formState, setFormState] = useState<FormState>({ route_name: '' });
+  const [formState, setFormState] = useState<FormState>({ route_name: '', route_no: '' });
   const [error, setError] = useState<string | null>(null);
 
   // --- ADDED: State for delete modal ---
@@ -80,7 +80,7 @@ export default function RoutesPage() {
   const openEditModal = (route: Route) => {
     setError(null);
     setSelectedRoute(route);
-    setFormState({ route_name: route.route_name });
+    setFormState({ route_name: route.route_name, route_no: route.route_no });
     setIsModalOpen(true);
   };
 
@@ -96,8 +96,8 @@ export default function RoutesPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!formState.route_name) {
-        setError("Route Name is required.");
+    if (!formState.route_name || !formState.route_no) {
+        setError("Route Number and Route Name are required.");
         return;
     }
     if (!selectedRoute) return;
@@ -205,6 +205,7 @@ export default function RoutesPage() {
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-card">
               <tr>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Route No</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Route Name</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Stops</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-foreground">Schedules</th>
@@ -214,6 +215,11 @@ export default function RoutesPage() {
             <tbody className="divide-y divide-border">
               {routes.map((route) => (
                 <tr key={route.route_id} className="hover:bg-primary/5 transition-colors">
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                      {route.route_no}
+                    </span>
+                  </td>
                   <td className="px-6 py-4">
                     <Link href={`/routes/${route.route_id}`} className="text-primary font-medium hover:text-primary/80 transition-colors">
                       {route.route_name}

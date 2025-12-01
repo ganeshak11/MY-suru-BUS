@@ -18,6 +18,7 @@ type StopDetails = {
   geofence_radius_meters: number;
   status: 'Pending' | 'Completed';
   time_offset_from_start?: number;
+  actual_arrival_time?: string;
 };
 
 const RouteDetailsPage: React.FC = () => {
@@ -116,7 +117,7 @@ const RouteDetailsPage: React.FC = () => {
               longitude: parseFloat(item.stops.longitude),
               geofence_radius_meters: item.stops.geofence_radius_meters || 50,
               stop_sequence: item.stop_sequence,
-              status: 'Pending',
+              status: 'Pending' as const,
               time_offset_from_start: offsetMinutes,
             };
           });
@@ -158,6 +159,21 @@ const RouteDetailsPage: React.FC = () => {
             : scheduleData[0]?.start_time;
           setSelectedStartTime(initialStartTime);
           setRoute({ ...routeData, start_time: initialStartTime });
+
+          if (firstActiveTripId) {
+            const { data: arrivalData } = await supabase
+              .from('trip_stop_times')
+              .select('stop_id, actual_arrival_time')
+              .eq('trip_id', firstActiveTripId)
+              .not('actual_arrival_time', 'is', null);
+            
+            if (arrivalData) {
+              setStops(prev => prev.map(stop => {
+                const arrival = arrivalData.find(a => a.stop_id === stop.stop_id);
+                return arrival ? { ...stop, status: 'Completed' as const, actual_arrival_time: arrival.actual_arrival_time } : stop;
+              }));
+            }
+          }
         } else {
           setRoute(routeData);
         }
@@ -202,8 +218,13 @@ const RouteDetailsPage: React.FC = () => {
       .channel(`trip_stop_times:${activeTripId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trip_stop_times', filter: `trip_id=eq.${activeTripId}` }, (payload) => {
         const arrivedStopId = payload.new.stop_id;
+        const actualArrivalTime = payload.new.actual_arrival_time;
         setStops((prev) => {
-          const updatedStops = prev.map((s) => s.stop_id === arrivedStopId ? { ...s, status: 'Completed' } : s);
+          const updatedStops = prev.map((s) => 
+            s.stop_id === arrivedStopId 
+              ? { ...s, status: 'Completed' as const, actual_arrival_time: actualArrivalTime } 
+              : s
+          );
           const nextIndex = updatedStops.findIndex((s) => s.status === 'Pending');
           if (nextIndex !== -1) {
             setCurrentStopIndex(nextIndex);

@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Notifications from 'expo-notifications';
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -64,6 +65,20 @@ export default function TripScreen() {
     
     const startWatching = async () => {
       try {
+        // Request notification permissions
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Notification permissions not granted');
+        }
+        
+        // Set up notification handler
+        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+          const data = response.notification.request.content.data;
+          if (data.action === 'END_TRIP' && data.trip_id === trip_id) {
+            handleStopTrip();
+          }
+        });
+        
         locationSubscription = await watchForegroundLocation();
       } catch (e: any) {
         const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
@@ -277,6 +292,27 @@ export default function TripScreen() {
       prev.map((s, i) => (i === index ? { ...s, status: "Completed" } : s))
     );
     setCurrentStopIndex((i) => i + 1);
+
+    // Check if this is the last stop
+    const isLastStop = index === stops.length - 1;
+
+    // Send notification
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: isLastStop ? "Final Stop Reached! 🎯" : "Stop Reached! 🚏",
+        body: isLastStop 
+          ? `Arrived at ${stop.stop_name}. Tap to end trip.`
+          : `Arrived at ${stop.stop_name}`,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+        data: { 
+          action: isLastStop ? 'END_TRIP' : 'STOP_REACHED',
+          trip_id: trip_id,
+          stop_name: stop.stop_name
+        },
+      },
+      trigger: null,
+    });
 
     // Queue the arrival for background processing
     await queueArrival({

@@ -67,7 +67,7 @@ const createStyles = (colors: typeof themeTokens.light) =>
       marginVertical: 8,
       width: '100%',
     },
-    // Primary Button Style (for "Start Trip")
+    
     primaryButton: {
       backgroundColor: colors.primaryAccent,
       shadowColor: '#000',

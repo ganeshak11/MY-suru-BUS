@@ -40,7 +40,13 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
 
   // Calculate bus position between stops
   const calculateBusPosition = (): number => {
-    if (!currentLocation || currentStopIndex >= stops.length) return currentStopIndex * 64;
+    if (!currentLocation) return 0;
+    
+    // If all stops completed, stay at last stop
+    if (currentStopIndex >= stops.length) {
+      return (stops.length - 1) * 64;
+    }
+    
     if (currentStopIndex === 0) return 0;
 
     const prevStop = stops[currentStopIndex - 1];
@@ -57,7 +63,11 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
     );
 
     const progress = Math.min(Math.max(distanceFromPrev / totalDistance, 0), 1);
-    return (currentStopIndex - 1 + progress) * 64;
+    const position = (currentStopIndex - 1 + progress) * 64;
+    
+    // Limit position to last stop
+    const maxPosition = (stops.length - 1) * 64;
+    return Math.min(position, maxPosition);
   };
 
   useEffect(() => {

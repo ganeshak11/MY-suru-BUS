@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface CreateRoutePayload {
+  routeNo: string;
   routeName: string;
   stops: Array<{
     stop_id: number;
@@ -29,9 +30,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { routeName, stops } = body;
+    const { routeNo, routeName, stops } = body;
 
     // Validate input
+    if (!routeNo || typeof routeNo !== "string") {
+      return new Response(
+        JSON.stringify({ success: false, error: "Valid routeNo (string) is required." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
     if (!routeName || typeof routeName !== "string") {
       return new Response(
         JSON.stringify({ success: false, error: "Valid routeName (string) is required." }),
@@ -71,7 +79,7 @@ Deno.serve(async (req: Request) => {
     // Insert the new route
     const { data: newRoute, error: routeError } = await supabase
       .from("routes")
-      .insert([{ route_name: routeName }])
+      .insert([{ route_no: routeNo, route_name: routeName }])
       .select("route_id")
       .single();
 

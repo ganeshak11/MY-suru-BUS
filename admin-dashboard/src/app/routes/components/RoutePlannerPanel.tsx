@@ -6,6 +6,8 @@ import { ArrowUpIcon, ArrowDownIcon, XMarkIcon, ClockIcon } from '@heroicons/rea
 interface Props {
   routeName: string;
   setRouteName: (name: string) => void;
+  routeNo: string;
+  setRouteNo: (no: string) => void;
   selectedStops: StopWithOffset[];
   onRemoveStop: (stopId: number) => void;
   onReorderStops: (reorderedStops: StopWithOffset[]) => void;
@@ -17,7 +19,7 @@ interface Props {
 }
 
 export default function RoutePlannerPanel({ 
-  routeName, setRouteName, selectedStops, onRemoveStop, onReorderStops, onUpdateTimeOffset, onSave, onCancel, isSaving, error 
+  routeName, setRouteName, routeNo, setRouteNo, selectedStops, onRemoveStop, onReorderStops, onUpdateTimeOffset, onSave, onCancel, isSaving, error 
 }: Props) {
 
   const handleMove = (index: number, direction: 'up' | 'down') => {
@@ -38,15 +40,25 @@ export default function RoutePlannerPanel({
       <div className="flex-1 flex flex-col min-h-0">
         <h2 className="text-2xl font-semibold tracking-tight mb-4 text-foreground">Route Details</h2>
         <div className="mb-4">
+          <label htmlFor="routeNo" className="block text-sm font-medium mb-1 text-secondary">Route Number</label>
+          <input
+            id="routeNo"
+            type="text"
+            value={routeNo}
+            onChange={(e) => setRouteNo(e.target.value)}
+            className="w-full p-2 border border-secondary/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary"
+            placeholder="e.g., 178B UP"
+          />
+        </div>
+        <div className="mb-4">
           <label htmlFor="routeName" className="block text-sm font-medium mb-1 text-secondary">Route Name</label>
           <input
             id="routeName"
             type="text"
             value={routeName}
             onChange={(e) => setRouteName(e.target.value)}
-            // --- UPDATED: Theme-aware input ---
             className="w-full p-2 border border-secondary/50 rounded-md bg-background text-foreground focus:border-primary focus:ring-primary"
-            placeholder="e.g., K.R. Hospital to Infosys"
+            placeholder="e.g., Colombo - Kandy"
           />
         </div>
 
@@ -107,7 +119,7 @@ export default function RoutePlannerPanel({
           <button 
             type="button"
             onClick={onSave} 
-            disabled={isSaving || !routeName || selectedStops.length < 2}
+            disabled={isSaving || !routeNo || !routeName || selectedStops.length < 2}
             className="inline-flex w-full justify-center rounded-md border border-transparent bg-primary px-4 py-2 text-base font-medium text-primary-foreground shadow-sm hover:bg-primary/80 disabled:bg-secondary disabled:cursor-not-allowed sm:w-auto sm:text-sm"
           >
             {isSaving ? 'Saving...' : 'Save Route'}

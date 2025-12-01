@@ -5,6 +5,7 @@ import { Fragment } from 'react';
 interface Route {
   route_id: number;
   route_name: string;
+  route_no: string;
 }
 
 type FormState = Omit<Route, 'route_id'>;
@@ -21,9 +22,12 @@ export default function RouteForm({ formState, handleFormChange, handleEditSubmi
   return (
     <form onSubmit={handleEditSubmit}>
       <div className="mt-6 sm:col-span-6">
+        <label htmlFor="route_no" className="block text-sm font-medium text-secondary">Route Number</label>
+        <input type="text" name="route_no" id="route_no" value={formState.route_no} onChange={handleFormChange} required className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" placeholder="e.g., 178B UP" />
+      </div>
+      <div className="mt-6 sm:col-span-6">
         <label htmlFor="route_name" className="block text-sm font-medium text-secondary">Route Name</label>
-        {/* --- UPDATED: Theme-aware border --- */}
-        <input type="text" name="route_name" id="route_name" value={formState.route_name} onChange={handleFormChange} required className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" />
+        <input type="text" name="route_name" id="route_name" value={formState.route_name} onChange={handleFormChange} required className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground" placeholder="e.g., Colombo - Kandy" />
       </div>
       {/* --- UPDATED: Theme-aware error --- */}
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
