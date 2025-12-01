@@ -126,6 +126,17 @@ const insertSampleData = () => {
       (1, 'John Driver', '+91-9876543210'),
       (2, 'Jane Driver', '+91-9876543211')`);
 
+    // Sample schedules
+    db.run(`INSERT OR IGNORE INTO schedules (schedule_id, route_id, start_time) VALUES 
+      (1, 1, '08:00'),
+      (2, 1, '14:00'),
+      (3, 2, '09:00')`);
+
+    // Sample trips
+    db.run(`INSERT OR IGNORE INTO trips (trip_id, schedule_id, bus_id, driver_id, trip_date, status) VALUES 
+      (1, 1, 1, 1, date('now'), 'Scheduled'),
+      (2, 3, 2, 2, date('now'), 'In Progress')`);
+
     console.log('✅ Sample data inserted successfully!');
   });
 };
