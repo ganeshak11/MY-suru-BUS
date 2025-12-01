@@ -88,6 +88,31 @@ const createTables = () => {
       FOREIGN KEY (stop_id) REFERENCES stops(stop_id)
     )`);
 
+    // Announcements table
+    db.run(`CREATE TABLE IF NOT EXISTS announcements (
+      announcement_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Passenger reports table
+    db.run(`CREATE TABLE IF NOT EXISTS passenger_reports (
+      report_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      report_type TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT DEFAULT 'New',
+      trip_id INTEGER,
+      bus_id INTEGER,
+      driver_id INTEGER,
+      route_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (trip_id) REFERENCES trips(trip_id),
+      FOREIGN KEY (bus_id) REFERENCES buses(bus_id),
+      FOREIGN KEY (driver_id) REFERENCES drivers(driver_id),
+      FOREIGN KEY (route_id) REFERENCES routes(route_id)
+    )`);
+
     console.log('✅ Database tables created successfully!');
   });
 };

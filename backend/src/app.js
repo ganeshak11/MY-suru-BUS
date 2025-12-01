@@ -23,6 +23,8 @@ app.use('/api/routes', require('./routes/routes'));
 app.use('/api/buses', require('./routes/buses'));
 app.use('/api/trips', require('./routes/trips'));
 app.use('/api/stops', require('./routes/stops'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/announcements', require('./routes/announcements'));
 
 // Socket.io for real-time tracking
 io.on('connection', (socket) => {

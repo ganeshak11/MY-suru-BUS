@@ -70,4 +70,120 @@ router.patch('/:id/status', (req, res) => {
   db.close();
 });
 
+// Start trip
+router.post('/:id/start', (req, res) => {
+  const db = new sqlite3.Database(dbPath);
+  
+  db.run(
+    "UPDATE trips SET status = 'In Progress' WHERE trip_id = ?",
+    [req.params.id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: 'Trip started', trip_id: req.params.id });
+    }
+  );
+  
+  db.close();
+});
+
+// Pause trip
+router.patch('/:id/pause', (req, res) => {
+  const db = new sqlite3.Database(dbPath);
+  
+  db.run(
+    "UPDATE trips SET status = 'Paused' WHERE trip_id = ?",
+    [req.params.id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: 'Trip paused' });
+    }
+  );
+  
+  db.close();
+});
+
+// Resume trip
+router.patch('/:id/resume', (req, res) => {
+  const db = new sqlite3.Database(dbPath);
+  
+  db.run(
+    "UPDATE trips SET status = 'In Progress' WHERE trip_id = ?",
+    [req.params.id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: 'Trip resumed' });
+    }
+  );
+  
+  db.close();
+});
+
+// Complete trip
+router.post('/:id/complete', (req, res) => {
+  const db = new sqlite3.Database(dbPath);
+  
+  db.run(
+    "UPDATE trips SET status = 'Completed' WHERE trip_id = ?",
+    [req.params.id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: 'Trip completed' });
+    }
+  );
+  
+  db.close();
+});
+
+// Mark stop arrival
+router.post('/:id/stops/:stopId/arrive', (req, res) => {
+  const db = new sqlite3.Database(dbPath);
+  const { tripId, stopId } = { tripId: req.params.id, stopId: req.params.stopId };
+  
+  db.run(
+    `INSERT OR REPLACE INTO trip_stop_times (trip_id, stop_id, actual_arrival_time) 
+     VALUES (?, ?, datetime('now'))`,
+    [tripId, stopId],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({ message: 'Stop arrival recorded', trip_stop_id: this.lastID });
+    }
+  );
+  
+  db.close();
+});
+
+// Get trip stops with times
+router.get('/:id/stops', (req, res) => {
+  const db = new sqlite3.Database(dbPath);
+  
+  db.all(`
+    SELECT s.*, rs.stop_sequence, rs.time_offset_from_start, 
+           tst.actual_arrival_time, tst.actual_departure_time
+    FROM stops s
+    JOIN route_stops rs ON s.stop_id = rs.stop_id
+    JOIN schedules sch ON rs.route_id = sch.route_id
+    JOIN trips t ON sch.schedule_id = t.schedule_id
+    LEFT JOIN trip_stop_times tst ON tst.trip_id = t.trip_id AND tst.stop_id = s.stop_id
+    WHERE t.trip_id = ?
+    ORDER BY rs.stop_sequence
+  `, [req.params.id], (err, stops) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(stops);
+  });
+  
+  db.close();
+});
+
 module.exports = router;
