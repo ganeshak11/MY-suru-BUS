@@ -565,7 +565,7 @@ export default function TripsPage() {
                 <tbody className="divide-y divide-border">
                   {filteredTrips.map((trip) => (
                     <tr key={trip.trip_id} className="hover:bg-primary/5 transition-colors">
-                      <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-foreground text-sm">{new Date(trip.trip_date).toLocaleDateString('en-GB')}</td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-foreground text-sm">{new Date(trip.trip_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-foreground">
                         <div className="truncate max-w-[150px] sm:max-w-none" title={getScheduleDisplay(trip.schedules)}>
                           {getScheduleDisplay(trip.schedules)}

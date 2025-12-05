@@ -331,7 +331,7 @@ export default function ReportsPage() {
                                         <p className="mt-1 text-sm text-secondary">{report.message}</p>
                                     </div>
                                     <div className="flex flex-col items-end space-y-2 flex-shrink-0">
-                                        <span className="text-xs text-secondary">{new Date(report.created_at).toLocaleString('en-GB')}</span>
+                                        <span className="text-xs text-secondary">{new Date(report.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false })}</span>
                                         <div className="flex space-x-2">
                                             {/* Status Update Buttons */}
                                             {report.status === 'New' && (

@@ -89,7 +89,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
 
   const formatTime = (isoString: string): string => {
     const date = new Date(isoString);
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const getScheduledAndDelayStatus = (stop: Stop): { scheduledTime: string; isDelayed: boolean } | null => {
