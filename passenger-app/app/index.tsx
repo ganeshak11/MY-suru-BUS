@@ -26,10 +26,15 @@ interface RouteResult {
   route_name: string;
 }
 
+interface Stop {
+  stop_id: string;
+  stop_name: string;
+  latitude: number;
+  longitude: number;
+}
+
 // Constants
 const BLUR_DELAY = 300;
-const SUGGESTIONS_HEIGHT = 220;
-const MAX_SUGGESTIONS = 10;
 const MAX_RECENT_SEARCHES = 5;
 
 const App: React.FC = () => {
@@ -38,13 +43,12 @@ const App: React.FC = () => {
   const [source, setSource] = useState('');
   const [destination, setDestination] = useState('');
   const [routeNumber, setRouteNumber] = useState('');
-  const [sourceSuggestions, setSourceSuggestions] = useState<string[]>([]);
-  const [destinationSuggestions, setDestinationSuggestions] = useState<string[]>([]);
-  const [isSourceFocused, setIsSourceFocused] = useState(false);
-  const [isDestinationFocused, setIsDestinationFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [allRouteDetails, setAllRouteDetails] = useState<RouteResult[]>([]);
+  const [allStops, setAllStops] = useState<Stop[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
+  const [showDestinationSuggestions, setShowDestinationSuggestions] = useState(false);
 
   const router = useRouter();
   const { theme, isDark, toggleTheme, colors: currentColors } = useTheme();
@@ -69,6 +73,25 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchStops = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stops')
+        .select('stop_id, stop_name, latitude, longitude');
+
+      if (error) {
+        console.error('Error fetching stops:', error);
+        setAllStops([]);
+        return;
+      }
+
+      setAllStops(data || []);
+    } catch (e) {
+      console.error(e);
+      setAllStops([]);
+    }
+  };
+
   const handleShare = async () => {
     try {
       await Share.share({
@@ -86,6 +109,7 @@ const App: React.FC = () => {
       fetchRouteData().finally(() => setLoading(false));
     } else if (activeTab === 'Route Search') {
       loadRecentSearches();
+      fetchStops();
     }
   }, [activeTab]);
 
@@ -120,42 +144,6 @@ const App: React.FC = () => {
     }
   };
 
-  const fetchSuggestions = React.useCallback(
-    async (
-      query: string,
-      type: 'source' | 'destination',
-      setSuggestions: React.Dispatch<React.SetStateAction<string[]>>
-    ) => {
-      if (!query) {
-        setSuggestions([]);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.from('stops').select('stop_name');
-
-        if (error) {
-          console.error('Suggestion fetch error', error);
-          setSuggestions([]);
-          return;
-        }
-
-        const queryWords = query.toLowerCase().split(/\s+/);
-        const filtered = (data || []).filter((d: any) => {
-          const stopName = d.stop_name.toLowerCase();
-          return queryWords.every(word => stopName.includes(word));
-        });
-
-        const unique = Array.from(new Set(filtered.map((d: any) => d.stop_name))).filter(Boolean);
-        setSuggestions(unique.slice(0, MAX_SUGGESTIONS));
-      } catch (e) {
-        console.error(e);
-        setSuggestions([]);
-      }
-    },
-    []
-  );
-
   const handleFindRoutes = async () => {
     if (!source || !destination) return;
     const newSearch = `${source} to ${destination}`;
@@ -181,6 +169,24 @@ const App: React.FC = () => {
       return r.route_no.toLowerCase().includes(q);
     });
   }, [allRouteDetails, routeNumber]);
+
+  const filteredSourceSuggestions = useMemo(() => {
+    if (!source) return [];
+    const q = source.toLowerCase();
+    return (allStops || []).filter((stop: Stop) => {
+      if (!stop || !stop.stop_name) return false;
+      return stop.stop_name.toLowerCase().includes(q);
+    }).slice(0, 8);
+  }, [allStops, source]);
+
+  const filteredDestinationSuggestions = useMemo(() => {
+    if (!destination) return [];
+    const q = destination.toLowerCase();
+    return (allStops || []).filter((stop: Stop) => {
+      if (!stop || !stop.stop_name) return false;
+      return stop.stop_name.toLowerCase().includes(q);
+    }).slice(0, 8);
+  }, [allStops, destination]);
 
   const styles = StyleSheet.create({
     container: {
@@ -335,36 +341,6 @@ const App: React.FC = () => {
       marginLeft: 10,
       zIndex: 1,
     },
-    suggestionsContainer: {
-      position: 'absolute',
-      top: '70%',
-      left: 0,
-      right: 0,
-      marginTop: 8,
-      backgroundColor: currentColors.cardBackground,
-      borderRadius: 10,
-      zIndex: 99999,
-      elevation: 999,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4.65,
-      maxHeight: SUGGESTIONS_HEIGHT,
-      borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-    },
-    suggestionItem: {
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderBottomWidth: 0.8,
-      borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-      zIndex: 99999,
-    },
-    suggestionText: {
-      color: currentColors.primaryText,
-      fontSize: 16,
-      zIndex: 99999,
-    },
     busCard: {
       backgroundColor: currentColors.cardBackground,
       padding: 15,
@@ -441,37 +417,113 @@ const App: React.FC = () => {
       marginLeft: 12,
       zIndex: 1,
     },
+    suggestionsContainer: {
+      backgroundColor: currentColors.cardBackground,
+      borderRadius: 12,
+      marginBottom: 12,
+      maxHeight: 280,
+      borderWidth: 1.5,
+      borderColor: currentColors.primaryAccent + '40',
+      overflow: 'hidden',
+      shadowColor: currentColors.primaryAccent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.3 : 0.15,
+      shadowRadius: 6,
+      elevation: 8,
+      zIndex: 9999,
+    },
+    suggestionItem: {
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      zIndex: 9999,
+    },
+    suggestionItemActive: {
+      backgroundColor: isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)',
+      zIndex: 9999,
+    },
+    suggestionText: {
+      color: currentColors.primaryText,
+      fontSize: 15,
+      fontWeight: '500',
+      marginLeft: 12,
+      flex: 1,
+      zIndex: 9999,
+    },
+    suggestionIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: currentColors.primaryAccent + '20',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 9999,
+    },
   });
 
-  const renderSuggestions = (
-    suggestions: string[],
-    isFocused: boolean,
-    inputValue: string,
-    onSelect: (value: string) => void,
-    keyPrefix: string
-  ) => {
-    if (inputValue.length === 0 || !isFocused || suggestions.length === 0) return null;
-
+  const renderSourceSuggestions = () => {
+    if (!showSourceSuggestions || filteredSourceSuggestions.length === 0) return null;
+    
     return (
-      <View style={styles.suggestionsContainer} pointerEvents="box-none">
-        <FlatList
-          data={suggestions}
-          keyExtractor={(item, index) => `${keyPrefix}-${index}`}
-          keyboardShouldPersistTaps="handled"
-          scrollEnabled={true}
-          removeClippedSubviews={false}
-          showsVerticalScrollIndicator={true}
-          bounces={false}
-          renderItem={({ item }) => (
+      <View style={styles.suggestionsContainer}>
+        <ScrollView
+          scrollEnabled={filteredSourceSuggestions.length > 5}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={false}
+        >
+          {filteredSourceSuggestions.map((item, index) => (
             <TouchableOpacity
-              style={styles.suggestionItem}
-              onPress={() => onSelect(item)}
+              key={String(item.stop_id)}
+              style={[styles.suggestionItem, index === filteredSourceSuggestions.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setSource(item.stop_name);
+                setShowSourceSuggestions(false);
+                Keyboard.dismiss();
+              }}
               activeOpacity={0.7}
             >
-              <Text style={styles.suggestionText}>{item}</Text>
+              <View style={styles.suggestionIcon}>
+                <Icon name="location-on" type="material" color={currentColors.primaryAccent} size={18} />
+              </View>
+              <Text style={styles.suggestionText}>{item.stop_name}</Text>
             </TouchableOpacity>
-          )}
-        />
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderDestinationSuggestions = () => {
+    if (!showDestinationSuggestions || filteredDestinationSuggestions.length === 0) return null;
+    
+    return (
+      <View style={styles.suggestionsContainer}>
+        <ScrollView
+          scrollEnabled={filteredDestinationSuggestions.length > 5}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={false}
+        >
+          {filteredDestinationSuggestions.map((item, index) => (
+            <TouchableOpacity
+              key={String(item.stop_id)}
+              style={[styles.suggestionItem, index === filteredDestinationSuggestions.length - 1 && { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setDestination(item.stop_name);
+                setShowDestinationSuggestions(false);
+                Keyboard.dismiss();
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.suggestionIcon}>
+                <Icon name="location-on" type="material" color={currentColors.primaryAccent} size={18} />
+              </View>
+              <Text style={styles.suggestionText}>{item.stop_name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
     );
   };
@@ -483,7 +535,6 @@ const App: React.FC = () => {
         <Text style={styles.cardTitle}>Search by Source and Destination</Text>
       </View>
 
-      {/* SOURCE - HIGH Z-INDEX */}
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>Source</Text>
         <Input
@@ -493,15 +544,9 @@ const App: React.FC = () => {
           containerStyle={{ paddingHorizontal: 0 }}
           placeholderTextColor={currentColors.secondaryText}
           value={source}
-          onChangeText={text => {
-            setSource(text);
-            fetchSuggestions(text, 'source', setSourceSuggestions);
-          }}
-          onFocus={() => {
-            setIsSourceFocused(true);
-            setIsDestinationFocused(false);
-          }}
-          onBlur={() => setTimeout(() => setIsSourceFocused(false), BLUR_DELAY)}
+          onChangeText={setSource}
+          onFocus={() => setShowSourceSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSourceSuggestions(false), BLUR_DELAY)}
           rightIcon={
             source.length > 0 ? (
               <TouchableOpacity onPress={() => setSource('')}>
@@ -509,28 +554,16 @@ const App: React.FC = () => {
               </TouchableOpacity>
             ) : undefined
           }
-          rightIconContainerStyle={{ position: 'absolute', right: 10 }}
+          rightIconContainerStyle={{ position: 'absolute',zIndex: 1 ,right: 10 }}
         />
-        {/* Suggestions render HERE, but because parent View has zIndex: 100, they float over everything below */}
-        {renderSuggestions(
-          sourceSuggestions,
-          isSourceFocused,
-          source,
-          (item) => {
-            setSource(item);
-            setSourceSuggestions([]);
-            setIsSourceFocused(false);
-          },
-          'source'
-        )}
+        {renderSourceSuggestions()}
       </View>
 
-      <TouchableOpacity onPress={handleSwapLocations} style={[styles.swapButton, (isSourceFocused && sourceSuggestions.length > 0) && { opacity: 0, pointerEvents: 'none' }]}>
+      <TouchableOpacity onPress={handleSwapLocations} style={styles.swapButton}>
         <Icon name="swap-vert" type="material" color={currentColors.activeTabBackground} size={30} />
       </TouchableOpacity>
 
-      {/* DESTINATION - LOWER Z-INDEX than Source but higher than content */}
-      <View style={[styles.inputContainerDest, (isSourceFocused && sourceSuggestions.length > 0) && { opacity: 0, pointerEvents: 'none' }]}>
+      <View style={styles.inputContainerDest}>
         <Text style={styles.inputLabel}>Destination</Text>
         <Input
           placeholder="Enter destination location"
@@ -539,15 +572,9 @@ const App: React.FC = () => {
           value={destination}
           inputContainerStyle={{ borderBottomWidth: 0 }}
           containerStyle={{ paddingHorizontal: 0 }}
-          onChangeText={text => {
-            setDestination(text);
-            fetchSuggestions(text, 'destination', setDestinationSuggestions);
-          }}
-          onFocus={() => {
-            setIsDestinationFocused(true);
-            setIsSourceFocused(false);
-          }}
-          onBlur={() => setTimeout(() => setIsDestinationFocused(false), BLUR_DELAY)}
+          onChangeText={setDestination}
+          onFocus={() => setShowDestinationSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowDestinationSuggestions(false), BLUR_DELAY)}
           rightIcon={
             destination.length > 0 ? (
               <TouchableOpacity onPress={() => setDestination('')}>
@@ -555,22 +582,12 @@ const App: React.FC = () => {
               </TouchableOpacity>
             ) : undefined
           }
-          rightIconContainerStyle={{ position: 'absolute', right: 10 }}
+          rightIconContainerStyle={{ position: 'absolute', zIndex: 1, right: 10 }}
         />
-        {renderSuggestions(
-          destinationSuggestions,
-          isDestinationFocused,
-          destination,
-          (item) => {
-            setDestination(item);
-            setDestinationSuggestions([]);
-            setIsDestinationFocused(false);
-          },
-          'dest'
-        )}
+        {renderDestinationSuggestions()}
       </View>
 
-      <TouchableOpacity style={[styles.button, ((isSourceFocused && sourceSuggestions.length > 0) || (isDestinationFocused && destinationSuggestions.length > 0)) && { opacity: 0, pointerEvents: 'none' }]} onPress={handleFindRoutes}>
+      <TouchableOpacity style={styles.button} onPress={handleFindRoutes}>
         <Text style={styles.buttonText}>Find Routes</Text>
       </TouchableOpacity>
     </View>
@@ -621,6 +638,14 @@ const App: React.FC = () => {
             value={routeNumber}
             underlineColorAndroid="transparent"
             onChangeText={setRouteNumber}
+            rightIcon={
+              routeNumber.length > 0 ? (
+                <TouchableOpacity onPress={() => setRouteNumber('')}>
+                  <Icon name="close-circle" type="material-community" size={20} color={currentColors.secondaryText} />
+                </TouchableOpacity>
+              ) : undefined
+            }
+            rightIconContainerStyle={{ position: 'absolute', zIndex: 1,  right: 10 }}
           />
         </View>
       </View>
@@ -730,39 +755,33 @@ const App: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        enabled
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
       >
-        {activeTab === 'Route Search' ? (
-          <View style={{ flex: 1 }}>
-            {/* ARCHITECTURE FIX: 
-              1. Static Header Container (zIndex 10) -> Holds Inputs & Absolute Suggestions
-              2. ScrollView (zIndex 0) -> Holds Content (Recent Searches)
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          enabled
+        >
+          {activeTab === 'Route Search' ? (
+            <View style={{ flex: 1 }}>
+              <View style={{ zIndex: 10 }}>
+                {renderStaticSearchHeader()}
+              </View>
               
-              This structure ensures Suggestions are NOT inside the ScrollView, 
-              eliminating the gesture conflict.
-            */}
-            <View style={{ zIndex: 10 }}>
-              {renderStaticSearchHeader()}
-            </View>
-            
-            <ScrollView
-              ref={scrollViewRef}
-              contentContainerStyle={{ flexGrow: 1 }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              style={{ zIndex: 0 }}
-            >
               {renderRecentSearches()}
-            </ScrollView>
-          </View>
-        ) : (
-          renderRouteNumberSearch()
-        )}
-      </KeyboardAvoidingView>
+            </View>
+          ) : (
+            renderRouteNumberSearch()
+          )}
+        </KeyboardAvoidingView>
+      </ScrollView>
     </SafeAreaView>
   );
 };
