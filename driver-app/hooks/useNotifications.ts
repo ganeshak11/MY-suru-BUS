@@ -54,7 +54,7 @@ export const useNotifications = (driverId: number | null) => {
 
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       try {
-        console.log('Notification received:', notification);
+        // log removed for production
       } catch (error: any) {
         console.error('Notification listener error:', error?.message || error);
       }
@@ -62,7 +62,7 @@ export const useNotifications = (driverId: number | null) => {
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       try {
-        console.log('Notification response:', response);
+        // log removed for production
       } catch (error: any) {
         console.error('Notification response error:', error?.message || error);
       }
@@ -96,7 +96,7 @@ async function registerForPushNotifications() {
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      // log removed for production
       return;
     }
   } catch (error: any) {

@@ -82,12 +82,12 @@ const processLocationQueue = async () => {
       .update(oldestUpdate)
       .eq("bus_id", oldestUpdate.bus_id);
 
-    if (!error) {
+      if (!error) {
       queue.shift();
       await AsyncStorage.setItem(LOCATION_QUEUE_KEY, JSON.stringify(queue));
-      console.log(`Synced 1 offline update. ${queue.length} remaining.`);
+      // log removed for production
     } else {
-      console.log("Failed to sync offline queue. Network still down?");
+      // log removed for production
     }
   } catch (e) {
     console.error("Failed to process offline queue", e);
@@ -143,12 +143,12 @@ export const useDriverLocation = () => {
   };
 
   const startLocationTracking = async (busId: number, tripId: number, tripStops: any[]): Promise<boolean> => {
-    console.log("[START TRACKING] Bus ID:", busId, "Trip ID:", tripId);
+    // log removed for production
     await processLocationQueue();
 
     const hasPermissions = await requestPermissions();
     if (!hasPermissions) {
-      console.log("[START TRACKING] Permissions denied");
+      // log removed for production
       return false;
     }
 
@@ -162,7 +162,7 @@ export const useDriverLocation = () => {
       await AsyncStorage.setItem(ASYNC_STORAGE_BUS_ID_KEY, String(busId));
       await AsyncStorage.setItem(CURRENT_TRIP_ID_KEY, String(tripId));
       await AsyncStorage.setItem(TRIP_STOPS_KEY, JSON.stringify(tripStops));
-      console.log("[START TRACKING] Bus ID and Trip data stored in AsyncStorage");
+      // log removed for production
     } catch (e) {
       console.error("[START TRACKING] Error storing data:", e);
       return false;
@@ -170,11 +170,11 @@ export const useDriverLocation = () => {
 
     try {
       const isTaskDefined = await TaskManager.isTaskDefined(LOCATION_TASK_NAME);
-      console.log("[START TRACKING] Task defined:", isTaskDefined);
+      // log removed for production
       
       const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
       if (isTaskRegistered) {
-        console.log("[START TRACKING] Task already registered, stopping first");
+        // log removed for production
         await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
       }
 
@@ -192,7 +192,7 @@ export const useDriverLocation = () => {
       });
 
       setIsTracking(true);
-      console.log("[START TRACKING] ✓ Background tracking started successfully");
+      // log removed for production
       return true;
     } catch (e: any) {
       console.error("[START TRACKING] Failed:", e?.message || e);
@@ -218,7 +218,7 @@ export const useDriverLocation = () => {
     const hasTask = await TaskManager.isTaskRegisteredAsync(LOCATION_TASK_NAME);
     if (hasTask) {
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log("Background location tracking stopped.");
+      // log removed for production
     }
   };
 
@@ -234,7 +234,7 @@ export const useDriverLocation = () => {
 TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
   try {
     if (!task || !task.data) {
-      console.log("[BG TASK] No task or data");
+      // log removed for production
       return;
     }
 
@@ -246,7 +246,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
     }
     
     if (!locations || !Array.isArray(locations) || locations.length === 0) {
-      console.log("[BG TASK] No locations available");
+      // log removed for production
       return;
     }
 
@@ -254,13 +254,13 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
     if (!location || !location.coords || 
         typeof location.coords.latitude !== 'number' || 
         typeof location.coords.longitude !== 'number') {
-      console.log("[BG TASK] Invalid location coords");
+      // log removed for production
       return;
     }
 
     const busIdStr = await AsyncStorage.getItem(ASYNC_STORAGE_BUS_ID_KEY);
     if (!busIdStr) {
-      console.log("[BG TASK] No bus ID in storage");
+      // log removed for production
       return;
     }
 
@@ -302,7 +302,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
       ]) as any;
 
       if (supabaseError) {
-        console.log("[BG TASK] Supabase error, queuing:", supabaseError.message);
+        // log removed for production
         await addUpdateToQueue(payload);
       } else {
         await processLocationQueue();
@@ -317,7 +317,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
       try {
         const tripsStopsStr = await AsyncStorage.getItem(TRIP_STOPS_KEY);
         if (!tripsStopsStr) {
-          console.log("[BG TASK] No trip stops in storage");
+          // log removed for production
           return;
         }
         const tripStops = JSON.parse(tripsStopsStr);

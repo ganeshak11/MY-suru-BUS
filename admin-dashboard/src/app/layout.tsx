@@ -29,7 +29,7 @@ function SessionTimeoutHandler() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        console.log("Session timed out due to inactivity. Signing out.");
+        // log removed for production
         await supabase.auth.signOut();
         router.push('/login'); 
       }

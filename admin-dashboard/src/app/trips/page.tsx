@@ -409,7 +409,7 @@ export default function TripsPage() {
       
       if (createError) throw createError;
       await fetchTrips();
-      console.log(`Created ${createdTrips.length} trips for ${today}`);
+      // log removed for production
       
     } catch (error: any) {
       console.error('Error generating daily trips:', error);

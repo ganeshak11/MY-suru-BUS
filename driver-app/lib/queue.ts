@@ -35,7 +35,7 @@ export const processArrivalQueue = async () => {
     const queue: QueuedArrival[] = JSON.parse(existingQueue);
     if (queue.length === 0) return;
 
-    console.log(`Processing arrival queue with ${queue.length} items.`);
+    // log removed for production
 
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Queue processing timeout')), 15000)
@@ -54,7 +54,7 @@ export const processArrivalQueue = async () => {
     }
 
     await AsyncStorage.removeItem(ARRIVAL_QUEUE_KEY);
-    console.log("Arrival queue processed and cleared.");
+    // log removed for production
   } catch (e: any) {
     const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
     console.error("Failed to process arrival queue:", errorMsg);
