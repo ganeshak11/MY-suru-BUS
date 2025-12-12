@@ -298,10 +298,6 @@ Core Tables:
 Communication:
 ├── announcements          # System announcements
 └── passenger_reports      # Passenger feedback
-
-Supporting:
-├── bus_assignments        # Bus-route assignments
-└── driver_assignments     # Driver-route assignments
 ```
 
 See [schema.sql](./schema.sql) for complete schema definition.
@@ -572,20 +568,7 @@ For questions, issues, or feature requests:
 - 📋 Multi-language support
 - 📋 Enhanced reporting features
 
-## Repository Statistics
-
-```
-Total Components: 50+
-Total Tests: 40+
-Code Coverage: 75%+
-Active Contributors: 5+
-Last Updated: December 2025
-```
-
 ---
-
-**Built with ❤️ for seamless bus transportation** 🚌
-
 
 ## Prerequisites
 
