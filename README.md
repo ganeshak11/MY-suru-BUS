@@ -1,4 +1,4 @@
-# MY(suru) BUS 🚌
+# MY(suru) BUS 
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Enabled-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
@@ -10,15 +10,6 @@ MY(suru) BUS is a **real-time public transportation management platform** built 
 The system is designed with real-world constraints such as live GPS updates, unreliable networks, and role-based access control.
 
 This project was **built completely from scratch** as a full-stack, multi-application system.
-
----
-
-## 📸 Screenshots
-
-> **Note:** Add screenshots of:
-> - Admin Dashboard (fleet management view)
-> - Driver App (live tracking screen)
-> - Passenger App (route search & bus tracking)
 
 ---
 
@@ -109,7 +100,7 @@ MY-suru-BUS/
 
 ---
 
-## 🚀 Quick Start (Development)
+##  Quick Start (Development)
 
 ### 1. Database Setup
 ```bash
@@ -123,10 +114,10 @@ MY-suru-BUS/
 git clone <your-repo-url>
 cd MY-suru-BUS
 
-# Install all dependencies
-cd admin-dashboard && npm install && cd ..
-cd driver-app && npm install && cd ..
-cd passenger-app && npm install && cd ..
+# Install all dependencies 
+cd admin-dashboard && npm install 
+cd driver-app && npm install 
+cd passenger-app && npm install 
 ```
 
 ### 3. Configure Environment
@@ -164,19 +155,19 @@ Runs at http://localhost:3000
 ```bash
 cd driver-app
 npm install
-npm start
+npm start/ npx expo start
 ```
 
 ### Passenger App
 ```bash
 cd passenger-app
 npm install
-npm start
+npm start/ npx expo start
 ```
 
 ---
 
-## 🗄️ Database Schema Overview
+##  Database Schema Overview
 
 **Core Tables:**
 - `buses` - Fleet information
@@ -194,7 +185,7 @@ npm start
 
 ---
 
-## 🐛 Common Issues
+##  Common Issues
 
 **Supabase keys not loading**
 - Verify `.env` files exist in each app directory
@@ -223,16 +214,16 @@ npm start
 
 ---
 
-## 📊 Current Status
+##  Current Status
 
-- ✅ Core system fully implemented
-- ✅ Real-time tracking stable
-- ✅ Suitable for demos, evaluation, and further scaling
-- 🚧 Production deployment pending
+-  Core system fully implemented
+-  Real-time tracking stable
+-  Suitable for demos, evaluation, and further scaling
+-  Production deployment pending
 
 ---
 
-## 🎯 Roadmap
+##  Roadmap
 
 - [ ] Push notifications for passengers
 - [ ] Offline mode for driver app
@@ -242,19 +233,19 @@ npm start
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome via issues or pull requests.
 
 ---
 
-## 📄 License
+##  License
 
-This project is intended for academic and portfolio use.
+This project is currently for academic and portfolio use(Mini Project).
 
 ---
 
-## 📧 Contact
+##  Contact
 
 - **GitHub Issues:** For bugs and feature requests
 - **Email:** ganeshangadi13012006@gmail.com
