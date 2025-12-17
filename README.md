@@ -111,7 +111,7 @@ MY-suru-BUS/
 
 ### 2. Clone & Install
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/ganeshak11/MY-suru-BUS.git
 cd MY-suru-BUS
 
 # Install all dependencies 
