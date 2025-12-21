@@ -421,6 +421,7 @@ const App: React.FC = () => {
       backgroundColor: currentColors.cardBackground,
       borderRadius: 12,
       marginBottom: 12,
+      marginTop: -28,
       maxHeight: 280,
       borderWidth: 1.5,
       borderColor: currentColors.primaryAccent + '40',
@@ -433,8 +434,8 @@ const App: React.FC = () => {
       zIndex: 9999,
     },
     suggestionItem: {
-      paddingVertical: 14,
-      paddingHorizontal: 16,
+      paddingVertical: 5,
+      paddingHorizontal: 6,
       borderBottomWidth: 1,
       borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
       flexDirection: 'row',
