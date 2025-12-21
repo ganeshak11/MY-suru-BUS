@@ -128,9 +128,7 @@ export default function TripScreen() {
       "change",
       async (state) => {
         if (state === "background" || state === "inactive") {
-          console.log(
-            "[AppState] App went to background, ensuring background tracking is clean",
-          );
+          // log removed for production
           // Background tracking should continue via background task
           // The foreground watcher will stop automatically
         }
@@ -197,7 +195,7 @@ export default function TripScreen() {
         .eq("trip_id", id).single();
       if (tripError) throw tripError;
       setTrip(tripData as Trip);
-      console.log("Trip data:", tripData);
+      // log removed for production
 
       const { data: stopsData, error: stopsError } = await supabase
         .from("route_stops")
@@ -241,7 +239,7 @@ export default function TripScreen() {
           const errorMsg = statusError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
           console.error("Failed to update trip status:", errorMsg);
         } else {
-          console.log("Trip status updated to En Route");
+          // log removed for production
           tripData.status = "En Route";
         }
       }

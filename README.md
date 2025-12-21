@@ -1,197 +1,266 @@
-# MY(suru) BUS - Real-Time Bus Fleet Management System
+# MY(suru) BUS 
 
-A comprehensive bus tracking and management platform with three integrated applications:
-- **Admin Dashboard** (Web) - Fleet management and monitoring
-- **Driver App** (Mobile) - GPS tracking and trip management  
-- **Passenger App** (Mobile) - Route search and live tracking
+[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Enabled-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![Platform](https://img.shields.io/badge/Platform-Web%20%2B%20Mobile-blue)]()
+
+## Real-Time Bus Tracking & Fleet Management System
+
+MY(suru) BUS is a **real-time public transportation management platform** built to handle live bus tracking, route management, and passenger information for a city-scale bus network.  
+The system is designed with real-world constraints such as live GPS updates, unreliable networks, and role-based access control.
+
+This project was **built completely from scratch** as a full-stack, multi-application system.
+
+---
+
+## System Architecture
+
+The platform consists of three tightly integrated applications sharing a common backend:
+
+- **Admin Dashboard (Web)**  
+  Centralized fleet, route, and operations management
+
+- **Driver App (Mobile)**  
+  Live GPS tracking and trip execution
+
+- **Passenger App (Mobile)**  
+  Route discovery and real-time bus tracking
+
+All applications use **Supabase real-time subscriptions** to maintain live synchronization.
+
+---
+
+## Core Features
+
+### Fleet & Operations
+- Bus and driver management
+- Real-time GPS tracking (foreground & background)
+- Live trip monitoring
+- Geofence-based stop detection
+- Offline location queue with auto-sync
+
+### Routes & Schedules
+- Interactive route visualization
+- Stop and schedule management
+- Automated trip generation
+- Real-time ETA calculation
+
+### Passenger Experience
+- Route search by source and destination
+- Live bus tracking on maps
+- Stop timelines with ETAs
+- Service announcements and alerts
+
+### Security
+- Role-based access (Admin / Driver / Passenger)
+- Supabase Row-Level Security (RLS)
+- Secure authentication and session handling
+
+---
 
 ## Tech Stack
 
-- **Frontend:** Next.js 14, React Native (Expo), TypeScript
-- **Backend:** Supabase (PostgreSQL + Real-time)
-- **Maps:** Leaflet.js, React-Native-Maps
-- **Deployment:** Vercel (Web), EAS (Mobile)
+### Frontend
+- **Web:** Next.js 14, React, TypeScript, Tailwind CSS
+- **Mobile:** React Native (Expo), TypeScript
+- **Maps:** Leaflet, React Native Maps
 
-## Prerequisites
+### Backend
+- **Supabase**
+  - PostgreSQL database
+  - Authentication
+  - Real-time subscriptions
 
-- Node.js 18+
-- npm or yarn
-- Expo CLI
-- Supabase account
-- Vercel account (for admin dashboard)
+### Deployment
+- **Web:** Vercel
+- **Mobile:** Expo EAS Build
+- **Version Control:** GitHub
 
-## Setup Instructions
-
-### 1. Database Setup
-
-1. Create a Supabase project at [supabase.com](https://supabase.com)
-2. Run the SQL schema from `supabase/schema.sql` in the SQL Editor
-3. Get your Project URL and `anon` key from Settings → API
-
-### 2. Environment Variables
-
-Create `.env.local` in `admin-dashboard/`:
-```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-Create `.env` in `driver-app/` and `passenger-app/`:
-```env
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### 3. Install Dependencies
-
-```bash
-# Admin Dashboard
-cd admin-dashboard
-npm install
-
-# Driver App
-cd ../driver-app
-npm install
-
-# Passenger App
-cd ../passenger-app
-npm install
-```
-
-## Running Locally
-
-### Admin Dashboard
-```bash
-cd admin-dashboard
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000)
-
-### Driver App
-```bash
-cd driver-app
-npm start
-```
-Scan QR code with Expo Go app or run on simulator
-
-### Passenger App
-```bash
-cd passenger-app
-npm start
-```
-Scan QR code with Expo Go app or run on simulator
-
-## Building for Production
-
-### Admin Dashboard (Vercel)
-
-1. Push to GitHub
-2. Import project in Vercel
-3. Set root directory to `admin-dashboard`
-4. Add environment variables
-5. Deploy
-
-### Mobile Apps (EAS Build)
-
-```bash
-# Install EAS CLI
-npm install -g eas-cli
-
-# Login
-eas login
-
-# Build for Android
-cd driver-app
-eas build --platform android
-
-cd ../passenger-app
-eas build --platform android
-
-# Build for iOS (requires Apple Developer account)
-eas build --platform ios
-```
-
-### Submit to Stores
-```bash
-eas submit --platform android
-eas submit --platform ios
-```
+---
 
 ## Project Structure
 
 ```
 MY-suru-BUS/
-├── admin-dashboard/     # Next.js web app
-│   ├── src/
-│   │   ├── app/        # Pages
-│   │   └── components/ # UI components
-│   └── package.json
-│
-├── driver-app/         # React Native app
-│   ├── app/           # Expo Router pages
-│   ├── components/    # UI components
-│   ├── hooks/         # Custom hooks
-│   └── lib/           # Utilities
-│
-├── passenger-app/     # React Native app
-│   ├── app/          # Expo Router pages
-│   ├── components/   # UI components
-│   └── lib/          # Utilities
-│
-└── supabase/
-    └── schema.sql    # Database schema
+├── admin-dashboard/        # Next.js web dashboard
+├── driver-app/             # Driver mobile app (Expo)
+├── passenger-app/          # Passenger mobile app (Expo)
+├── backend/                # Custom Node.js API (dev branch)
+├── supabase/               # Database schema & backend config
+├── ROADMAP.md              # Detailed enhancement plan
+└── README.md
 ```
 
-## Key Features
+---
+
+## Prerequisites
+
+- Node.js 18+
+- npm or yarn
+- Supabase account
+- Expo CLI (`npm install -g expo-cli`)
+
+---
+
+##  Quick Start (Development)
+
+### 1. Database Setup
+```bash
+# Create a Supabase project at https://supabase.com
+# Run supabase/schema.sql in SQL Editor
+# Copy Project URL and Anon Key
+```
+
+### 2. Clone & Install
+```bash
+git clone https://github.com/ganeshak11/MY-suru-BUS.git
+cd MY-suru-BUS
+
+# Install all dependencies 
+cd admin-dashboard && npm install 
+cd driver-app && npm install 
+cd passenger-app && npm install 
+```
+
+### 3. Configure Environment
+Create `.env.local` / `.env` files in each app (see below)
+
+---
+
+### Environment Variables
+
+#### Admin Dashboard (`admin-dashboard/.env.local`)
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+#### Mobile Apps (`driver-app/.env`, `passenger-app/.env`)
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_project_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+```
+
+---
+
+## Running the Project
 
 ### Admin Dashboard
-- Fleet management (buses & drivers)
-- Interactive route planner with map
-- Schedule and trip management
-- Live monitoring dashboard
-- Passenger reports handling
-- Announcements system
+```bash
+cd admin-dashboard
+npm install
+npm run dev
+```
+Runs at http://localhost:3000
 
 ### Driver App
-- Real-time GPS tracking (foreground + background)
-- Automatic stop detection via geofencing
-- Trip management with pause/resume
-- Delay reporting
-- Offline queue for location updates
-- Trip history
+```bash
+cd driver-app
+npm install
+npm start/ npx expo start
+```
 
 ### Passenger App
-- Route search and discovery
-- Live bus tracking on map
-- Real-time ETA calculations
-- Stop timeline with delays
-- Report issues
-- Dark/Light theme
+```bash
+cd passenger-app
+npm install
+npm start/ npx expo start
+```
 
-## Troubleshooting
+---
 
-### Location Tracking Issues
-- Ensure location permissions are granted
-- Check background location permission (Android)
-- Verify Supabase connection
+##  Database Schema Overview
 
-### Build Errors
-- Clear cache: `npm start -- --clear`
-- Delete `node_modules` and reinstall
-- Check EAS build logs
+**Core Tables:**
+- `buses` - Fleet information
+- `drivers` - Driver profiles
+- `routes` - Route definitions with stops
+- `trips` - Active/scheduled trips
+- `locations` - Real-time GPS data
+- `users` - Passenger accounts
 
-### Database Connection
-- Verify environment variables
-- Check Supabase project status
-- Ensure RLS policies are configured
+**Key Features:**
+- Row-Level Security (RLS) for all tables
+- Real-time subscriptions on `locations` and `trips`
+- PostGIS for geospatial queries
+- Automated triggers for trip status updates
 
-## Support
+---
 
-For issues or questions, check:
-- [Expo Documentation](https://docs.expo.dev)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Next.js Documentation](https://nextjs.org/docs)
+##  Common Issues
 
-## License
+**Supabase keys not loading**
+- Verify `.env` files exist in each app directory
+- Restart dev server after adding env vars
 
-MIT
+**Location permissions denied (Mobile)**
+- Check `app.json` permissions for iOS/Android
+- Grant location access in device settings
+
+**Maps not rendering**
+- Ensure Google Maps API key is valid (if using)
+- Check network connectivity
+
+**Real-time updates not working**
+- Verify Supabase Realtime is enabled in dashboard
+- Check RLS policies allow subscriptions
+
+---
+
+## Key Design Decisions
+
+- Real-time, data-centric architecture using Supabase
+- Geofencing for automated stop detection
+- Offline-first GPS updates for unreliable networks
+- Minimal backend logic with strong database constraints
+- **MVP-first approach** - Core features stable, enhancements planned iteratively
+- Event-driven architecture for trip execution (in development)
+
+---
+
+##  Current Status
+
+-  **MVP Complete** - Core system fully functional
+-  Real-time tracking operational
+-  Suitable for demos, pilot deployments, and evaluation
+-  Custom backend in development (see `dev` branch)
+-  Production hardening in progress
+
+---
+
+##  Roadmap
+
+### Current Focus
+- [ ] Custom backend API (Node.js/Express) - **In Progress**
+- [ ] Event-driven trip execution system
+- [ ] Server-side geofence validation
+
+### Planned Enhancements
+- [ ] Stop sequence enforcement
+- [ ] Arrival queue reliability with backoff
+- [ ] Real-time subscription recovery
+- [ ] Traffic-aware ETA calculation
+- [ ] Authentication hardening
+- [ ] Push notifications for passengers
+- [ ] Analytics dashboard for admins
+
+**See [ROADMAP.md](./ROADMAP.md) for detailed enhancement plan**
+
+---
+
+##  Contributing
+
+Contributions are welcome via issues or pull requests.
+
+---
+
+##  License
+
+This project is currently for academic and portfolio use(Mini Project).
+
+---
+
+##  Contact
+
+- **GitHub Issues:** For bugs and feature requests
+- **Email:** ganeshangadi13012006@gmail.com

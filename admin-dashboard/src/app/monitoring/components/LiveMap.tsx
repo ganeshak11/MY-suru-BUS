@@ -189,7 +189,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
           >
             <Popup>
               <b>Bus No: {bus.bus_no}</b> <br />
-              Last Updated: {bus.last_updated ? new Date(bus.last_updated).toLocaleString('en-GB') : 'N/A'}
+              Last Updated: {bus.last_updated ? new Date(bus.last_updated).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false }) : 'N/A'}
             </Popup>
           </Marker>
         )

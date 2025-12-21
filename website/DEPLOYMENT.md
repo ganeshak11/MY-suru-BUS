@@ -10,7 +10,7 @@ cd website
 git init
 git add .
 git commit -m "Initial website commit"
-git remote add origin https://github.com/YOUR_USERNAME/mysurubus-website.git
+git remote add origin https://github.com/ganeshak11/MY-suru-BUS.git
 git push -u origin main
 ```
 

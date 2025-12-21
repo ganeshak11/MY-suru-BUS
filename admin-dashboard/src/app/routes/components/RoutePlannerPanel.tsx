@@ -88,14 +88,26 @@ export default function RoutePlannerPanel({
               <div className="flex items-center gap-2">
                 <ClockIcon className="h-4 w-4 text-secondary flex-shrink-0" />
                 <input
-                  type="time"
-                  step="60"
-                  value={stop.time_offset?.substring(0, 5) || '00:00'}
-                  onChange={(e) => onUpdateTimeOffset(stop.stop_id, `${e.target.value}:00`)}
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={(() => {
+                    const offset = stop.time_offset || '00:00:00';
+                    const [hours, minutes] = offset.split(':').map(Number);
+                    return hours * 60 + minutes;
+                  })()}
+                  onChange={(e) => {
+                    const totalMinutes = parseInt(e.target.value) || 0;
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+                    onUpdateTimeOffset(stop.stop_id, formatted);
+                  }}
                   className="flex-1 px-2 py-1 text-sm border border-secondary/50 rounded bg-card text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
                   aria-label={`Time offset for ${stop.stop_name}`}
+                  placeholder="0"
                 />
-                <span className="text-xs text-secondary whitespace-nowrap">from start</span>
+                <span className="text-xs text-secondary whitespace-nowrap">minutes from start</span>
               </div>
             </div>
           ))}

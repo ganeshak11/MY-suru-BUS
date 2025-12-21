@@ -114,7 +114,7 @@ passengerAndroidBtn.addEventListener('click', (e) => {
 
 // Analytics (optional)
 function trackDownload(app, platform) {
-    console.log(`Download tracked: ${app} - ${platform}`);
+    // log removed for production
     // Add your analytics code here (Google Analytics, etc.)
 }
 
@@ -353,6 +353,6 @@ function animateBusPath() {
 animateBusPath();
 
 // Console Message
-console.log('%c🚌 MY(suru) BUS', 'font-size: 24px; font-weight: bold; color: #C8B6E2;');
-console.log('%cBuilt with ❤️ for seamless bus tracking', 'font-size: 14px; color: #888;');
-console.log('%cInterested in the code? Check out our GitHub!', 'font-size: 12px; color: #666;');
+// log removed for production
+// log removed for production
+// log removed for production

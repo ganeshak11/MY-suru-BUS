@@ -116,8 +116,8 @@ export default function BusList({ buses, loading, error, openModal, handleDelete
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-secondary">
-                  {bus.last_updated ? new Date(bus.last_updated).toLocaleString('en-GB', { 
-                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                  {bus.last_updated ? new Date(bus.last_updated).toLocaleString('en-IN', { 
+                    timeZone: 'Asia/Kolkata', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false 
                   }) : '—'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">

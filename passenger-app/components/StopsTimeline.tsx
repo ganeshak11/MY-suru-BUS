@@ -206,7 +206,8 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                     {/* Show actual arrival time for completed, predicted for pending */}
                     {completed && stop.actual_arrival_time ? (
                       <Text style={{ fontSize: 11, fontWeight: '700', color: '#10b981' }}>
-                        {new Date(stop.actual_arrival_time).toLocaleTimeString('en-US', { 
+                        {new Date(stop.actual_arrival_time).toLocaleTimeString('en-IN', { 
+                          timeZone: 'Asia/Kolkata',
                           hour: '2-digit', 
                           minute: '2-digit',
                           hour12: false 

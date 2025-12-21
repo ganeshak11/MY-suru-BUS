@@ -20,9 +20,9 @@ function AnnouncementListener() {
     async function setupAndListen() {
       // 1. Request permissions
       const { status } = await Notifications.requestPermissionsAsync();
-      if (status !== 'granted') {
+        if (status !== 'granted') {
         // In a real app, you might want to show a message to the user
-        console.log('Notification permissions were not granted.');
+        // log removed for production
         return;
       }
 
@@ -50,9 +50,9 @@ function AnnouncementListener() {
             });
           }
         )
-        .subscribe((status, err) => {
+          .subscribe((status, err) => {
           if (status === 'SUBSCRIBED') {
-            console.log('Successfully subscribed to announcements channel.');
+            // log removed for production
           }
           if (err) {
             console.error('Supabase subscription error:', err);
