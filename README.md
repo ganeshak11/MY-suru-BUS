@@ -85,7 +85,9 @@ MY-suru-BUS/
 ├── admin-dashboard/        # Next.js web dashboard
 ├── driver-app/             # Driver mobile app (Expo)
 ├── passenger-app/          # Passenger mobile app (Expo)
+├── backend/                # Custom Node.js API (dev branch)
 ├── supabase/               # Database schema & backend config
+├── ROADMAP.md              # Detailed enhancement plan
 └── README.md
 ```
 
@@ -211,25 +213,38 @@ npm start/ npx expo start
 - Geofencing for automated stop detection
 - Offline-first GPS updates for unreliable networks
 - Minimal backend logic with strong database constraints
+- **MVP-first approach** - Core features stable, enhancements planned iteratively
+- Event-driven architecture for trip execution (in development)
 
 ---
 
 ##  Current Status
 
--  Core system fully implemented
--  Real-time tracking stable
--  Suitable for demos, evaluation, and further scaling
--  Production deployment pending
+-  **MVP Complete** - Core system fully functional
+-  Real-time tracking operational
+-  Suitable for demos, pilot deployments, and evaluation
+-  Custom backend in development (see `dev` branch)
+-  Production hardening in progress
 
 ---
 
 ##  Roadmap
 
+### Current Focus
+- [ ] Custom backend API (Node.js/Express) - **In Progress**
+- [ ] Event-driven trip execution system
+- [ ] Server-side geofence validation
+
+### Planned Enhancements
+- [ ] Stop sequence enforcement
+- [ ] Arrival queue reliability with backoff
+- [ ] Real-time subscription recovery
+- [ ] Traffic-aware ETA calculation
+- [ ] Authentication hardening
 - [ ] Push notifications for passengers
-- [ ] Offline mode for driver app
 - [ ] Analytics dashboard for admins
-- [ ] Multi-language support
-- [ ] Payment integration
+
+**See [ROADMAP.md](./ROADMAP.md) for detailed enhancement plan**
 
 ---
 
