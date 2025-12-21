@@ -4,7 +4,7 @@
 // Change this to your backend URL
 // For local testing: http://localhost:3001/api
 // For production: https://your-backend-url.com/api
-const API_BASE_URL = 'http://10.51.226.123:3001/api';
+const API_BASE_URL = 'http://10.24.88.123:3001/api';
 
 export class BusAPI {
   // Routes
