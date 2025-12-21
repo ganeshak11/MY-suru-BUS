@@ -20,8 +20,6 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-picker/picker": "2.7.5",
-    "@supabase/auth-js": "^2.81.1",
-    "@supabase/supabase-js": "^2.81.1",
     "expo": "~51.0.8",
     "expo-constants": "~16.0.1",
     "expo-dev-client": "~4.0.29",

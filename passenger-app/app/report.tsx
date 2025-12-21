@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabaseClient';
+import { BusAPI } from '../lib/apiClient';
 import { useTheme } from '../contexts/ThemeContext';
 import { Picker } from '@react-native-picker/picker';
 import { Header } from '../components/Header';
@@ -23,27 +23,12 @@ const ReportPage: React.FC = () => {
 
   const fetchActiveTrips = async () => {
     try {
-      const { data, error } = await supabase
-        .from('trips')
-        .select(`
-          trip_id,
-          bus_id,
-          driver_id,
-          schedules!inner(route_id, routes!inner(route_name)),
-          buses!fk_trips_bus!inner(bus_no),
-          drivers!inner(name)
-        `)
-        .eq('trip_date', (() => {
-          const now = new Date();
-          return now.getFullYear() + '-' + 
-            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-            String(now.getDate()).padStart(2, '0');
-        })())
-        .in('status', ['En Route', 'Scheduled'])
-        .order('trip_id');
-
-      if (error) throw error;
-      setTrips(data || []);
+      const data = await BusAPI.getAllTrips();
+      const today = new Date().toISOString().split('T')[0];
+      const activeTrips = (data || []).filter((t: any) => 
+        t.trip_date === today && ['In Progress', 'Scheduled'].includes(t.status)
+      );
+      setTrips(activeTrips);
     } catch (error) {
       console.error('Error fetching trips:', error);
     } finally {
@@ -67,24 +52,17 @@ const ReportPage: React.FC = () => {
     try {
       const selectedTrip = trips.find(t => t.trip_id.toString() === selectedTripId);
       
-      const { error } = await supabase.from('passenger_reports').insert([
-        {
-          report_type: reportType,
-          message: message,
-          trip_id: selectedTrip.trip_id,
-          bus_id: selectedTrip.bus_id,
-          driver_id: selectedTrip.driver_id,
-          route_id: selectedTrip.schedules.route_id,
-        },
-      ]);
+      await BusAPI.createReport({
+        report_type: reportType,
+        message: message,
+        trip_id: selectedTrip.trip_id,
+        bus_id: selectedTrip.bus_id,
+        driver_id: selectedTrip.driver_id,
+        route_id: selectedTrip.route_id,
+      });
 
-      if (error) {
-        console.error('Error submitting report:', error);
-        Alert.alert('Error', 'Could not submit your report. Please try again later.');
-      } else {
-        Alert.alert('Success', 'Your report has been submitted. Thank you for your feedback.');
-        router.back();
-      }
+      Alert.alert('Success', 'Your report has been submitted. Thank you for your feedback.');
+      router.back();
     } catch (error) {
       console.error('Exception submitting report:', error);
       Alert.alert('Error', 'An unexpected error occurred. Please try again later.');
@@ -155,7 +133,7 @@ const ReportPage: React.FC = () => {
           {trips.map((trip) => (
             <Picker.Item
               key={trip.trip_id}
-              label={`Bus ${trip.buses.bus_no} - ${trip.schedules.routes.route_name}`}
+              label={`Bus ${trip.bus_no} - ${trip.route_name}`}
               value={trip.trip_id.toString()}
             />
           ))}

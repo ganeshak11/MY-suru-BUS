@@ -1,7 +1,6 @@
 import { Slot } from 'expo-router';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
 import * as Notifications from 'expo-notifications';
 import SplashScreen from './SplashScreen';
 
@@ -14,61 +13,18 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// This component listens for new announcements and triggers notifications
+// TODO: Implement WebSocket-based announcement listener
+// This component will listen for new announcements via WebSocket
 function AnnouncementListener() {
   useEffect(() => {
-    async function setupAndListen() {
-      // 1. Request permissions
-      const { status } = await Notifications.requestPermissionsAsync();
-        if (status !== 'granted') {
-        // In a real app, you might want to show a message to the user
-        // log removed for production
-        return;
-      }
-
-      // 2. Set up Supabase real-time listener
-      const channel = supabase
-        .channel('public-announcements')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'announcements' },
-          (payload) => {
-            const newAnnouncement = payload.new as { title: string; message: string };
-            
-            // Sanitize input to prevent XSS
-            const sanitizedTitle = String(newAnnouncement.title || '').replace(/[<>"']/g, '');
-            const sanitizedMessage = String(newAnnouncement.message || '').replace(/[<>"']/g, '');
-            
-            // 3. Schedule a notification
-            Notifications.scheduleNotificationAsync({
-              content: {
-                title: sanitizedTitle,
-                body: sanitizedMessage,
-                data: { screen: 'announcements' }, // Example data
-              },
-              trigger: null, // Show immediately
-            });
-          }
-        )
-          .subscribe((status, err) => {
-          if (status === 'SUBSCRIBED') {
-            // log removed for production
-          }
-          if (err) {
-            console.error('Supabase subscription error:', err);
-          }
-        });
-
-      // Cleanup on unmount
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-
-    setupAndListen();
+    // TODO: Connect to WebSocket for real-time announcements
+    // const socket = io('http://localhost:3001');
+    // socket.on('new-announcement', (announcement) => {
+    //   Notifications.scheduleNotificationAsync({ ... });
+    // });
   }, []);
 
-  return null; // This component doesn't render any UI
+  return null;
 }
 
 function AppContent() {

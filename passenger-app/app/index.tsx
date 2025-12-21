@@ -17,8 +17,7 @@ import {
 import { Icon, Input } from 'react-native-elements';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabaseClient';
-import SplashScreen from './SplashScreen';
+import { BusAPI } from '../lib/apiClient';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface RouteResult {
@@ -57,16 +56,7 @@ const App: React.FC = () => {
 
   const fetchRouteData = async () => {
     try {
-      const { data, error } = await supabase
-        .from('routes')
-        .select('route_id, route_no, route_name');
-      
-      if (error) {
-        console.error('Error fetching route details:', error);
-        setAllRouteDetails([]);
-        return;
-      }
-      
+      const data = await BusAPI.getAllRoutes();
       setAllRouteDetails(data || []);
     } catch (e) {
       console.error('Error fetching routes:', e);
@@ -76,16 +66,7 @@ const App: React.FC = () => {
 
   const fetchStops = async () => {
     try {
-      const { data, error } = await supabase
-        .from('stops')
-        .select('stop_id, stop_name, latitude, longitude');
-
-      if (error) {
-        console.error('Error fetching stops:', error);
-        setAllStops([]);
-        return;
-      }
-
+      const data = await BusAPI.getAllStops();
       setAllStops(data || []);
     } catch (e) {
       console.error(e);
@@ -127,27 +108,21 @@ const App: React.FC = () => {
 
   const saveRecentSearch = async (search: string) => {
     try {
-      const { data, error } = await supabase
-        .from('stops')
-        .select('stop_name');
-
-      if (error) {
-        console.error('Suggestion fetch error', error);
-        setSuggestions([]);
-        return;
-      }
-
-      const queryWords = query.toLowerCase().split(/\s+/);
-      const filtered = (data || []).filter((d: any) => {
-        const stopName = d.stop_name.toLowerCase();
-        return queryWords.every(word => stopName.includes(word));
-      });
-
-      const unique = Array.from(new Set(filtered.map((d: any) => d.stop_name))).filter(Boolean);
-      setSuggestions(type === 'destination' && source ? unique.filter(s => s !== source) : unique);
+      const updated = [search, ...recentSearches.filter(s => s !== search)].slice(0, MAX_RECENT_SEARCHES);
+      await AsyncStorage.setItem('recentSearches', JSON.stringify(updated));
+      setRecentSearches(updated);
     } catch (e) {
       console.error(e);
-      setSuggestions([]);
+    }
+  };
+
+  const removeRecentSearch = async (search: string) => {
+    try {
+      const updated = recentSearches.filter(s => s !== search);
+      await AsyncStorage.setItem('recentSearches', JSON.stringify(updated));
+      setRecentSearches(updated);
+    } catch (e) {
+      console.error(e);
     }
   };
 

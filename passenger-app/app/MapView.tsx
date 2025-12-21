@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from '../lib/supabaseClient';
+import { BusAPI } from '../lib/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -78,103 +78,41 @@ const MapViewScreen: React.FC = () => {
       try {
         const rid = Number(route_id);
 
-        const { data: routeData, error: routeErr } = await supabase
-          .from('routes')
-          .select('route_id, route_name')
-          .eq('route_id', rid)
-          .single();
+        // Fetch route with stops from backend
+        const routeData = await BusAPI.getRoute(rid);
         
-        if (routeErr || !routeData) {
-          console.error('Error fetching route:', routeErr);
+        if (!routeData) {
+          console.error('Error fetching route');
           setLoading(false);
           return;
         }
 
-        const { data: stopsData, error: stopsErr } = await supabase
-          .from('route_stops')
-          .select('stop_sequence, time_offset_from_start, stops(stop_id, stop_name, latitude, longitude, geofence_radius_meters)')
-          .eq('route_id', rid)
-          .order('stop_sequence', { ascending: true });
-
-        if (stopsErr) {
-          console.error('Error fetching stops:', stopsErr);
-        } else if (stopsData) {
-          const formattedStops: StopDetails[] = stopsData.map((item: any) => {
-            let offsetMinutes = 0;
-            if (item.time_offset_from_start) {
-              const [hours, minutes] = item.time_offset_from_start.split(':').map(Number);
-              offsetMinutes = (hours * 60) + minutes;
-            }
-            return {
-              ...item.stops,
-              latitude: parseFloat(item.stops.latitude),
-              longitude: parseFloat(item.stops.longitude),
-              geofence_radius_meters: item.stops.geofence_radius_meters || 50,
-              stop_sequence: item.stop_sequence,
-              status: 'Pending',
-              time_offset_from_start: offsetMinutes,
-            };
-          });
+        // Format stops from backend response
+        if (routeData.stops) {
+          const formattedStops: StopDetails[] = routeData.stops.map((stop: any) => ({
+            stop_id: stop.stop_id,
+            stop_name: stop.stop_name,
+            latitude: parseFloat(stop.latitude),
+            longitude: parseFloat(stop.longitude),
+            geofence_radius_meters: stop.geofence_radius_meters || 50,
+            stop_sequence: stop.stop_sequence,
+            status: 'Pending',
+            time_offset_from_start: stop.time_offset_from_start || 0,
+          }));
           setStops(formattedStops);
         }
 
-        const { data: scheduleData, error: schedErr } = await supabase
-          .from('schedules')
-          .select('schedule_id, start_time')
-          .eq('route_id', rid)
-          .order('start_time', { ascending: true });
+        setRoute({ route_id: routeData.route_id, route_name: routeData.route_name });
+
+        // Fetch all trips to get bus locations
+        const tripsData = await BusAPI.getAllTrips();
+        const routeTrips = tripsData.filter((t: any) => t.route_id === rid);
         
-        if (!schedErr && scheduleData) {
-          const { data: activeTrips, error: activeTripsErr } = await supabase
-            .from('trips')
-            .select('schedule_id, trip_id')
-            .in('schedule_id', scheduleData.map(s => s.schedule_id))
-            .eq('status', 'En Route');
-          
-          if (activeTripsErr) {
-            console.error('Error fetching active trips:', activeTripsErr);
-          }
-          
-          const activeScheduleIds = new Set(activeTrips?.map(t => t.schedule_id) || []);
-          const firstActiveScheduleId = activeTrips?.[0]?.schedule_id || null;
-          const firstActiveTripId = activeTrips?.[0]?.trip_id || null;
-          
-          setSchedules(scheduleData.map(s => {
-            const trip = activeTrips?.find(t => t.schedule_id === s.schedule_id);
-            return {
-              schedule_id: s.schedule_id,
-              start_time: s.start_time,
-              isActive: activeScheduleIds.has(s.schedule_id),
-              trip_id: trip?.trip_id
-            };
-          }));
-          
-          setActiveScheduleId(firstActiveScheduleId);
-          setActiveTripId(firstActiveTripId);
-          
-          const initialStartTime = firstActiveScheduleId 
-            ? scheduleData.find(s => s.schedule_id === firstActiveScheduleId)?.start_time || scheduleData[0]?.start_time
-            : scheduleData[0]?.start_time;
-          setSelectedStartTime(initialStartTime);
-          setRoute({ ...routeData, start_time: initialStartTime });
-        } else {
-          setRoute(routeData);
-        }
-
-        const { data: tripsData, error: tripsErr } = await supabase
-          .from('trips')
-          .select('bus_id, schedules!inner(route_id)')
-          .eq('schedules.route_id', rid);
-
-        if (!tripsErr && tripsData) {
-          const busIds = Array.from(new Set(tripsData.map(t => t.bus_id)));
-          if (busIds.length > 0) {
-            const { data: busesData, error: busesErr } = await supabase
-              .from('buses')
-              .select('*')
-              .in('bus_id', busIds);
-            if (!busesErr) setBusLocations(busesData || []);
-          }
+        if (routeTrips.length > 0) {
+          const busIds = Array.from(new Set(routeTrips.map((t: any) => t.bus_id)));
+          const allBuses = await BusAPI.getAllBuses();
+          const routeBuses = allBuses.filter((b: any) => busIds.includes(b.bus_id));
+          setBusLocations(routeBuses || []);
         }
       } catch (e) {
         console.error(e);
@@ -184,22 +122,10 @@ const MapViewScreen: React.FC = () => {
 
     load();
 
-    const subscription = supabase
-      .channel('public:buses')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'buses' }, (payload) => {
-        setBusLocations((prev) => {
-          const exists = prev.find(b => b.bus_id === payload.new.bus_id);
-          if (exists) {
-            return prev.map((bus) => bus.bus_id === payload.new.bus_id ? payload.new : bus);
-          }
-          return prev;
-        });
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(subscription);
-    };
+    // TODO: Implement WebSocket connection for real-time updates
+    // const socket = io('http://localhost:3001');
+    // socket.on('bus-location', (data) => { ... });
+    
   }, [route_id]);
 
   const styles = React.useMemo(() => StyleSheet.create({
@@ -394,38 +320,6 @@ const MapViewScreen: React.FC = () => {
               <Text style={styles.detailValue}>{schedules.length}</Text>
             </View>
           </View>
-          {schedules.length > 0 && (
-            <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 }}>
-                <Ionicons name="time" size={18} color={colors.primaryAccent} />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primaryText }}>Trip Times</Text>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.schedulesContainer}>
-                {schedules.map((schedule) => (
-                  <TouchableOpacity
-                    key={schedule.schedule_id}
-                    style={[
-                      styles.scheduleChip, 
-                      schedule.isActive && styles.scheduleChipActive,
-                      selectedStartTime === schedule.start_time && styles.scheduleChipSelected
-                    ]}
-                    onPress={() => {
-                      setSelectedStartTime(schedule.start_time);
-                      setRoute(prev => prev ? { ...prev, start_time: schedule.start_time } : null);
-                    }}
-                  >
-                    <Text style={[
-                      styles.scheduleTime, 
-                      schedule.isActive && styles.scheduleTimeActive,
-                      selectedStartTime === schedule.start_time && styles.scheduleTimeSelected
-                    ]}>
-                      {schedule.start_time.substring(0, 5)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
         </View>
 
         <View style={styles.stopsCard}>
