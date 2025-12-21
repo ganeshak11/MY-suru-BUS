@@ -46,38 +46,21 @@ This document tracks the development progress and planned enhancements for the M
 
 ### Backend Infrastructure ✅ COMPLETED
 - [x] Node.js + Express server setup
-- [x] SQLite database with schema migration
+- [x] PostgreSQL database connection (Supabase)
 - [x] Socket.io for real-time WebSocket communication
 - [x] CORS configuration for cross-origin requests
 - [x] Environment configuration (.env)
+- [x] Database migration from SQLite to PostgreSQL
+- [x] Supabase data import completed
 
 ### API Endpoints ✅ COMPLETED
-- [x] **Routes API**
-  - GET /api/routes - List all routes
-  - GET /api/routes/:id - Route details with stops
-  - GET /api/routes/search/:source/:destination - Route search
-- [x] **Trips API**
-  - GET /api/trips - List all trips
-  - GET /api/trips/:id - Trip details
-  - POST /api/trips/:id/start - Start trip
-  - PATCH /api/trips/:id/pause - Pause trip
-  - PATCH /api/trips/:id/resume - Resume trip
-  - POST /api/trips/:id/complete - Complete trip
-  - POST /api/trips/:id/stops/:stopId/arrive - Record stop arrival
-  - GET /api/trips/:id/stops - Get trip stops with times
-- [x] **Buses API**
-  - GET /api/buses - List all buses
-  - GET /api/buses/:id - Bus details
-  - POST /api/buses/:id/location - Update bus location
-- [x] **Stops API**
-  - GET /api/stops - List all stops
-  - GET /api/stops/search/:query - Search stops
-- [x] **Auth API**
-  - POST /api/auth/driver/login - Driver authentication
-  - POST /api/auth/driver/register - Driver registration
-  - POST /api/auth/admin/login - Admin authentication
-- [x] **Reports API** - Passenger report submission
-- [x] **Announcements API** - Service announcements
+- [x] **Routes API** - Converted to PostgreSQL
+- [x] **Trips API** - Converted to PostgreSQL
+- [x] **Buses API** - Converted to PostgreSQL
+- [x] **Stops API** - Converted to PostgreSQL
+- [x] **Auth API** - Converted to PostgreSQL
+- [x] **Reports API** - Converted to PostgreSQL
+- [x] **Announcements API** - Converted to PostgreSQL
 
 ### Real-Time Features ✅ COMPLETED
 - [x] WebSocket connection handling
@@ -85,24 +68,30 @@ This document tracks the development progress and planned enhancements for the M
 - [x] Live location broadcasting (location-update, bus-location)
 - [x] Client connection/disconnection handling
 
-### Database Schema ✅ COMPLETED
-- [x] Routes, stops, route_stops tables
-- [x] Buses, drivers, trips tables
-- [x] Schedules, trip_stop_times tables
-- [x] Announcements, passenger_reports tables
-- [x] Sample data seeding
+### Database ✅ COMPLETED
+- [x] PostgreSQL connection pool setup
+- [x] All routes converted from SQLite to PostgreSQL
+- [x] Supabase PostgreSQL integration
+- [x] Data import from Supabase (14 routes, 29 stops, 7 buses, 7 drivers, 50 trips)
+
+### Mobile App Migration ✅ COMPLETED
+- [x] **Passenger App** - Supabase removed, using custom backend API
+- [x] API client implementation
+- [x] All screens updated to use backend
+- [x] Package dependencies cleaned
 
 ### Testing & Documentation ✅ COMPLETED
 - [x] API documentation (API_DOCS.md)
 - [x] Integration testing guide (TEST_INTEGRATION.md)
-- [x] Test scripts (test-api.js, test-websocket.js)
-- [x] Database inspection tools
+- [x] Migration documentation (MIGRATION_PASSENGER_APP.md)
+- [x] Test scripts available
 
 ### Next Steps for Backend
+- [ ] **Driver App Migration** - Remove Supabase, integrate with backend
+- [ ] **Admin Dashboard Migration** - Remove Supabase, integrate with backend
 - [ ] **JWT Authentication Middleware** - Protect routes with auth
 - [ ] **Input Validation** - Add request validation middleware
 - [ ] **Error Handling** - Centralized error handling
-- [ ] **Database Connection Pooling** - Optimize database connections
 - [ ] **API Rate Limiting** - Prevent abuse
 - [ ] **Logging System** - Structured logging (Winston/Morgan)
 
@@ -288,19 +277,21 @@ These belong to a future product phase, not the current engineering objective.
 
 ### Overall Completion
 - **Phase 1 (MVP):** ✅ 100% Complete
-- **Phase 2 (Custom Backend):** 🔄 85% Complete
+- **Phase 2 (Custom Backend):** 🔄 95% Complete
 - **Phase 3 (Production Hardening):** ⏳ 0% Complete
 
 ### Current Sprint Focus
-1. Complete backend authentication middleware
-2. Add input validation and error handling
-3. Integrate backend with mobile apps
-4. Test end-to-end flows
+1. ✅ Backend PostgreSQL migration - DONE
+2. ✅ Passenger app Supabase removal - DONE
+3. ✅ Data import from Supabase - DONE
+4. Driver app migration - IN PROGRESS
+5. Admin dashboard migration - PENDING
 
 ### Next Sprint
-1. Begin event-driven architecture implementation
-2. Server-side geofence validation
-3. Stop sequence enforcement
+1. Complete driver app migration
+2. Complete admin dashboard migration
+3. Add authentication middleware
+4. Begin event-driven architecture implementation
 
 ---
 

@@ -1,29 +1,44 @@
 # MY(suru) BUS Backend
 
-Manual backend implementation for the MY(suru) BUS tracking system.
+Custom Node.js backend for the MY(suru) BUS tracking system.
 
 ## Tech Stack
-- Node.js + Express
-- SQLite Database
-- Socket.io for real-time updates
-- JWT Authentication
+- **Runtime:** Node.js + Express
+- **Database:** PostgreSQL (Supabase)
+- **Real-time:** Socket.io for WebSocket communication
+- **Authentication:** JWT (JSON Web Tokens)
+- **ORM:** Native pg (PostgreSQL client)
+
+## Features
+
+✅ RESTful API for all bus operations
+✅ Real-time location updates via WebSocket
+✅ PostgreSQL database with connection pooling
+✅ JWT-based authentication
+✅ CORS enabled for cross-origin requests
+✅ Complete CRUD operations for routes, stops, buses, trips
 
 ## Setup
 
-1. Install dependencies:
+### 1. Install Dependencies
 ```bash
 npm install
 ```
 
-2. Initialize database:
-```bash
-npm run init-db
+### 2. Configure Environment
+Create `.env` file:
+```env
+DATABASE_URL=postgresql://user:password@host:port/database
+PORT=3001
+JWT_SECRET=your-secret-key
 ```
 
-3. Start development server:
+### 3. Start Server
 ```bash
 npm run dev
 ```
+
+Server runs at: `http://localhost:3001`
 
 ## API Endpoints
 
@@ -34,13 +49,75 @@ npm run dev
 
 ### Buses
 - `GET /api/buses` - Get all buses
+- `GET /api/buses/:id` - Get bus details
 - `POST /api/buses/:id/location` - Update bus location
 
-### Real-time
-- WebSocket connection on same port
-- Events: `join-trip`, `location-update`, `bus-location`
+### Trips
+- `GET /api/trips` - Get all trips
+- `GET /api/trips/:id` - Get trip details
+- `POST /api/trips/:id/start` - Start trip
+- `PATCH /api/trips/:id/pause` - Pause trip
+- `POST /api/trips/:id/complete` - Complete trip
+- `POST /api/trips/:id/stops/:stopId/arrive` - Mark stop arrival
 
-## Database Schema
+### Stops
+- `GET /api/stops` - Get all stops
+- `GET /api/stops/search/:query` - Search stops
+
+### Authentication
+- `POST /api/auth/driver/login` - Driver login
+- `POST /api/auth/driver/register` - Driver registration
+- `POST /api/auth/admin/login` - Admin login
+
+### Reports & Announcements
+- `GET /api/reports` - Get all reports
+- `POST /api/reports` - Create report
+- `GET /api/announcements` - Get announcements
+- `POST /api/announcements` - Create announcement
+
+## Real-Time WebSocket
+
+Connect to: `ws://localhost:3001`
+
+### Events
+- **Emit:** `join-trip` - Join a trip room
+- **Emit:** `location-update` - Send location update
+- **Listen:** `bus-location` - Receive location updates
+
+## Database
+
+**Provider:** Supabase PostgreSQL
+
+**Tables:**
 - routes, stops, route_stops
 - buses, drivers, trips
 - schedules, trip_stop_times
+- announcements, passenger_reports
+
+## Scripts
+
+```bash
+npm run dev          # Start development server
+npm start            # Start production server
+npm run import       # Import data from Supabase
+```
+
+## Migration Status
+
+✅ **Backend API:** Complete
+✅ **PostgreSQL Integration:** Complete
+✅ **Passenger App:** Migrated
+⏳ **Driver App:** Pending
+⏳ **Admin Dashboard:** Pending
+
+## Documentation
+
+- [API Documentation](./API_DOCS.md)
+- [Integration Testing](../TEST_INTEGRATION.md)
+- [Migration Guide](../MIGRATION_PASSENGER_APP.md)
+
+---
+
+**Status:** Production Ready
+**Branch:** `dev`
+**Last Updated:** January 2025

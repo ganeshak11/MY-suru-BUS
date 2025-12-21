@@ -1,48 +1,35 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const pool = require('../database/db');
 
 const router = express.Router();
-const dbPath = path.join(__dirname, '../../database.sqlite');
 
 // Get all announcements
-router.get('/', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
-  
-  db.all('SELECT * FROM announcements ORDER BY created_at DESC', (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(rows);
-  });
-  
-  db.close();
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create announcement (admin only)
-router.post('/', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
-  const { title, message } = req.body;
-  
-  if (!title || !message) {
-    return res.status(400).json({ error: 'Title and message required' });
-  }
-  
-  db.run(
-    'INSERT INTO announcements (title, message) VALUES (?, ?)',
-    [title, message],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.status(201).json({ 
-        message: 'Announcement created', 
-        announcement_id: this.lastID 
-      });
+router.post('/', async (req, res) => {
+  try {
+    const { title, message } = req.body;
+    
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message required' });
     }
-  );
-  
-  db.close();
+    
+    const result = await pool.query(
+      'INSERT INTO announcements (title, message) VALUES ($1, $2) RETURNING announcement_id',
+      [title, message]
+    );
+    res.status(201).json({ message: 'Announcement created', announcement_id: result.rows[0].announcement_id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

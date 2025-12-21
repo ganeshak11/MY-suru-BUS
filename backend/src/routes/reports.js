@@ -1,64 +1,42 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const pool = require('../database/db');
 
 const router = express.Router();
-const dbPath = path.join(__dirname, '../../database.sqlite');
 
 // Get all reports
-router.get('/', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
-  
-  db.all('SELECT * FROM passenger_reports ORDER BY created_at DESC', (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(rows);
-  });
-  
-  db.close();
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM passenger_reports ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create report
-router.post('/', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
-  const { report_type, message, trip_id, bus_id, driver_id, route_id } = req.body;
-  
-  db.run(
-    `INSERT INTO passenger_reports (report_type, message, trip_id, bus_id, driver_id, route_id) 
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [report_type, message, trip_id, bus_id, driver_id, route_id],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.status(201).json({ 
-        message: 'Report created', 
-        report_id: this.lastID 
-      });
-    }
-  );
-  
-  db.close();
+router.post('/', async (req, res) => {
+  try {
+    const { report_type, message, trip_id, bus_id, driver_id, route_id } = req.body;
+    const result = await pool.query(
+      `INSERT INTO passenger_reports (report_type, message, trip_id, bus_id, driver_id, route_id) 
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING report_id`,
+      [report_type, message, trip_id, bus_id, driver_id, route_id]
+    );
+    res.status(201).json({ message: 'Report created', report_id: result.rows[0].report_id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Update report status
-router.patch('/:id/status', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
-  const { status } = req.body;
-  
-  db.run(
-    'UPDATE passenger_reports SET status = ? WHERE report_id = ?',
-    [status, req.params.id],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ message: 'Report status updated' });
-    }
-  );
-  
-  db.close();
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    await pool.query('UPDATE passenger_reports SET status = $1 WHERE report_id = $2', [status, req.params.id]);
+    res.json({ message: 'Report status updated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

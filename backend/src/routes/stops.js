@@ -1,40 +1,29 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const pool = require('../database/db');
 
 const router = express.Router();
-const dbPath = path.join(__dirname, '../../database.sqlite');
 
 // Get all stops
-router.get('/', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
-  
-  db.all('SELECT * FROM stops', (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    res.json(rows);
-  });
-  
-  db.close();
+router.get('/', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM stops');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Search stops by name
-router.get('/search/:query', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
-  
-  db.all(
-    'SELECT * FROM stops WHERE stop_name LIKE ?',
-    [`%${req.params.query}%`],
-    (err, rows) => {
-      if (err) {
-        return res.status(500).json({ error: err.message });
-      }
-      res.json(rows);
-    }
-  );
-  
-  db.close();
+router.get('/search/:query', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM stops WHERE stop_name ILIKE $1',
+      [`%${req.params.query}%`]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;
