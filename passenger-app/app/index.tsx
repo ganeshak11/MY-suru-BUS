@@ -95,7 +95,7 @@ const App: React.FC = () => {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: 'Download MY(suru) BUS app to track buses in real-time! https://mysurubus.com/download',
+        message: 'Download MY(suru) BUS app to track buses in real-time! https://drive.google.com/file/d/1tgUTN6-jLV-QY2oiXFSV7TFE9CdovUuo/view?usp=drivesdk',
         title: 'MY(suru) BUS App',
       });
     } catch (error) {
@@ -717,7 +717,7 @@ const App: React.FC = () => {
             <Text style={styles.subtitle}>Stop Waiting, Start Tracking...</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={handleShare} style={[styles.iconBtn, { opacity: 0.3 }]} disabled>
+            <TouchableOpacity onPress={handleShare} style={[styles.iconBtn, { opacity: 1 }]}>
               <Icon name="share-social" type="ionicon" color={currentColors.primaryText} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.push('/menu')} style={styles.iconBtn}>
