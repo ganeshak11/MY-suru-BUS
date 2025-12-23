@@ -2,13 +2,12 @@
   "name": "my-suru-bus-backend",
   "version": "1.0.0",
   "description": "Manual backend for MY(suru) BUS app",
-  "main": "src/app.js",
+  "main": "dist/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
-    "init-db": "node src/database/init.js",
-    "clean-db": "node clean-db.js",
-    "reset-db": "node clean-db.js && node src/database/init.js"
+    "start": "node dist/app.js",
+    "dev": "nodemon --exec ts-node src/app.ts",
+    "build": "tsc",
+    "create-admin": "ts-node src/create-admin.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
@@ -23,13 +22,21 @@
     "sqlite3": "^5.1.6"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.19.27",
+    "@types/pg": "^8.16.0",
+    "nodemon": "^3.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "keywords": [
     "bus",
     "tracking",
     "api"
   ],
-  "author": "Your Name",
+  "author": "MY(suru) BUS Team",
   "license": "MIT"
 }

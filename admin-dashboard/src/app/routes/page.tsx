@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { PlusIcon, PencilIcon, TrashIcon, MapIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import RoutePlanner from './components/RoutePlanner';
@@ -36,43 +36,20 @@ export default function RoutesPage() {
   useEffect(() => {
     if (view === 'list') {
       fetchRoutes();
+      const interval = setInterval(fetchRoutes, 5000);
+      return () => clearInterval(interval);
     }
-
-    // --- ADDED: Real-time subscription ---
-    const channel = supabase
-      .channel('routes-table-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'routes' },
-        (payload) => {
-          if (view === 'list') {
-            fetchRoutes();
-          }
-        }
-      )
-      .subscribe();
-
-    // Cleanup function
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // --- END ADD ---
-
   }, [view]);
 
   const fetchRoutes = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('routes')
-      // --- UPDATED: Get counts of stops and schedules ---
-      .select('*, route_stops(count), schedules(count)')
-      .order('route_name', { ascending: true });
-
-    if (error) {
+    try {
+      const data = await apiClient.getRoutes();
+      setRoutes(data);
+      setError(null);
+    } catch (error: any) {
       console.error('Error fetching routes:', error);
       setError('Failed to fetch routes. Please try again.');
-    } else {
-      setRoutes(data as Route[]);
     }
     setLoading(false);
   };
@@ -102,14 +79,13 @@ export default function RoutesPage() {
     }
     if (!selectedRoute) return;
 
-    const { data, error: submissionError } = await supabase.from('routes').update(formState).eq('route_id', selectedRoute.route_id).select();
-
-    if (submissionError) {
-      console.error(`Error updating route:`, submissionError);
-      setError(`Failed to update route: ${submissionError.message}`);
-    } else if (data) {
-      // fetchRoutes(); // No longer needed, real-time listener will catch it
+    try {
+      await apiClient.updateRoute(selectedRoute.route_id, formState);
+      fetchRoutes();
       closeModal();
+    } catch (error: any) {
+      console.error('Error updating route:', error);
+      setError(`Failed to update route: ${error.message}`);
     }
   };
 
@@ -125,44 +101,15 @@ export default function RoutesPage() {
     setError(null);
 
     try {
-      // First, get all schedules for the route
-      const { data: schedules, error: schedulesError } = await supabase
-        .from('schedules')
-        .select('schedule_id')
-        .eq('route_id', routeToDelete.route_id);
-
-      if (schedulesError) throw schedulesError;
-
-      const scheduleIds = schedules.map(s => s.schedule_id);
-
-      // If there are schedules, delete associated trips
-      if (scheduleIds.length > 0) {
-        const { error: tripsError } = await supabase.from('trips').delete().in('schedule_id', scheduleIds);
-        if (tripsError) throw tripsError;
-      }
-
-      // Delete associated schedules
-      const { error: schedulesDeleteError } = await supabase.from('schedules').delete().eq('route_id', routeToDelete.route_id);
-      if (schedulesDeleteError) throw schedulesDeleteError;
-
-      // Delete associated route_stops
-      const { error: routeStopsError } = await supabase.from('route_stops').delete().eq('route_id', routeToDelete.route_id);
-      if (routeStopsError) throw routeStopsError;
-
-      // Now delete the route
-      const { error: routeError } = await supabase.from('routes').delete().eq('route_id', routeToDelete.route_id);
-      if (routeError) throw routeError;
-
-      // Success
-      // setRoutes(routes.filter(r => r.route_id !== route_id)); // No longer needed
-      setIsDeleteModalOpen(false);
-      setRouteToDelete(null);
-
+      await apiClient.deleteRoute(routeToDelete.route_id);
+      fetchRoutes();
     } catch (error: any) {
       console.error('Error deleting route:', error);
       setError(`Failed to delete route: ${error.message}`);
-      setIsDeleteModalOpen(false);
     }
+    
+    setIsDeleteModalOpen(false);
+    setRouteToDelete(null);
   };
   // --- END UPDATE ---
 

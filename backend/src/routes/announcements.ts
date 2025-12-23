@@ -1,25 +1,24 @@
-const express = require('express');
-const pool = require('../database/db');
+import { Router, Request, Response } from 'express';
+import pool from '../database/db';
 
-const router = express.Router();
+const router = Router();
 
-// Get all announcements
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-// Create announcement (admin only)
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, message } = req.body;
     
     if (!title || !message) {
-      return res.status(400).json({ error: 'Title and message required' });
+      res.status(400).json({ error: 'Title and message required' });
+      return;
     }
     
     const result = await pool.query(
@@ -28,8 +27,8 @@ router.post('/', async (req, res) => {
     );
     res.status(201).json({ message: 'Announcement created', announcement_id: result.rows[0].announcement_id });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState, Fragment } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { Dialog, Transition } from '@headlessui/react';
 import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon } from '@heroicons/react/24/outline';
-import Modal from '@/app/components/Modal'; // Import your Modal component
+import Modal from '@/app/components/Modal';
 
 // --- Interfaces ---
 interface Route {
@@ -16,7 +16,7 @@ interface Schedule {
   schedule_id: number;
   start_time: string;
   route_id: number;
-  routes?: Route; // Single object join
+  route_name?: string;
 }
 
 interface ScheduleGroup {
@@ -42,9 +42,11 @@ interface Trip {
   driver_id: number;
   trip_date: string; 
   status: 'Scheduled' | 'En Route' | 'Completed' | 'Cancelled';
-  schedules?: Schedule; // Single object join
-  buses?: Bus;          // Single object join
-  drivers?: Driver;     // Single object join
+  bus_no?: string;
+  driver_name?: string;
+  start_time?: string;
+  route_name?: string;
+  route_id?: number;
 }
 
 type FormState = Omit<Trip, 'trip_id' | 'schedules' | 'buses' | 'drivers'> & { route_id: number };
@@ -100,66 +102,22 @@ export default function TripsPage() {
 
 
   useEffect(() => {
-  const channel = supabase
-    .channel('trips-table-changes')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'trips' },
-      () => fetchTrips()
-      
-    )
-    .subscribe();
-
-  // Initial load
-  fetchTrips();
-  fetchDependencies();
-  // Synchronous cleanup
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, []);
- // Dependency array ensures cleanup works for the initial setup
-
-  const markOldTripsCompleted = async () => {
-    try {
-      const now = new Date();
-      const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-      await supabase.from('trips').update({ status: 'Completed' }).lt('trip_date', today).eq('status', 'Scheduled');
-    } catch (error) {
-      console.error('Error marking old trips as completed:', error);
-    }
-  };
+    fetchTrips();
+    fetchDependencies();
+    const interval = setInterval(fetchTrips, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchTrips = async () => {
     setLoading(true);
-    await markOldTripsCompleted();
-    // --- UPDATED: Use alias syntax for correct joins (single object) ---
-    const { data, error } = await supabase
-      .from('trips')
-      .select(`
-        trip_id,
-        trip_date,
-        status,
-        schedule_id,
-        bus_id,
-        driver_id,
-        schedules:schedule_id (
-          schedule_id,
-          start_time,
-          routes:route_id (route_id, route_name)
-        ),
-        buses:bus_id (bus_id, bus_no),
-        drivers:driver_id (driver_id, name)
-      `)
-      .order('trip_date', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await apiClient.getTrips();
+      setTrips(data);
+      setFilteredTrips(data);
+      setError(null);
+    } catch (error: any) {
       console.error('Error fetching trips:', error);
       setError('Failed to fetch trips. Please try again.');
-    } else {
-      const tripsData = data as unknown as Trip[];
-      setTrips(tripsData);
-      setFilteredTrips(tripsData);
     }
     setLoading(false);
   };
@@ -173,45 +131,31 @@ export default function TripsPage() {
   }, [statusFilter, trips]);
 
   const fetchDependencies = async () => {
-    // Fetch Schedules (Use alias syntax for correct joins)
-    const { data: schedulesData, error: schedulesError } = await supabase
-      .from('schedules')
-      .select(`schedule_id, start_time, route_id, routes:route_id (route_id, route_name)`);
-    if (schedulesError) console.error('Error fetching schedules:', schedulesError);
-    else {
-      setSchedules(schedulesData as unknown as Schedule[]);
-      // Group schedules by route
-      const grouped = (schedulesData as unknown as Schedule[]).reduce((acc, schedule) => {
-        const routeName = schedule.routes?.route_name || 'Unknown';
+    try {
+      const schedulesData = await apiClient.getSchedules();
+      setSchedules(schedulesData);
+      
+      const grouped = schedulesData.reduce((acc: ScheduleGroup[], schedule: Schedule) => {
+        const routeName = schedule.route_name || 'Unknown';
         const routeId = schedule.route_id;
         const existing = acc.find(g => g.route_id === routeId);
         if (existing) {
           existing.schedules.push(schedule);
         } else {
-          acc.push({
-            route_id: routeId,
-            route_name: routeName,
-            schedules: [schedule]
-          });
+          acc.push({ route_id: routeId, route_name: routeName, schedules: [schedule] });
         }
         return acc;
-      }, [] as ScheduleGroup[]);
+      }, []);
       setScheduleGroups(grouped);
+
+      const busesData = await apiClient.getBuses();
+      setBuses(busesData);
+
+      const driversData = await apiClient.getDrivers();
+      setDrivers(driversData);
+    } catch (error) {
+      console.error('Error fetching dependencies:', error);
     }
-
-    // Fetch Buses
-    const { data: busesData, error: busesError } = await supabase
-      .from('buses')
-      .select('bus_id, bus_no');
-    if (busesError) console.error('Error fetching buses:', busesError);
-    else setBuses(busesData as Bus[]);
-
-    // Fetch Drivers
-    const { data: driversData, error: driversError } = await supabase
-      .from('drivers')
-      .select('driver_id, name');
-    if (driversError) console.error('Error fetching drivers:', driversError);
-    else setDrivers(driversData as Driver[]);
   };
 
   const openModal = (mode: 'add' | 'edit', trip?: Trip) => {
@@ -220,7 +164,7 @@ export default function TripsPage() {
     if (mode === 'edit' && trip) {
       setSelectedTrip(trip);
       setFormState({
-        route_id: trip.schedules?.route_id || 0,
+        route_id: trip.route_id || 0,
         schedule_id: trip.schedule_id,
         bus_id: trip.bus_id,
         driver_id: trip.driver_id,
@@ -276,43 +220,31 @@ export default function TripsPage() {
         return;
     }
 
-    if (modalMode === 'add') {
-      // Get all schedules for the selected route
-      const selectedGroup = scheduleGroups.find(g => g.route_id === route_id);
-      if (!selectedGroup || selectedGroup.schedules.length === 0) {
-        setError("No schedules found for the selected route.");
-        return;
+    try {
+      if (modalMode === 'add') {
+        const selectedGroup = scheduleGroups.find(g => g.route_id === route_id);
+        if (!selectedGroup || selectedGroup.schedules.length === 0) {
+          setError("No schedules found for the selected route.");
+          return;
+        }
+
+        const tripsToCreate = selectedGroup.schedules.map(schedule => ({
+          schedule_id: schedule.schedule_id,
+          bus_id,
+          driver_id,
+          trip_date,
+          status
+        }));
+
+        await apiClient.createTrip(tripsToCreate);
+      } else if (selectedTrip) {
+        await apiClient.updateTrip(selectedTrip.trip_id, { bus_id, driver_id, trip_date, status });
       }
-
-      // Create trips for all schedules in the route
-      const tripsToCreate = selectedGroup.schedules.map(schedule => ({
-        schedule_id: schedule.schedule_id,
-        bus_id,
-        driver_id,
-        trip_date,
-        status
-      }));
-
-      const result = await supabase.from('trips').insert(tripsToCreate).select();
-      const { data, error: submissionError } = result;
-
-      if (submissionError) {
-        console.error('Error adding trips:', submissionError);
-        setError(`Failed to create trips: ${submissionError.message}`);
-      } else if (data) {
-        closeModal();
-      }
-    } else if (selectedTrip) {
-      // Edit mode - update single trip
-      const result = await supabase.from('trips').update({ bus_id, driver_id, trip_date, status }).eq('trip_id', selectedTrip.trip_id).select();
-      const { data, error: submissionError } = result;
-
-      if (submissionError) {
-        console.error('Error updating trip:', submissionError);
-        setError(`Failed to update trip: ${submissionError.message}`);
-      } else if (data) {
-        closeModal();
-      }
+      fetchTrips();
+      closeModal();
+    } catch (error: any) {
+      console.error('Error with trip:', error);
+      setError(`Failed to ${modalMode} trip: ${error.message}`);
     }
   };
 
@@ -326,144 +258,28 @@ export default function TripsPage() {
   const generateDailyTrips = async () => {
     setIsGenerating(true);
     setError(null);
-    try {
-      await markOldTripsCompleted();
-      const now = new Date();
-      const today = now.getFullYear() + '-' + 
-        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(now.getDate()).padStart(2, '0');
-      
-      // Check if trips already exist for today
-      const { data: existingTrips } = await supabase
-        .from('trips')
-        .select('trip_id')
-        .eq('trip_date', today)
-        .limit(1);
-      
-      if (existingTrips && existingTrips.length > 0) {
-        setError('Trips already exist for today');
-        setIsGenerating(false);
-        return;
-      }
-      await supabase.from('trips').update({ status: 'Completed' }).eq('trip_date', today).eq('status', 'Scheduled');
-      const { data: schedules, error: schedulesError } = await supabase.from('schedules').select('schedule_id');
-      
-      if (schedulesError) throw schedulesError;
-      
-      if (!schedules || schedules.length === 0) {
-        setError('No schedules found to generate trips');
-        setIsGenerating(false);
-        return;
-      }
-      
-      // Get yesterday's date to find previous trips
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.getFullYear() + '-' + 
-        String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(yesterday.getDate()).padStart(2, '0');
-      
-      const tripsToCreate = [];
-      
-      // For each schedule, find the previous trip to get bus and driver assignments
-      for (const schedule of schedules) {
-        // Check if trip already exists for today
-        const { data: existingTrip } = await supabase
-          .from('trips')
-          .select('trip_id')
-          .eq('schedule_id', schedule.schedule_id)
-          .eq('trip_date', today)
-          .maybeSingle();
-        
-        if (existingTrip) continue; // Skip if already exists
-        
-        // Get previous trip to copy bus and driver assignments
-        const { data: prevTrip } = await supabase
-          .from('trips')
-          .select('bus_id, driver_id')
-          .eq('schedule_id', schedule.schedule_id)
-          .eq('trip_date', yesterdayStr)
-          .maybeSingle();
-        
-        if (prevTrip) {
-          tripsToCreate.push({
-            schedule_id: schedule.schedule_id,
-            trip_date: today,
-            status: 'Scheduled' as const,
-            bus_id: prevTrip.bus_id,
-            driver_id: prevTrip.driver_id
-          });
-        }
-      }
-      
-      if (tripsToCreate.length === 0) {
-        setError('No previous trips found to copy assignments from');
-        setIsGenerating(false);
-        return;
-      }
-      
-      const { data: createdTrips, error: createError } = await supabase
-        .from('trips')
-        .insert(tripsToCreate)
-        .select();
-      
-      if (createError) throw createError;
-      await fetchTrips();
-      // log removed for production
-      
-    } catch (error: any) {
-      console.error('Error generating daily trips:', error);
-      setError(`Failed to generate trips: ${error.message}`);
-    } finally {
-      setIsGenerating(false);
-    }
+    setIsGenerating(false);
+    setError('Daily trip generation not yet implemented in API');
   };
 
   const confirmDelete = async () => {
     if (!tripToDelete) return;
 
-    // Delete related trip_stop_times records
-    const { error: stopTimesError } = await supabase
-      .from('trip_stop_times')
-      .delete()
-      .eq('trip_id', tripToDelete.trip_id);
-
-    if (stopTimesError) {
-      console.error('Error deleting trip stop times:', stopTimesError);
-      setError(`Failed to delete trip: ${stopTimesError.message}`);
-      setIsDeleteModalOpen(false);
-      setTripToDelete(null);
-      return;
-    }
-
-    // Set trip_id to null in passenger_reports
-    const { error: reportsError } = await supabase
-      .from('passenger_reports')
-      .update({ trip_id: null })
-      .eq('trip_id', tripToDelete.trip_id);
-
-    if (reportsError) {
-      console.error('Error updating passenger reports:', reportsError);
-      setError(`Failed to delete trip: ${reportsError.message}`);
-      setIsDeleteModalOpen(false);
-      setTripToDelete(null);
-      return;
-    }
-
-    // Delete the trip
-    const { error } = await supabase.from('trips').delete().eq('trip_id', tripToDelete.trip_id);
-    if (error) {
+    try {
+      await apiClient.deleteTrip(tripToDelete.trip_id);
+      fetchTrips();
+    } catch (error: any) {
       console.error('Error deleting trip:', error);
       setError(`Failed to delete trip: ${error.message}`);
     }
+    
     setIsDeleteModalOpen(false);
     setTripToDelete(null);
   };
-  // --- END UPDATE ---
 
-  const getScheduleDisplay = (schedule?: Schedule) => {
-    if (!schedule) return 'N/A';
-    return `${schedule.routes?.route_name || ''} (${schedule.start_time})`;
+  const getScheduleDisplay = (trip: Trip) => {
+    if (!trip) return 'N/A';
+    return `${trip.route_name || ''} (${trip.start_time || ''})`;
   };
 
   return (
@@ -567,14 +383,14 @@ export default function TripsPage() {
                     <tr key={trip.trip_id} className="hover:bg-primary/5 transition-colors">
                       <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-foreground text-sm">{new Date(trip.trip_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-foreground">
-                        <div className="truncate max-w-[150px] sm:max-w-none" title={getScheduleDisplay(trip.schedules)}>
-                          {getScheduleDisplay(trip.schedules)}
+                        <div className="truncate max-w-[150px] sm:max-w-none" title={getScheduleDisplay(trip)}>
+                          {getScheduleDisplay(trip)}
                         </div>
                       </td>
-                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-secondary">{trip.buses?.bus_no || '—'}</td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-secondary">{trip.bus_no || '—'}</td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-secondary">
-                        <div className="truncate max-w-[100px] sm:max-w-none" title={trip.drivers?.name}>
-                          {trip.drivers?.name || '—'}
+                        <div className="truncate max-w-[100px] sm:max-w-none" title={trip.driver_name}>
+                          {trip.driver_name || '—'}
                         </div>
                       </td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4">
@@ -674,7 +490,7 @@ export default function TripsPage() {
                                 className="block w-full rounded-md border-secondary/50 shadow-sm focus:border-primary focus:ring-primary sm:text-sm bg-background text-foreground opacity-50 cursor-not-allowed"
                               >
                                 <option value={formState.schedule_id}>
-                                  {getScheduleDisplay(selectedTrip?.schedules)}
+                                  {getScheduleDisplay(selectedTrip!)}
                                 </option>
                               </select>
                             </div>
@@ -795,7 +611,7 @@ export default function TripsPage() {
             <p className="text-sm text-secondary">
               Are you sure you want to delete the trip for 
               <strong className='text-foreground ml-1'>
-                  {getScheduleDisplay(tripToDelete.schedules)}
+                  {getScheduleDisplay(tripToDelete)}
               </strong> on <strong className='text-foreground'>{tripToDelete.trip_date}</strong>?
             </p>
             <p className="mt-2 text-sm font-semibold text-danger">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 import Modal from '@/app/components/Modal';
 import DriverForm from './components/DriverForm';
@@ -39,42 +39,19 @@ export default function DriversPage() {
 
   useEffect(() => {
     fetchDrivers();
-
-    // --- ADDED: Real-time subscription for drivers AND trips ---
-    const channel = supabase
-      .channel('drivers-and-trips-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'drivers' },
-        (payload) => { fetchDrivers(); }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'trips' },
-        (payload) => { fetchDrivers(); }
-      )
-      .subscribe();
-
-    // Cleanup function
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // --- END ADD ---
+    const interval = setInterval(fetchDrivers, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDrivers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('drivers')
-      // --- UPDATED: Join with trips to get status ---
-      .select('*, trips(trip_id, status), passenger_reports(count)')
-      .order('name', { ascending: true });
-
-    if (error) {
+    try {
+      const data = await apiClient.getDrivers();
+      setDrivers(data);
+      setError(null);
+    } catch (error: any) {
       console.error('Error fetching drivers:', error);
       setError('Failed to fetch drivers. Please try again.');
-    } else {
-      setDrivers(data as Driver[]);
     }
     setLoading(false);
   };
@@ -129,21 +106,17 @@ export default function DriversPage() {
       email: trimmedEmail || null
     };
 
-    let result;
-    if (modalMode === 'add') {
-      result = await supabase.from('drivers').insert([updatedFormState]).select();
-    } else if (selectedDriver) {
-      result = await supabase.from('drivers').update(updatedFormState).eq('driver_id', selectedDriver.driver_id).select();
-    }
-
-    const { data, error: submissionError } = result || {};
-
-    if (submissionError) {
-      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} driver:`, submissionError);
-      setError(`Failed to ${modalMode} driver: ${submissionError.message}`);
-    } else if (data) {
-      // fetchDrivers(); // No longer needed, real-time listener will catch it
+    try {
+      if (modalMode === 'add') {
+        await apiClient.createDriver(updatedFormState);
+      } else if (selectedDriver) {
+        await apiClient.updateDriver(selectedDriver.driver_id, updatedFormState);
+      }
+      fetchDrivers();
       closeModal();
+    } catch (error: any) {
+      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} driver:`, error);
+      setError(`Failed to ${modalMode} driver: ${error.message}`);
     }
   };
 
@@ -157,33 +130,12 @@ export default function DriversPage() {
   const confirmDelete = async () => {
     if (!driverToDelete) return;
 
-    // First, check for associated trips
-    const { data: trips, error: tripsError } = await supabase
-      .from('trips')
-      .select('trip_id')
-      .eq('driver_id', driverToDelete.driver_id)
-      .limit(1);
-
-    if (tripsError) {
-      console.error('Error checking for trips:', tripsError);
-      setError(`Failed to check for associated trips: ${tripsError.message}`);
-      setIsDeleteModalOpen(false); // Close modal on error
-      return;
-    }
-
-    if (trips && trips.length > 0) {
-      setError('This driver cannot be deleted because they are associated with one or more trips. Please reassign or delete the trips first.');
-      setIsDeleteModalOpen(false); // Close modal on error
-      return;
-    }
-
-    // If no trips, proceed with deletion
-    const { error } = await supabase.from('drivers').delete().eq('driver_id', driverToDelete.driver_id);
-    if (error) {
+    try {
+      await apiClient.deleteDriver(driverToDelete.driver_id);
+      fetchDrivers();
+    } catch (error: any) {
       console.error('Error deleting driver:', error);
       setError(`Failed to delete driver: ${error.message}`);
-    } else {
-      // setDrivers(drivers.filter(d => d.driver_id !== driver_id)); // No longer needed
     }
     
     setIsDeleteModalOpen(false);

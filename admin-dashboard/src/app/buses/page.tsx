@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import Modal from '@/app/components/Modal';
 import BusForm from './components/BusForm';
 import BusList from './components/BusList';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface Bus {
   bus_id: number;
@@ -32,39 +31,19 @@ export default function BusesPage() {
 
   useEffect(() => {
     fetchBuses();
-
-    // --- ADDED: Real-time subscription ---
-    const channel = supabase
-      .channel('buses-table-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'buses' },
-        (payload) => {
-          // Refetch all buses when any change occurs
-          fetchBuses();
-        }
-      )
-      .subscribe();
-
-    // Cleanup function to remove the channel subscription
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // --- END ADD ---
-  }, []); // Dependency array is empty to run only on mount
+    const interval = setInterval(fetchBuses, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchBuses = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('buses')
-      .select('*, passenger_reports(count)')
-      .order('bus_no', { ascending: true });
-
-    if (error) {
+    try {
+      const data = await apiClient.getBuses();
+      setBuses(data);
+      setError(null);
+    } catch (error: any) {
       console.error('Error fetching buses:', error);
       setError('Failed to fetch buses. Please try again.');
-    } else {
-      setBuses(data as Bus[]);
     }
     setLoading(false);
   };
@@ -100,7 +79,6 @@ export default function BusesPage() {
         return;
     }
     
-    // Check for duplicate
     const isDuplicate = buses.some(b => 
       b.bus_no.toLowerCase() === trimmedBusNo.toLowerCase() && 
       b.bus_id !== selectedBus?.bus_id
@@ -110,19 +88,18 @@ export default function BusesPage() {
         setError(`Bus number "${trimmedBusNo}" already exists.`);
         return;
     }
-    let result;
-    if (modalMode === 'add') {
-      result = await supabase.from('buses').insert([{ bus_no: trimmedBusNo }]).select();
-    } else if (selectedBus) {
-      result = await supabase.from('buses').update({ bus_no: trimmedBusNo }).eq('bus_id', selectedBus.bus_id).select();
-    }
-    const { data, error: submissionError } = result || {};
-    if (submissionError) {
-      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} bus:`, submissionError);
-      setError(`Failed to ${modalMode} bus: ${submissionError.message}`);
-    } else if (data) {
-      // fetchBuses(); // No longer needed, real-time listener will catch it
+    
+    try {
+      if (modalMode === 'add') {
+        await apiClient.createBus({ bus_no: trimmedBusNo });
+      } else if (selectedBus) {
+        await apiClient.updateBus(selectedBus.bus_id, { bus_no: trimmedBusNo });
+      }
+      fetchBuses();
       closeModal();
+    } catch (error: any) {
+      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} bus:`, error);
+      setError(`Failed to ${modalMode} bus: ${error.message}`);
     }
   };
 
@@ -134,30 +111,12 @@ export default function BusesPage() {
   const confirmDelete = async () => {
     if (busToDelete) {
       setError(null);
-      const { data, error } = await supabase.functions.invoke('delete-bus', {
-        body: { bus_id: busToDelete.bus_id },
-      });
-
-      if (error) {
+      try {
+        await apiClient.deleteBus(busToDelete.bus_id);
+        fetchBuses();
+      } catch (error: any) {
         console.error('Error deleting bus:', error);
-        if (error instanceof FunctionsHttpError) {
-          try {
-            const errorDetails = await error.context.json();
-            if (errorDetails.error) {
-              setError(`Failed to delete bus: ${errorDetails.error}`);
-            } else {
-              setError('An unknown error occurred while deleting the bus.');
-            }
-          } catch (parseError) {
-            setError(`Failed to delete bus: ${error.message}`);
-          }
-        } else {
-          setError(`Failed to delete bus: ${error.message}`);
-        }
-      } else if (data?.error) {
-        setError(data.error);
-      } else {
-        // fetchBuses(); // No longer needed, real-time listener will catch it
+        setError(`Failed to delete bus: ${error.message}`);
       }
       setIsDeleteModalOpen(false);
       setBusToDelete(null);

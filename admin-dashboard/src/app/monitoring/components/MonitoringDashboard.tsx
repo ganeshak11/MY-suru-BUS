@@ -2,9 +2,9 @@
 
 import dynamic from 'next/dynamic';
 import { Suspense, useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import ActiveTripsList from './ActiveTripsList';
-import type { Trip, Bus } from './types'; // Import from shared types file
+import type { Trip, Bus } from './types';
 
 const LiveMap = dynamic(
   () => import('./LiveMap'),
@@ -31,14 +31,13 @@ export default function MonitoringDashboard() {
 
   // --- Data Fetching & Real-time ---
   useEffect(() => {
-    // 1. Process trip data (moved from ActiveTripsList)
     const processTripData = (rawTrips: any[]): Trip[] => {
       return rawTrips.map(trip => {
         const latestStopTime = trip.trip_stop_times
-          .filter((tst: any) => tst.actual_arrival_time)
+          ?.filter((tst: any) => tst.actual_arrival_time)
           .sort((a: any, b: any) => new Date(b.actual_arrival_time).getTime() - new Date(a.actual_arrival_time).getTime());
         
-        const latest_stop = latestStopTime.length > 0 && latestStopTime[0].stops 
+        const latest_stop = latestStopTime?.length > 0 && latestStopTime[0].stops 
           ? `At ${latestStopTime[0].stops.stop_name}` 
           : 'Trip Started';
 
@@ -46,53 +45,36 @@ export default function MonitoringDashboard() {
       });
     };
 
-    // 2. Fetch all active trips (for the list)
     const fetchActiveTrips = async () => {
-      const { data, error } = await supabase
-        .from('trips')
-        .select(`
-          trip_id,
-          buses:bus_id ( bus_no ),
-          drivers:driver_id ( name ),
-          schedules:schedule_id ( 
-            start_time, 
-            routes:route_id ( route_name ) 
-          ),
-          trip_stop_times ( actual_arrival_time, stops ( stop_name ) )
-        `)
-        .eq('status', 'En Route');
-      
-      if (data) {
-        setAllTrips(processTripData(data));
-      } else if (error) {
+      try {
+        const data = await apiClient.getTrips();
+        const activeTrips = data.filter((t: any) => t.status === 'En Route');
+        setAllTrips(processTripData(activeTrips));
+      } catch (error) {
         console.error("Error fetching trips:", error);
       }
-      setLoading(false); // Set loading to false after first fetch
+      setLoading(false);
     };
 
-    // 3. Fetch all bus locations (for the map)
     const fetchBusLocations = async () => {
-      const { data } = await supabase.from('buses').select('*').not('current_trip_id', 'is', null);
-      if (data) setAllBuses(data as Bus[]);
+      try {
+        const data = await apiClient.getBuses();
+        const activeBuses = data.filter((b: any) => b.current_trip_id !== null);
+        setAllBuses(activeBuses);
+      } catch (error) {
+        console.error("Error fetching buses:", error);
+      }
     };
     
-    // 4. Initial fetch
     fetchActiveTrips();
     fetchBusLocations();
 
-    // 5. Set up Supabase real-time channels
-    const channel = supabase.channel('monitoring-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, () => fetchActiveTrips())
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trip_stop_times' }, () => fetchActiveTrips())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'buses' }, (payload) => {
-          const updatedBus = payload.new as Bus;
-          setAllBuses(current => current.map(b => b.bus_id === updatedBus.bus_id ? updatedBus : b));
-      })
-      .subscribe();
+    const interval = setInterval(() => {
+      fetchActiveTrips();
+      fetchBusLocations();
+    }, 3000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   // --- Derived State (Auto-updates when state changes) ---

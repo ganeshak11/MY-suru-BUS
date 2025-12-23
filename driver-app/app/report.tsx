@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, Alert, ScrollView, KeyboardAvoidingV
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
 import { useSession } from "../contexts/SessionContext";
-import { supabase } from "../lib/supabaseClient";
+import { apiClient } from "../lib/apiClient";
 import { Card } from "../components/Card";
 import { StyledButton } from "../components/StyledButton";
 import { useRouter } from "expo-router";
@@ -25,21 +25,10 @@ export default function Report() {
 
     setSubmitting(true);
     try {
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      );
-      
-      const insertPromise = supabase.from("passenger_reports").insert({
+      await apiClient.createReport({
         report_type: reportType,
         message: message,
-        status: "New",
       });
-
-      const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
-
-      if (error) {
-        throw new Error(error.message || 'Failed to submit report');
-      }
 
       Alert.alert(
         "Success",

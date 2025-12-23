@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { useRouter } from 'next/navigation';
 import { TruckIcon, EnvelopeIcon, LockClosedIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
@@ -18,40 +18,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        setError(signInError.message);
-        setLoading(false);
-        return;
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('Authentication failed');
-        setLoading(false);
-        return;
-      }
-
-      const { data: admin, error: adminError } = await supabase
-        .from('admins')
-        .select('admin_id')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (adminError || !admin) {
-        await supabase.auth.signOut();
-        setError('Access denied. Admin credentials required.');
-        setLoading(false);
-        return;
-      }
-
-      router.push('/');
+      const data = await apiClient.login(email, password);
+      console.log('Login successful, token:', data.token.substring(0, 20));
+      document.cookie = `auth_token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
+      console.log('Cookie set, redirecting...');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || 'Invalid credentials');
       setLoading(false);
     }
   };

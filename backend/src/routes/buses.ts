@@ -1,33 +1,31 @@
-const express = require('express');
-const pool = require('../database/db');
+import { Router, Request, Response } from 'express';
+import pool from '../database/db';
 
-const router = express.Router();
+const router = Router();
 
-// Get all buses
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query('SELECT * FROM buses');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-// Get bus by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query('SELECT * FROM buses WHERE bus_id = $1', [req.params.id]);
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Bus not found' });
+      res.status(404).json({ error: 'Bus not found' });
+      return;
     }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-// Update bus location
-router.post('/:id/location', async (req, res) => {
+router.post('/:id/location', async (req: Request, res: Response): Promise<void> => {
   try {
     const { latitude, longitude, speed } = req.body;
     const result = await pool.query(
@@ -42,8 +40,8 @@ router.post('/:id/location', async (req, res) => {
     );
     res.json({ message: 'Location updated', bus: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-module.exports = router;
+export default router;

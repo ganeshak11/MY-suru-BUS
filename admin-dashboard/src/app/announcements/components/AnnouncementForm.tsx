@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 
 export default function AnnouncementForm() {
   const [title, setTitle] = useState('');
@@ -35,21 +35,17 @@ export default function AnnouncementForm() {
     setError(null);
     setSuccess(false);
 
-    const { error: insertError } = await supabase
-      .from('announcements')
-      .insert({ title: trimmedTitle, message: trimmedMessage });
-
-    setIsSubmitting(false);
-
-    if (insertError) {
-      setError(`Error sending announcement: ${insertError.message}`);
-    } else {
+    try {
+      await apiClient.createAnnouncement({ title: trimmedTitle, message: trimmedMessage });
       setSuccess(true);
       setTitle('');
       setMessage('');
-      // Note: No need to explicitly tell the list to update, as it's listening in real-time!
       setTimeout(() => setSuccess(false), 3000);
+    } catch (error: any) {
+      setError(`Error sending announcement: ${error.message}`);
     }
+    
+    setIsSubmitting(false);
   };
 
   return (

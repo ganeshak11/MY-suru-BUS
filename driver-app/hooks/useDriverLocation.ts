@@ -4,6 +4,7 @@ import { Alert } from "react-native";
 import { supabase } from "../lib/supabaseClient";
 import * as TaskManager from "expo-task-manager";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiClient } from "../lib/apiClient";
 
 type LocationUpdatePayload = {
   bus_id: number;
@@ -77,17 +78,17 @@ const processLocationQueue = async () => {
     if (queue.length === 0) return;
 
     const oldestUpdate = queue[0];
-    const { error } = await supabase
-      .from("buses")
-      .update(oldestUpdate)
-      .eq("bus_id", oldestUpdate.bus_id);
-
-      if (!error) {
+    try {
+      await apiClient.updateBusLocation(
+        oldestUpdate.bus_id,
+        oldestUpdate.current_latitude,
+        oldestUpdate.current_longitude,
+        oldestUpdate.current_speed_kmh || undefined
+      );
       queue.shift();
       await AsyncStorage.setItem(LOCATION_QUEUE_KEY, JSON.stringify(queue));
-      // log removed for production
-    } else {
-      // log removed for production
+    } catch (error) {
+      // Keep in queue if failed
     }
   } catch (e) {
     console.error("Failed to process offline queue", e);
@@ -286,27 +287,19 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
     };
 
     try {
-      // Add timeout to prevent hanging
-      const updatePromise = supabase
-        .from("buses")
-        .update(payload)
-        .eq("bus_id", busId);
-      
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Supabase timeout')), 10000)
+      const updatePromise = apiClient.updateBusLocation(
+        busId,
+        payload.current_latitude,
+        payload.current_longitude,
+        payload.current_speed_kmh || undefined
       );
       
-      const { error: supabaseError } = await Promise.race([
-        updatePromise,
-        timeoutPromise
-      ]) as any;
-
-      if (supabaseError) {
-        // log removed for production
-        await addUpdateToQueue(payload);
-      } else {
-        await processLocationQueue();
-      }
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('API timeout')), 10000)
+      );
+      
+      await Promise.race([updatePromise, timeoutPromise]);
+      await processLocationQueue();
     } catch (dbError: any) {
       console.error("[BG TASK] DB error:", dbError?.message || dbError);
       await addUpdateToQueue(payload);

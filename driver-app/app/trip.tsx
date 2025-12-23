@@ -18,8 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { LeafletMap } from "../components/LeafletMap";
 import { LocationDebug } from "../components/LocationDebug";
-import { supabase } from "../lib/supabaseClient";
 import { useDriverLocation } from "../hooks/useDriverLocation";
+import { apiClient } from "../lib/apiClient";
 import { themeTokens, useTheme } from "../contexts/ThemeContext";
 import { Card } from "../components/Card";
 import { DangerButton } from "../components/StyledButton";
@@ -190,22 +190,11 @@ export default function TripScreen() {
   const fetchTripAndStops = async (id: number) => {
     setLoading(true);
     try {
-      const { data: tripData, error: tripError } = await supabase.from("trips")
-        .select("*, schedules(route_id, start_time, routes(route_name)), buses!fk_trips_bus(bus_id, bus_no)")
-        .eq("trip_id", id).single();
-      if (tripError) throw tripError;
+      const tripData = await apiClient.getTrip(id);
       setTrip(tripData as Trip);
       // log removed for production
 
-      const { data: stopsData, error: stopsError } = await supabase
-        .from("route_stops")
-        .select(
-          "stop_sequence, time_offset_from_start, stops (stop_id, stop_name, latitude, longitude, geofence_radius_meters)",
-        )
-        .eq("route_id", tripData.schedules.route_id)
-        .order("stop_sequence", { ascending: true });
-
-      if (stopsError) throw stopsError;
+      const stopsData = await apiClient.getRouteStops(tripData.schedules.route_id);
       
       const formattedStops: StopDetails[] = stopsData.map((item: any) => {
         // Convert time string (HH:MM:SS) to minutes
@@ -230,29 +219,12 @@ export default function TripScreen() {
 
       // Update trip status to En Route if it's Scheduled
       if (tripData.status === "Scheduled") {
-        const { error: statusError } = await supabase
-          .from("trips")
-          .update({ status: "En Route" })
-          .eq("trip_id", id);
-
-        if (statusError) {
-          const errorMsg = statusError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
-          console.error("Failed to update trip status:", errorMsg);
-        } else {
-          // log removed for production
+        try {
+          await apiClient.updateTripStatus(id, "En Route");
           tripData.status = "En Route";
+        } catch (e: any) {
+          console.error("Failed to update trip status:", e.message);
         }
-      }
-
-      // Update bus with current trip
-      const { error: busUpdateError } = await supabase
-        .from("buses")
-        .update({ current_trip_id: id })
-        .eq("bus_id", tripData.bus_id);
-
-      if (busUpdateError) {
-        const errorMsg = busUpdateError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
-        console.error("Failed to update bus trip:", errorMsg);
       }
 
       // Start background tracking with trip stops
@@ -335,33 +307,19 @@ export default function TripScreen() {
     }
 
     try {
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      );
-      
-      const insertPromise = supabase.from("passenger_reports").insert({
+      await apiClient.submitReport({
         report_type: "Delay",
         message: `Trip ${trip_id}: ${delayReason}`,
         trip_id: Number(trip_id),
         bus_id: trip?.bus_id,
-        status: "New",
       });
-
-      const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
-
-      if (error) {
-        throw new Error(error.message || 'Failed to report delay');
-      }
 
       Alert.alert("Success", "Delay reported successfully");
       setShowDelayModal(false);
       setDelayReason("");
     } catch (e: any) {
       console.error('Report delay error:', e);
-      Alert.alert(
-        "Error",
-        e?.message || "Failed to report delay. Please try again.",
-      );
+      Alert.alert("Error", e?.message || "Failed to report delay. Please try again.");
     }
   };
 
@@ -412,22 +370,9 @@ export default function TripScreen() {
               try {
                 await processArrivalQueue();
               } catch (queueError: any) {
-                const errorMsg = queueError?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
-                console.error(
-                  "Queue processing failed during trip stop:",
-                  errorMsg,
-                );
+                console.error("Queue processing failed during trip stop:", queueError?.message);
               }
-              const { error: tripError } = await supabase.from("trips").update({
-                status: "Completed",
-              }).eq("trip_id", trip.trip_id);
-              if (tripError) throw tripError;
-              const { error: busError } = await supabase.from("buses").update({
-                current_trip_id: null,
-                current_latitude: null,
-                current_longitude: null,
-              }).eq("bus_id", trip.bus_id);
-              if (busError) throw busError;
+              await apiClient.updateTripStatus(trip.trip_id, "Completed");
               try {
                 await stopLocationTracking();
               } catch (locationError: any) {

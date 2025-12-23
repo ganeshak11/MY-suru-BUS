@@ -1,20 +1,18 @@
-const express = require('express');
-const pool = require('../database/db');
+import { Router, Request, Response } from 'express';
+import pool from '../database/db';
 
-const router = express.Router();
+const router = Router();
 
-// Get all reports
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query('SELECT * FROM passenger_reports ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-// Create report
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const { report_type, message, trip_id, bus_id, driver_id, route_id } = req.body;
     const result = await pool.query(
@@ -24,19 +22,18 @@ router.post('/', async (req, res) => {
     );
     res.status(201).json({ message: 'Report created', report_id: result.rows[0].report_id });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-// Update report status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', async (req: Request, res: Response): Promise<void> => {
   try {
     const { status } = req.body;
     await pool.query('UPDATE passenger_reports SET status = $1 WHERE report_id = $2', [status, req.params.id]);
     res.json({ message: 'Report status updated' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-module.exports = router;
+export default router;

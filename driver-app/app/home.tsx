@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useSession } from "../contexts/SessionContext";
 import { StyledButton } from "../components/StyledButton";
 import { useNotifications } from "../hooks/useNotifications";
-import { supabase } from "../lib/supabaseClient";
+import { apiClient } from "../lib/apiClient";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { ThemeToggleButton } from "../components/ThemeToggleButton";
@@ -29,19 +29,17 @@ export default function Home() {
   const { colors } = useTheme();
   const styles = createStyles(colors); 
   const router = useRouter();
-  const { user, signOut } = useSession();
+  const { driver, signOut } = useSession();
   
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [nextTrip, setNextTrip] = useState<any | null>(null);
-  const [driverName, setDriverName] = useState<string | null>(null);
-  const [driverId, setDriverId] = useState<number | null>(null);
 
-  useNotifications(driverId);
+  useNotifications(driver?.driver_id);
 
   const fetchDriverAndTrip = useCallback(async (isRefresh = false) => {
-    if (!user) return;
+    if (!driver) return;
 
     if (isRefresh) {
       setRefreshing(true);
@@ -52,85 +50,36 @@ export default function Home() {
     setNextTrip(null);
 
     try {
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      );
-
-      const driverPromise = supabase
-        .from("drivers")
-        .select("driver_id, name")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
-
-      const { data: driverRow, error: driverError } = await Promise.race([driverPromise, timeoutPromise]) as any;
-
-      if (driverError) throw new Error(driverError.message);
+      const trips = await apiClient.getTrips();
       
-      const driverIdValue = driverRow?.driver_id;
-      setDriverId(driverIdValue);
-      setDriverName(driverRow?.name || user.email); 
-
-      if (!driverIdValue) {
-        setFetchError("Driver profile not found.");
-        return;
-      }
-
-      const now = new Date();
-      const today = now.getFullYear() + '-' + 
-        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(now.getDate()).padStart(2, '0');
-      
-      const tripsPromise = supabase
-        .from('trips')
-        .select(`
-          trip_id, status, bus_id,
-          schedules!inner(start_time, routes!inner(route_name))
-        `)
-        .eq('driver_id', driverIdValue)
-        .eq('trip_date', today)
-        .in('status', ['Scheduled', 'En Route']);
-
-      const { data: trips, error: tripsError } = await Promise.race([tripsPromise, timeoutPromise]) as any;
-      
-      if (tripsError) throw new Error(tripsError.message);
-
-      const flatTrips = trips?.map((trip: any) => ({
-        ...trip,
-        schedules: Array.isArray(trip.schedules) ? trip.schedules[0] : trip.schedules,
-      }));
-
-      const sortedTrips = flatTrips?.sort((a: any, b: any) => {
-        return a.schedules.start_time.localeCompare(b.schedules.start_time);
+      const todayTrips = trips.filter((trip: any) => {
+        const tripDate = new Date(trip.trip_date || trip.created_at);
+        const today = new Date();
+        return tripDate.toDateString() === today.toDateString() &&
+               (trip.status === 'Scheduled' || trip.status === 'In Progress');
       });
 
-      let nextTripData = sortedTrips?.find((t: any) => t.status === 'En Route');
+      const sortedTrips = todayTrips.sort((a: any, b: any) => {
+        return (a.start_time || '').localeCompare(b.start_time || '');
+      });
+
+      let nextTripData = sortedTrips.find((t: any) => t.status === 'In Progress');
       if (!nextTripData) {
-        nextTripData = sortedTrips?.find((t: any) => t.status === 'Scheduled');
+        nextTripData = sortedTrips.find((t: any) => t.status === 'Scheduled');
       }
 
       if (nextTripData) {
-        const busPromise = supabase
-          .from('buses')
-          .select('bus_no')
-          .eq('bus_id', nextTripData.bus_id)
-          .single();
-
-        const { data: busData } = await Promise.race([busPromise, timeoutPromise]) as any;
-
-        const schedules = nextTripData.schedules;
-        const routes = Array.isArray(schedules?.routes) ? schedules.routes[0] : schedules?.routes;
-        
         setNextTrip({
           trip_id: nextTripData.trip_id,
           status: nextTripData.status,
           schedules: {
-            start_time: schedules.start_time,
+            start_time: nextTripData.start_time,
             routes: {
-              route_name: routes.route_name
+              route_name: nextTripData.route_name
             }
           },
           buses: {
-            bus_no: busData?.bus_no
+            bus_no: nextTripData.bus_no
           }
         });
       } else {
@@ -147,7 +96,7 @@ export default function Home() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [driver]);
 
   useEffect(() => {
     fetchDriverAndTrip();
@@ -170,7 +119,7 @@ export default function Home() {
     );
   };
 
-  if (!user) {
+  if (!driver) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={colors.primaryAccent} />
@@ -209,7 +158,7 @@ export default function Home() {
         >
           <View style={styles.welcomeSection}>
             <Ionicons name="bus" size={18} color={colors.primaryAccent} style={styles.welcomeIcon} />
-            <Text style={styles.welcomeText}>Welcome back, {driverName || 'Driver'}</Text>
+            <Text style={styles.welcomeText}>Welcome back, {driver?.name || 'Driver'}</Text>
           </View>
 
           <View style={styles.quickActions}>

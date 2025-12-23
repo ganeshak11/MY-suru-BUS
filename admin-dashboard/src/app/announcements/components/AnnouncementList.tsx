@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { TrashIcon } from '@heroicons/react/24/outline';
-import Modal from '@/app/components/Modal'; // ADDED: Import Modal
+import Modal from '@/app/components/Modal';
 
 interface Announcement {
   announcement_id: number;
@@ -26,44 +26,19 @@ export default function AnnouncementList() {
     const fetchAnnouncements = async () => {
       setLoading(true);
       setError(null);
-      const { data, error: fetchError } = await supabase
-        .from('announcements')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (fetchError) {
-        setError(`Failed to load announcements: ${fetchError.message}`);
-        console.error(fetchError);
-      } else if (data) {
-        setAnnouncements(data);
+      try {
+        const data = await apiClient.getAnnouncements();
+        setAnnouncements(data.slice(0, 10));
+      } catch (error: any) {
+        setError(`Failed to load announcements: ${error.message}`);
+        console.error(error);
       }
       setLoading(false);
     };
 
     fetchAnnouncements();
-
-    const channel = supabase
-      .channel('announcements-list-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'announcements' },
-        (payload) => {
-          setAnnouncements(current => [payload.new as Announcement, ...current].slice(0, 10));
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'announcements' },
-        (payload) => {
-          setAnnouncements(current => current.filter(a => a.announcement_id !== payload.old.announcement_id));
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const interval = setInterval(fetchAnnouncements, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // UPDATED: HandleDelete to open modal
@@ -73,25 +48,19 @@ export default function AnnouncementList() {
     setError(null); // Clear any previous errors
   };
 
-  // ADDED: Confirm Delete function for modal
   const confirmDelete = async () => {
     if (!announcementToDelete) return;
 
-    setError(null); // Clear any previous errors
+    setError(null);
 
-    const { error } = await supabase
-      .from('announcements')
-      .delete()
-      .eq('announcement_id', announcementToDelete.announcement_id);
-
-    if (error) {
+    try {
+      await apiClient.deleteAnnouncement(announcementToDelete.announcement_id);
+      setAnnouncements(current => current.filter(a => a.announcement_id !== announcementToDelete.announcement_id));
+    } catch (error: any) {
       console.error('Error deleting announcement:', error);
       setError(`Failed to delete announcement: ${error.message}`);
-    } else {
-      // Real-time listener will update the list
     }
     
-    // Close modal and reset state
     setIsDeleteModalOpen(false);
     setAnnouncementToDelete(null);
   };

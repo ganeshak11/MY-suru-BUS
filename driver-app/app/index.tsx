@@ -1,4 +1,3 @@
-// app/index.tsx
 import { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -16,33 +15,24 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { supabase } from '../lib/supabaseClient';
-// We no longer import 'router' here
 import { themeTokens, useTheme } from '../contexts/ThemeContext';
 import { useSession } from '../contexts/SessionContext';
 
 export default function LoginScreen() {
-  // --- HOOKS ---
   const { colors } = useTheme();
-  // We still use these to show the loading spinner
-  const { session, isLoading: isSessionLoading } = useSession();
+  const { driver, isLoading: isSessionLoading, login } = useSession();
 
-  // --- STATE ---
-  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // --- ANIMATION ---
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(1)).current;
 
-  // --- STYLES ---
   const styles = createStyles(colors);
   
-  // --- EFFECTS ---
   useEffect(() => {
-    // Logo scale-in animation
     Animated.spring(scaleAnim, {
       toValue: 1,
       tension: 50,
@@ -50,7 +40,6 @@ export default function LoginScreen() {
       useNativeDriver: true,
     }).start();
     
-    // Logo glow pulse animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, {
@@ -67,50 +56,31 @@ export default function LoginScreen() {
     ).start();
   }, []);
 
-  // --- THE REDIRECT useEffect HAS BEEN REMOVED ---
-  // The RootLayout now handles all navigation.
-
-  // --- HANDLERS ---
   const handleLogin = async () => {
     setError('');
-    if (!email || !password) {
-      setError('Please enter both email and password.');
+    if (!phoneNumber || !password) {
+      setError('Please enter both phone number and password.');
       return;
     }
 
     try {
       setLoading(true);
       Keyboard.dismiss();
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (loginError) {
-        setError(loginError.message);
-      }
-      // No redirect needed. The RootLayout will see the
-      // 'session' change and trigger the redirect automatically.
+      await login(phoneNumber, password);
     } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+      setError(err.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
   };
 
-  // --- RENDER ---
-
-  // Show spinner if session is loading OR if user is logged in
-  // (because _layout is about to redirect them away from this screen)
-  if (isSessionLoading || session) {
+  if (isSessionLoading || driver) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.mainBackground }}>
         <ActivityIndicator size="large" color={colors.primaryAccent} />
       </View>
     );
   }
-
-  // Only render form if not loading and no session
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -157,15 +127,15 @@ export default function LoginScreen() {
             <View style={styles.formContainer}>
 
             <View style={styles.inputContainer}>
-              <Ionicons name="mail-outline" size={20} color={colors.secondaryText} style={styles.inputIcon} />
+              <Ionicons name="call-outline" size={20} color={colors.secondaryText} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="Email"
+                placeholder="Phone Number (+91-XXXXXXXXXX)"
                 placeholderTextColor={colors.secondaryText}
-                value={email}
-                onChangeText={setEmail}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
                 autoCapitalize="none"
-                keyboardType="email-address"
+                keyboardType="phone-pad"
               />
             </View>
 

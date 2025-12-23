@@ -1,16 +1,16 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const pool = require('../database/db');
+import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import pool from '../database/db';
 
-const router = express.Router();
+const router = Router();
 
-// Driver Login
-router.post('/driver/login', async (req, res) => {
+router.post('/driver/login', async (req: Request, res: Response): Promise<void> => {
   const { phone_number, password } = req.body;
   
   if (!phone_number || !password) {
-    return res.status(400).json({ error: 'Phone number and password required' });
+    res.status(400).json({ error: 'Phone number and password required' });
+    return;
   }
   
   try {
@@ -18,19 +18,19 @@ router.post('/driver/login', async (req, res) => {
     const driver = result.rows[0];
     
     if (!driver) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
     
-    // Check password
     const validPassword = driver.password_hash ? 
       await bcrypt.compare(password, driver.password_hash) : 
-      password === 'driver123'; // Default password for demo
+      password === 'driver123';
     
     if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
     
-    // Generate JWT
     const token = jwt.sign(
       { driver_id: driver.driver_id, role: 'driver' },
       process.env.JWT_SECRET || 'default-secret',
@@ -47,16 +47,16 @@ router.post('/driver/login', async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: (err as Error).message });
   }
 });
 
-// Driver Register
-router.post('/driver/register', async (req, res) => {
+router.post('/driver/register', async (req: Request, res: Response): Promise<void> => {
   const { name, phone_number, email, password } = req.body;
   
   if (!name || !phone_number || !password) {
-    return res.status(400).json({ error: 'Name, phone number, and password required' });
+    res.status(400).json({ error: 'Name, phone number, and password required' });
+    return;
   }
   
   try {
@@ -79,16 +79,16 @@ router.post('/driver/register', async (req, res) => {
       token,
       driver: { driver_id, name, phone_number, email }
     });
-  } catch (err) {
-    if (err.code === '23505') { // Unique violation
-      return res.status(409).json({ error: 'Phone number already registered' });
+  } catch (err: any) {
+    if (err.code === '23505') {
+      res.status(409).json({ error: 'Phone number already registered' });
+      return;
     }
     res.status(500).json({ error: err.message });
   }
 });
 
-// Admin Login
-router.post('/admin/login', (req, res) => {
+router.post('/admin/login', (req: Request, res: Response): void => {
   const { email, password } = req.body;
   
   if (email === 'admin@mysurubus.com' && password === 'admin123') {
@@ -104,4 +104,4 @@ router.post('/admin/login', (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { FunnelIcon, ArrowPathIcon } from '@heroicons/react/24/outline'; // ADDED icons
+import { apiClient } from '@/lib/apiClient';
+import { FunnelIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
 // Define the type for a report
 interface Report {
@@ -93,59 +93,34 @@ export default function ReportsPage() {
 
     const fetchReports = async () => {
         setLoading(true);
-        const { data, error: fetchError } = await supabase
-            .from('passenger_reports')
-            .select(`
-                *,
-                buses(bus_no),
-                drivers(name),
-                routes(route_name)
-            `)
-            .order('created_at', { ascending: false });
-
-        if (fetchError) {
-            console.error('Error fetching reports:', fetchError);
+        try {
+            const data = await apiClient.getReports();
+            setReports(data);
+            setError(null);
+        } catch (error: any) {
+            console.error('Error fetching reports:', error);
             setError('Failed to load reports.');
-        } else {
-            setReports(data as Report[]);
         }
         setLoading(false);
     };
 
     const updateStatus = async (report_id: number, newStatus: string) => {
         setError(null);
-        const { error: updateError } = await supabase
-            .from('passenger_reports')
-            .update({ status: newStatus })
-            .eq('report_id', report_id);
-
-        if (updateError) {
-            alert('Failed to update status. Please try again.'); // Should use Modal for consistency
-            console.error('Update error:', updateError);
-            setError('Failed to update status. Please check server logs.');
+        try {
+            await apiClient.updateReportStatus(report_id, newStatus);
+            fetchReports();
+        } catch (error: any) {
+            alert('Failed to update status. Please try again.');
+            console.error('Update error:', error);
+            setError('Failed to update status.');
         }
-        // The real-time listener will handle the UI update
     };
 
     useEffect(() => {
         fetchReports();
-
-        const channel = supabase
-            .channel('passenger-reports-realtime')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'passenger_reports' },
-                (payload) => {
-                    // Refetch all data on any change for simplicity (can be optimized later)
-                    fetchReports();
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [supabase]);
+        const interval = setInterval(fetchReports, 5000);
+        return () => clearInterval(interval);
+    }, []);
     
     // --- ADDED: Client-side filtering logic ---
     const filteredReports = reports.filter(r => {

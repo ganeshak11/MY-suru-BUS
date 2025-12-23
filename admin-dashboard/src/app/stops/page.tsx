@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { PlusIcon, PencilIcon, TrashIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import Modal from '@/app/components/Modal';
 import StopForm from './components/StopForm';
@@ -49,40 +49,19 @@ export default function StopsPage() {
 
   useEffect(() => {
     fetchStops();
-
-    // --- ADDED: Real-time subscription ---
-    const channel = supabase
-      .channel('stops-table-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'stops' },
-        (payload) => {
-          fetchStops();
-        }
-      )
-      .subscribe();
-
-    // Cleanup function
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // --- END ADD ---
-
+    const interval = setInterval(fetchStops, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchStops = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('stops')
-      // --- UPDATED: Get a count of routes using this stop ---
-      .select('*, route_stops(count)')
-      .order('stop_name', { ascending: true });
-
-    if (error) {
+    try {
+      const data = await apiClient.getStops();
+      setStops(data);
+      setError(null);
+    } catch (error: any) {
       console.error('Error fetching stops:', error);
       setError('Failed to fetch stops. Please try again.');
-    } else {
-      setStops(data as Stop[]);
     }
     setLoading(false);
   };
@@ -151,21 +130,17 @@ export default function StopsPage() {
         return;
     }
 
-    let result;
-    if (modalMode === 'add') {
-      result = await supabase.from('stops').insert([{ stop_name: trimmedStopName, latitude: lat, longitude: lng }]).select();
-    } else if (selectedStop) {
-      result = await supabase.from('stops').update({ stop_name: trimmedStopName, latitude: lat, longitude: lng }).eq('stop_id', selectedStop.stop_id).select();
-    }
-
-    const { data, error: submissionError } = result || {};
-
-    if (submissionError) {
-      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} stop:`, submissionError);
-      setError(`Failed to ${modalMode} stop: ${submissionError.message}`);
-    } else if (data) {
-      // fetchStops(); // No longer needed, real-time listener will catch it
+    try {
+      if (modalMode === 'add') {
+        await apiClient.createStop({ stop_name: trimmedStopName, latitude: lat, longitude: lng });
+      } else if (selectedStop) {
+        await apiClient.updateStop(selectedStop.stop_id, { stop_name: trimmedStopName, latitude: lat, longitude: lng });
+      }
+      fetchStops();
       closeModal();
+    } catch (error: any) {
+      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} stop:`, error);
+      setError(`Failed to ${modalMode} stop: ${error.message}`);
     }
   };
 
@@ -179,82 +154,24 @@ export default function StopsPage() {
   const confirmDelete = async () => {
     if (!stopToDelete) return;
     
-    setError(null); // Clear old errors
+    setError(null);
 
     try {
-      // Check if the stop is associated with any routes
-      const { data: routeStops, error: routeStopsError } = await supabase
-          .from('route_stops')
-          .select('route_id')
-          .eq('stop_id', stopToDelete.stop_id)
-          .limit(1);
-
-      if (routeStopsError) {
-          throw new Error(`Error checking for associated routes: ${routeStopsError.message}`);
-      }
-
-      if (routeStops && routeStops.length > 0) {
-          setError('This stop cannot be deleted because it is currently associated with one or more routes.');
-          setIsDeleteModalOpen(false);
-          return;
-      }
-
-      // Check if the stop is associated with any trip stop times
-      const { data: tripStopTimes, error: tripStopTimesError } = await supabase
-          .from('trip_stop_times')
-          .select('trip_id')
-          .eq('stop_id', stopToDelete.stop_id)
-          .limit(1);
-
-      if (tripStopTimesError) {
-          throw new Error(`Error checking for associated trip stop times: ${tripStopTimesError.message}`);
-      }
-
-      if (tripStopTimes && tripStopTimes.length > 0) {
-          setError('This stop cannot be deleted because it has recorded trip data associated with it.');
-          setIsDeleteModalOpen(false);
-          return;
-      }
-
-      // If no associations, proceed with deletion
-      const { error: deleteError } = await supabase.from('stops').delete().eq('stop_id', stopToDelete.stop_id);
-
-      if (deleteError) {
-        throw new Error(`Failed to delete stop: ${deleteError.message}`);
-      }
-      
-      // Success
-      setIsDeleteModalOpen(false);
-      setStopToDelete(null);
-      // fetchStops(); // No longer needed, real-time listener will catch it
-
+      await apiClient.deleteStop(stopToDelete.stop_id);
+      fetchStops();
     } catch (error: any) {
-        console.error('Deletion process failed:', error);
-        setError(error.message); // Show error to user
-        setIsDeleteModalOpen(false);
+      console.error('Deletion failed:', error);
+      setError(error.message);
     }
+    
+    setIsDeleteModalOpen(false);
+    setStopToDelete(null);
   };
   
   const showStopRoutes = async (stopId: number) => {
     setLoadingRoutes(true);
     setIsRoutesModalOpen(true);
-    
-    const { data, error } = await supabase
-      .from('route_stops')
-      .select(`
-        routes:route_id (
-          route_id,
-          route_name
-        )
-      `)
-      .eq('stop_id', stopId);
-    
-    if (error) {
-      console.error('Error fetching routes:', error);
-      setSelectedStopRoutes([]);
-    } else {
-      setSelectedStopRoutes(data.map(item => item.routes));
-    }
+    setSelectedStopRoutes([]);
     setLoadingRoutes(false);
   };
   // --- END UPDATE ---

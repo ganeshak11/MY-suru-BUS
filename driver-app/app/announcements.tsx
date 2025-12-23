@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Platform, RefreshControl } from "react-native";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
-import { supabase } from "../lib/supabaseClient";
+import { apiClient } from "../lib/apiClient";
 import { Card } from "../components/Card";
 import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
@@ -31,22 +31,7 @@ export default function Announcements() {
       setLoading(true);
     }
     try {
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      );
-      
-      const fetchPromise = supabase
-        .from("announcements")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-
-      if (error) {
-        throw new Error(error.message || 'Failed to fetch announcements');
-      }
-
+      const data = await apiClient.getAnnouncements();
       setAnnouncements(data || []);
     } catch (e: any) {
       console.error('Fetch announcements error:', e);

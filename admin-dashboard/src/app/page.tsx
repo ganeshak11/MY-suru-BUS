@@ -1,10 +1,8 @@
-// src/app/page.tsx
 'use client'; 
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { Database } from '@/lib/database.types'; // Import your generated types
+import { apiClient } from '@/lib/apiClient';
 
 // Import your icons
 import MapIcon from './components/icons/MapIcon';
@@ -31,41 +29,29 @@ export default function DashboardPage() {
     newReports: 0,
   });
 
-  // 2. Fetch stats on page load
   useEffect(() => {
     const fetchStats = async () => {
-      // Fetch active trips (count)
-      const { count: activeTrips } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'En Route');
+      try {
+        const [trips, buses, drivers, reports] = await Promise.all([
+          apiClient.getTrips(),
+          apiClient.getBuses(),
+          apiClient.getDrivers(),
+          apiClient.getReports()
+        ]);
 
-      // Fetch total buses (count)
-      const { count: totalBuses } = await supabase
-        .from('buses')
-        .select('*', { count: 'exact', head: true });
-        
-      // Fetch total drivers (count)
-      const { count: totalDrivers } = await supabase
-        .from('drivers')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch new reports (count)
-      const { count: newReports } = await supabase
-        .from('passenger_reports')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'New');
-
-      setStats({
-        activeTrips: activeTrips ?? 0,
-        totalBuses: totalBuses ?? 0,
-        totalDrivers: totalDrivers ?? 0,
-        newReports: newReports ?? 0,
-      });
+        setStats({
+          activeTrips: trips.filter((t: any) => t.status === 'En Route').length,
+          totalBuses: buses.length,
+          totalDrivers: drivers.length,
+          newReports: reports.filter((r: any) => r.status === 'New').length,
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
     };
 
     fetchStats();
-  }, [supabase]);
+  }, []);
 
   // 3. Define all your features with icons and stats
   const features = [

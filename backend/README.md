@@ -4,6 +4,7 @@ Custom Node.js backend for the MY(suru) BUS tracking system.
 
 ## Tech Stack
 - **Runtime:** Node.js + Express
+- **Language:** TypeScript
 - **Database:** PostgreSQL (Supabase)
 - **Real-time:** Socket.io for WebSocket communication
 - **Authentication:** JWT (JSON Web Tokens)
@@ -26,16 +27,25 @@ npm install
 ```
 
 ### 2. Configure Environment
-Create `.env` file:
+Create `.env` file (see `.env.example`):
 ```env
 DATABASE_URL=postgresql://user:password@host:port/database
 PORT=3001
 JWT_SECRET=your-secret-key
 ```
 
-### 3. Start Server
+### 3. Build TypeScript
 ```bash
+npm run build
+```
+
+### 4. Start Server
+```bash
+# Development (with auto-reload)
 npm run dev
+
+# Production
+npm start
 ```
 
 Server runs at: `http://localhost:3001`
@@ -97,15 +107,19 @@ Connect to: `ws://localhost:3001`
 ## Scripts
 
 ```bash
-npm run dev          # Start development server
-npm start            # Start production server
-npm run import       # Import data from Supabase
+npm run build        # Build TypeScript to JavaScript
+npm run dev          # Start development server with ts-node
+npm start            # Start production server (requires build)
+npm run init-db      # Initialize database
+npm run clean-db     # Clean database
+npm run reset-db     # Reset database
 ```
 
 ## Migration Status
 
-✅ **Backend API:** Complete
+✅ **Backend API:** Complete (TypeScript)
 ✅ **PostgreSQL Integration:** Complete
+✅ **TypeScript Conversion:** Complete
 ✅ **Passenger App:** Migrated
 ⏳ **Driver App:** Pending
 ⏳ **Admin Dashboard:** Pending
