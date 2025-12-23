@@ -258,7 +258,6 @@ npm start/ npx expo start
 
 ---
 
-
 ##  License
 
 This project is currently for academic and portfolio use(Mini Project).
