@@ -248,11 +248,16 @@ npm start/ npx expo start
 
 ---
 
-##  Contributing
+## Contributors
 
-Contributions are welcome via issues or pull requests.
+- **Ganesh Angadi** — Lead Developer  
+  Architecture, Backend APIs, Database Schema, System Integration
+
+- **Chaitanya K B** — Co-Developer  
+  Frontend Implementation, UX Design, Feature Development, Testing & Documentation
 
 ---
+
 
 ##  License
 
@@ -264,3 +269,4 @@ This project is currently for academic and portfolio use(Mini Project).
 
 - **GitHub Issues:** For bugs and feature requests
 - **Email:** ganeshangadi13012006@gmail.com
+- **Email:** chaitanyakbettadahalli2005@gmail.com
