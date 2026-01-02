@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import RoutePlannerPanel from './RoutePlannerPanel';
 import { Stop } from '../../../lib/database.types';
 import { StopWithOffset } from './RoutePlannerMap';
@@ -34,12 +34,15 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
 
   useEffect(() => {
     const fetchStops = async () => {
-      const { data, error } = await supabase.from('stops').select('*');
-      if (data) setAllStops(data as Stop[]);
-      if (error) console.error('Error fetching stops:', error);
+      try {
+        const data = await apiClient.getStops();
+        setAllStops(data || []);
+      } catch (error) {
+        console.error('Error fetching stops:', error);
+      }
     };
     fetchStops();
-  }, [supabase]);
+  }, []);
 
   const handleAddStopToRoute = (stop: Stop) => {
     setError(null);
@@ -76,8 +79,8 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
     setIsSaving(true);
 
     const payload = {
-      routeNo: routeNo,
-      routeName: routeName,
+      route_no: routeNo,
+      route_name: routeName,
       stops: selectedStops.map((stop, index) => ({
         stop_id: stop.stop_id,
         stop_sequence: index + 1,
@@ -85,20 +88,15 @@ export default function RoutePlanner({ onCancel, onSaveSuccess }: RoutePlannerPr
       })),
     };
 
-    // --- UPDATED: Assumes 'create-route' is the new function name ---
-    const { error } = await supabase.functions.invoke('create-route', {
-      body: payload,
-    });
-
-    if (error) {
-      // --- UPDATED: Use error state instead of alert ---
-      console.error('Error saving route:', error);
-      setError(`Error saving route: ${error.message}`);
-    } else {
+    try {
+      await apiClient.createRoute(payload);
       setRouteName('');
       setRouteNo('');
       setSelectedStops([]);
       onSaveSuccess();
+    } catch (error: any) {
+      console.error('Error saving route:', error);
+      setError(`Error saving route: ${error.message}`);
     }
 
     setIsSaving(false);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import './globals.css';
 import SideNav from '@/app/components/SideNav';
 import { ThemeProvider } from '@/app/components/ThemeProvider';
@@ -12,62 +12,39 @@ import { Bars3Icon } from '@heroicons/react/24/outline';
 // Time in milliseconds (10 minutes)
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000; 
 
-// --- ADDED: Session Timeout Handler Component ---
+// Session Timeout Handler Component
 function SessionTimeoutHandler() {
   const router = useRouter();
   const timer = useRef<NodeJS.Timeout | null>(null);
 
   const resetTimer = () => {
-    // Clear any existing timer
     if (timer.current) {
       clearTimeout(timer.current);
     }
     
-    // Set a new timer
-    timer.current = setTimeout(async () => {
-      // Check if a session exists before signing out
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // log removed for production
-        await supabase.auth.signOut();
+    timer.current = setTimeout(() => {
+      const token = apiClient.getToken();
+      if (token) {
+        apiClient.logout();
         router.push('/login'); 
       }
     }, INACTIVITY_TIMEOUT);
   };
 
   useEffect(() => {
-    // 1. Start timer on mount
     resetTimer();
 
-    // 2. Event listeners to detect activity across the window
     const events = ['mousemove', 'keydown', 'click', 'scroll'];
     events.forEach(event => window.addEventListener(event, resetTimer));
 
-    // 3. Listen for auth changes (in case the user signs out manually elsewhere)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (!session) {
-            // If user logs out, stop the timer and ensure redirection happens
-            if (timer.current) clearTimeout(timer.current);
-            router.push('/login');
-        } else {
-            // If user logs in/session is refreshed, reset the timer
-            resetTimer();
-        }
-    });
-
-
-    // 4. Cleanup: Clear timer and remove event listeners
     return () => {
       if (timer.current) clearTimeout(timer.current);
       events.forEach(event => window.removeEventListener(event, resetTimer));
-      subscription.unsubscribe();
     };
   }, [router]); 
 
   return null; 
 }
-// --- END Session Timeout Handler ---
 
 export default function RootLayout({
   children,

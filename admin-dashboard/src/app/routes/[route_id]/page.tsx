@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import RouteStopManager from './components/RouteStopManager';
@@ -37,25 +37,18 @@ export default function RouteDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentRouteStops, setCurrentRouteStops] = useState<RouteStop[]>([]);
 
-  // --- ADDED: Unified Fetch Function for Route Details ---
   const fetchRouteDetails = async () => {
     if (!route_id) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from('routes')
-      .select('*')
-      .eq('route_id', route_id)
-      .single();
-
-    if (error) {
+    try {
+      const data = await apiClient.getRoute(Number(route_id));
+      setRoute(data);
+    } catch (error) {
       console.error('Error fetching route details:', error);
       setError('Failed to load route details.');
-    } else {
-      setRoute(data);
     }
     setLoading(false);
   };
-  // --- END ADDED ---
 
   useEffect(() => {
     if (route_id) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { PlusIcon, PencilIcon, TrashIcon, ClockIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import Modal from '@/app/components/Modal';
 import ScheduleForm from './components/ScheduleForm';
@@ -49,62 +49,26 @@ export default function SchedulesPage() {
   useEffect(() => {
     fetchSchedules();
     fetchRoutes();
-    
-    // --- ADDED: Real-time subscription ---
-    const channel = supabase
-      .channel('schedules-table-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'schedules' },
-        () => {
-          fetchSchedules();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // --- END ADDED ---
   }, []);
 
   const fetchSchedules = async () => {
     setLoading(true);
-    // --- FIX: Use alias to ensure single object join ---
-    const { data, error } = await supabase
-      .from('schedules')
-      .select(`
-        schedule_id,
-        route_id,
-        start_time,
-        routes:route_id (route_id, route_name)
-      `)
-      .order('start_time', { ascending: true });
-
-    if (error) {
+    try {
+      const data = await apiClient.getSchedules();
+      setSchedules(data || []);
+    } catch (error) {
       console.error('Error fetching schedules:', error);
       setError('Failed to fetch schedules. Please try again.');
-    } else {
-      // TypeScript fix for joined object structure
-      const formattedData = data.map((item: any) => ({
-        ...item,
-        routes: item.routes, // already correctly aliased to an object
-      }));
-      setSchedules(formattedData as Schedule[]);
     }
     setLoading(false);
   };
 
   const fetchRoutes = async () => {
-    const { data, error } = await supabase
-      .from('routes')
-      .select('route_id, route_name')
-      .order('route_name', { ascending: true });
-
-    if (error) {
+    try {
+      const data = await apiClient.getRoutes();
+      setRoutes(data || []);
+    } catch (error) {
       console.error('Error fetching routes:', error);
-    } else {
-      setRoutes(data as Route[]);
     }
   };
 
@@ -165,24 +129,23 @@ export default function SchedulesPage() {
         return;
     }
 
-    let result;
-    if (modalMode === 'add') {
-      // Assuming 'create-schedule' Edge Function handles insertion and checks
-      result = await supabase.functions.invoke('create-schedule', {
-        body: { route_id, start_time },
-      });
-    } else if (selectedSchedule) {
-      result = await supabase.from('schedules').update({ route_id, start_time }).eq('schedule_id', selectedSchedule.schedule_id).select();
-    }
-
-    const { data, error: submissionError } = result || {};
-
-    if (submissionError) {
-      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} schedule:`, submissionError);
-      setError(`Failed to ${modalMode} schedule: ${submissionError.message}`);
-    } else if (data) {
-      // fetchSchedules(); // Real-time handles this
+    try {
+      if (modalMode === 'add') {
+        await apiClient.request('/schedules', {
+          method: 'POST',
+          body: JSON.stringify({ route_id, start_time }),
+        });
+      } else if (selectedSchedule) {
+        await apiClient.request(`/schedules/${selectedSchedule.schedule_id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ route_id, start_time }),
+        });
+      }
+      fetchSchedules();
       closeModal();
+    } catch (error: any) {
+      console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} schedule:`, error);
+      setError(`Failed to ${modalMode} schedule: ${error.message}`);
     }
   };
 
@@ -204,60 +167,17 @@ export default function SchedulesPage() {
     const targetSchedule = scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId);
     if (!targetSchedule) return;
     
-    // First, check if there are any trips referencing this schedule
-    const { data: trips, error: tripsError } = await supabase
-      .from('trips')
-      .select('trip_id')
-      .eq('schedule_id', targetSchedule.schedule_id);
-    
-    if (tripsError) {
-      console.error('Error checking trips:', tripsError);
-      setError('Failed to check for dependent trips.');
-      return;
-    }
-    
-    if (trips && trips.length > 0) {
-      // Delete trip_stop_times first, then trips
-      for (const trip of trips) {
-        const { error: deleteStopTimesError } = await supabase
-          .from('trip_stop_times')
-          .delete()
-          .eq('trip_id', trip.trip_id);
-        
-        if (deleteStopTimesError) {
-          console.error('Error deleting trip stop times:', deleteStopTimesError);
-          setError(`Cannot delete schedule: Failed to remove trip dependencies.`);
-          return;
-        }
-      }
-      
-      // Now delete the trips
-      const { error: deleteTripsError } = await supabase
-        .from('trips')
-        .delete()
-        .eq('schedule_id', targetSchedule.schedule_id);
-      
-      if (deleteTripsError) {
-        console.error('Error deleting dependent trips:', deleteTripsError);
-        setError(`Cannot delete schedule: Failed to remove trips.`);
-        return;
-      }
-    }
-    
-    // Now delete the schedule
-    const { error } = await supabase.from('schedules').delete().eq('schedule_id', targetSchedule.schedule_id);
-
-    if (error) {
-      console.error('Error deleting schedule:', error);
-      if (error.code === '23503') {
-        setError('Cannot delete schedule: It is still being used by other records. Please remove all dependencies first.');
-      } else {
-        setError(`Failed to delete schedule: ${error.message}`);
-      }
-    } else {
+    try {
+      await apiClient.request(`/schedules/${targetSchedule.schedule_id}`, {
+        method: 'DELETE',
+      });
+      fetchSchedules();
       setIsDeleteModalOpen(false);
       setScheduleToDelete(null);
       setAvailableSchedules([]);
+    } catch (error: any) {
+      console.error('Error deleting schedule:', error);
+      setError(`Failed to delete schedule: ${error.message}`);
     }
   };
   // --- END UPDATED ---

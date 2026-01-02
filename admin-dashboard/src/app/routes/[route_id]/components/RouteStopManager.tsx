@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, Fragment } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { PlusIcon, PencilIcon, TrashIcon, MapPinIcon } from '@heroicons/react/24/outline';
-import Modal from '@/app/components/Modal'; // --- UPDATED IMPORT
+import Modal from '@/app/components/Modal';
 
 interface Stop {
     stop_id: number;
@@ -45,72 +45,32 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
     const [routeStopToDelete, setRouteStopToDelete] = useState<RouteStop | null>(null);
 
 
-    // --- UNIFIED FETCH FUNCTION ---
     const fetchRouteStops = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('route_stops')
-            // --- FIX: Use correct alias syntax for joining stops ---
-            .select(`
-                route_stop_id,
-                stop_sequence,
-                time_offset_from_start,
-                stops:stop_id (stop_id, stop_name, latitude, longitude)
-            `)
-            .eq('route_id', routeId)
-            .order('stop_sequence', { ascending: true });
-
-        if (error) {
+        try {
+            const data = await apiClient.request(`/routes/${routeId}/stops`);
+            setRouteStops(data || []);
+            onStopsUpdated(data || []);
+        } catch (error) {
             console.error('Error fetching route stops:', error);
             setError('Failed to load route stops.');
             setRouteStops([]);
-        } else {
-            // FIX: Format the data correctly since it's now an object, not an array
-            const formattedStops: RouteStop[] = data.map((rs: any) => ({
-                route_stop_id: rs.route_stop_id,
-                stop_sequence: rs.stop_sequence,
-                time_offset_from_start: rs.time_offset_from_start,
-                // FIX: Access stops data directly (not from an array)
-                stop_id: rs.stops.stop_id,
-                stop_name: rs.stops.stop_name,
-                latitude: rs.stops.latitude,
-                longitude: rs.stops.longitude,
-            }));
-            setRouteStops(formattedStops);
-            onStopsUpdated(formattedStops); // Notify map
         }
         setLoading(false);
     };
 
     const fetchAllStops = async () => {
-        const { data, error } = await supabase
-            .from('stops')
-            .select('stop_id, stop_name, latitude, longitude')
-            .order('stop_name', { ascending: true });
-
-        if (error) {
+        try {
+            const data = await apiClient.getStops();
+            setAllStops(data || []);
+        } catch (error) {
             console.error('Error fetching all stops:', error);
-        } else {
-            setAllStops(data as Stop[]);
         }
     };
-    // --- END UNIFIED FETCH ---
 
     useEffect(() => {
         fetchRouteStops();
         fetchAllStops();
-
-        // --- ADDED: Real-time subscription to auto-refresh ---
-        const channel = supabase
-            .channel(`route_${routeId}_stops`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'route_stops', filter: `route_id=eq.${routeId}` }, () => {
-                fetchRouteStops();
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
     }, [routeId]);
 
 
@@ -173,44 +133,37 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
             return;
         }
         
-        // --- VALIDATION: Check if stop_sequence is unique ---
         const sequenceExists = routeStops.some(rs => rs.stop_sequence === parseInt(stop_sequence) && rs.route_stop_id !== selectedRouteStop?.route_stop_id);
         if (sequenceExists) {
           setError("Stop sequence must be unique for this route.");
           return;
         }
-        // --- END VALIDATION ---
 
-        let result;
-        if (modalMode === 'add') {
-            let finalStopId = parseInt(stop_id);
-            if (!allStops.some(s => s.stop_id === finalStopId)) {
-                 setError("Please select an existing stop.");
-                 return;
+        try {
+            if (modalMode === 'add') {
+                await apiClient.request(`/routes/${routeId}/stops`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        stop_id: parseInt(stop_id),
+                        stop_sequence: parseInt(stop_sequence),
+                        time_offset_from_start,
+                    }),
+                });
+            } else if (selectedRouteStop) {
+                await apiClient.request(`/routes/${routeId}/stops/${selectedRouteStop.route_stop_id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        stop_id: parseInt(stop_id),
+                        stop_sequence: parseInt(stop_sequence),
+                        time_offset_from_start,
+                    }),
+                });
             }
-
-            result = await supabase.from('route_stops').insert({
-                route_id: routeId,
-                stop_id: finalStopId,
-                stop_sequence: parseInt(stop_sequence),
-                time_offset_from_start,
-            }).select();
-        } else if (selectedRouteStop) {
-            result = await supabase.from('route_stops').update({
-                stop_id: parseInt(stop_id),
-                stop_sequence: parseInt(stop_sequence),
-                time_offset_from_start,
-            }).eq('route_stop_id', selectedRouteStop.route_stop_id).select();
-        }
-
-        const { data, error: submissionError } = result || {};
-
-        if (submissionError) {
-            console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} route stop:`, submissionError);
-            setError(`Failed to ${modalMode} route stop: ${submissionError.message}`);
-        } else if (data) {
-            // fetchRouteStops(); // Not needed due to real-time listener
+            fetchRouteStops();
             closeModal();
+        } catch (error: any) {
+            console.error(`Error ${modalMode === 'add' ? 'adding' : 'updating'} route stop:`, error);
+            setError(`Failed to ${modalMode} route stop: ${error.message}`);
         }
     };
 
@@ -224,17 +177,18 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
     const confirmDelete = async () => {
         if (!routeStopToDelete) return;
         
-        const { error } = await supabase.from('route_stops').delete().eq('route_stop_id', routeStopToDelete.route_stop_id);
-        if (error) {
+        try {
+            await apiClient.request(`/routes/${routeId}/stops/${routeStopToDelete.route_stop_id}`, {
+                method: 'DELETE',
+            });
+            fetchRouteStops();
+        } catch (error: any) {
             console.error('Error deleting route stop:', error);
             setError(`Failed to remove stop: ${error.message}`);
-        } else {
-            // fetchRouteStops(); // Not needed due to real-time listener
         }
         setIsDeleteModalOpen(false);
         setRouteStopToDelete(null);
     };
-    // --- END UPDATE ---
 
     return (
         <div className="bg-card p-4 rounded-lg shadow-xl border h-full flex flex-col min-h-[600px]">
