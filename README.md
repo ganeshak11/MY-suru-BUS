@@ -107,7 +107,7 @@ MY-suru-BUS/
 ### 1. Database Setup
 ```bash
 # Create a Supabase project at https://supabase.com
-# Run supabase/schema.sql in SQL Editor
+# Run schema.sql in SQL Editor
 # Copy Project URL and Anon Key
 ```
 
@@ -115,11 +115,6 @@ MY-suru-BUS/
 ```bash
 git clone https://github.com/ganeshak11/MY-suru-BUS.git
 cd MY-suru-BUS
-
-# Install all dependencies 
-cd admin-dashboard && npm install 
-cd driver-app && npm install 
-cd passenger-app && npm install 
 ```
 
 ### 3. Configure Environment
