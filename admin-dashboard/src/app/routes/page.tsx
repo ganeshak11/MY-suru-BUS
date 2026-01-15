@@ -108,7 +108,6 @@ export default function RoutesPage() {
       console.error(`Error updating route:`, submissionError);
       setError(`Failed to update route: ${submissionError.message}`);
     } else if (data) {
-      // fetchRoutes(); // No longer needed, real-time listener will catch it
       closeModal();
     }
   };

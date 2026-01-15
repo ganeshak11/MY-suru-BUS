@@ -12,7 +12,6 @@ import { Bars3Icon } from '@heroicons/react/24/outline';
 // Time in milliseconds (10 minutes)
 const INACTIVITY_TIMEOUT = 10 * 60 * 1000; 
 
-// --- ADDED: Session Timeout Handler Component ---
 function SessionTimeoutHandler() {
   const router = useRouter();
   const timer = useRef<NodeJS.Timeout | null>(null);

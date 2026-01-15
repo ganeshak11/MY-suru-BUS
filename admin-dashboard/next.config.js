@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    // --- ADDED: Configuration to allow external image domains ---
     images: {
         remotePatterns: [
             {
@@ -14,7 +13,6 @@ const nextConfig = {
     
         ],
     },
-    // Fix network timeout issues
     experimental: {
         serverComponentsExternalPackages: ['@supabase/ssr']
     }

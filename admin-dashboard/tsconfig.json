@@ -5,7 +5,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
-    "target": "es2015",  // Or "es6" or higher. "es2015" is a safe bet.
+    "target": "es2015",  
     "downlevelIteration": true,
     "esModuleInterop": true,
     "module": "esnext",
