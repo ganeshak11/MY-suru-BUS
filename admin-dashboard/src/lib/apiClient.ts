@@ -10,7 +10,7 @@ class ApiClient {
     }
   }
 
-  getToken() {
+  getToken(): string | null {
     if (!this.token && typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token');
     }
@@ -49,15 +49,12 @@ class ApiClient {
   }
 
   // Auth
-  async login(email: string, password: string) {
+  async adminLogin(email: string, password: string) {
     const data = await this.request('/auth/admin/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
     this.setToken(data.token);
-    if (typeof document !== 'undefined') {
-      document.cookie = `auth_token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
-    }
     return data;
   }
 
@@ -70,6 +67,10 @@ class ApiClient {
     return this.request('/buses');
   }
 
+  async getBus(id: number) {
+    return this.request(`/buses/${id}`);
+  }
+
   async createBus(data: any) {
     return this.request('/buses', {
       method: 'POST',
@@ -77,22 +78,24 @@ class ApiClient {
     });
   }
 
-  async updateBus(busId: number, data: any) {
-    return this.request(`/buses/${busId}`, {
+  async updateBus(id: number, data: any) {
+    return this.request(`/buses/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteBus(busId: number) {
-    return this.request(`/buses/${busId}`, {
-      method: 'DELETE',
-    });
+  async deleteBus(id: number) {
+    return this.request(`/buses/${id}`, { method: 'DELETE' });
   }
 
   // Drivers
   async getDrivers() {
     return this.request('/drivers');
+  }
+
+  async getDriver(id: number) {
+    return this.request(`/drivers/${id}`);
   }
 
   async createDriver(data: any) {
@@ -102,17 +105,15 @@ class ApiClient {
     });
   }
 
-  async updateDriver(driverId: number, data: any) {
-    return this.request(`/drivers/${driverId}`, {
+  async updateDriver(id: number, data: any) {
+    return this.request(`/drivers/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteDriver(driverId: number) {
-    return this.request(`/drivers/${driverId}`, {
-      method: 'DELETE',
-    });
+  async deleteDriver(id: number) {
+    return this.request(`/drivers/${id}`, { method: 'DELETE' });
   }
 
   // Routes
@@ -120,8 +121,8 @@ class ApiClient {
     return this.request('/routes');
   }
 
-  async getRoute(routeId: number) {
-    return this.request(`/routes/${routeId}`);
+  async getRoute(id: number) {
+    return this.request(`/routes/${id}`);
   }
 
   async createRoute(data: any) {
@@ -131,22 +132,28 @@ class ApiClient {
     });
   }
 
-  async updateRoute(routeId: number, data: any) {
-    return this.request(`/routes/${routeId}`, {
+  async updateRoute(id: number, data: any) {
+    return this.request(`/routes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteRoute(routeId: number) {
-    return this.request(`/routes/${routeId}`, {
-      method: 'DELETE',
-    });
+  async deleteRoute(id: number) {
+    return this.request(`/routes/${id}`, { method: 'DELETE' });
+  }
+
+  async getRouteStops(routeId: number) {
+    return this.request(`/routes/${routeId}/stops`);
   }
 
   // Stops
   async getStops() {
     return this.request('/stops');
+  }
+
+  async getStop(id: number) {
+    return this.request(`/stops/${id}`);
   }
 
   async createStop(data: any) {
@@ -156,17 +163,15 @@ class ApiClient {
     });
   }
 
-  async updateStop(stopId: number, data: any) {
-    return this.request(`/stops/${stopId}`, {
+  async updateStop(id: number, data: any) {
+    return this.request(`/stops/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteStop(stopId: number) {
-    return this.request(`/stops/${stopId}`, {
-      method: 'DELETE',
-    });
+  async deleteStop(id: number) {
+    return this.request(`/stops/${id}`, { method: 'DELETE' });
   }
 
   // Trips
@@ -174,8 +179,8 @@ class ApiClient {
     return this.request('/trips');
   }
 
-  async getTrip(tripId: number) {
-    return this.request(`/trips/${tripId}`);
+  async getTrip(id: number) {
+    return this.request(`/trips/${id}`);
   }
 
   async createTrip(data: any) {
@@ -185,29 +190,42 @@ class ApiClient {
     });
   }
 
-  async updateTrip(tripId: number, data: any) {
-    return this.request(`/trips/${tripId}`, {
+  async updateTrip(id: number, data: any) {
+    return this.request(`/trips/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteTrip(tripId: number) {
-    return this.request(`/trips/${tripId}`, {
-      method: 'DELETE',
-    });
+  async deleteTrip(id: number) {
+    return this.request(`/trips/${id}`, { method: 'DELETE' });
   }
 
+  async getTripStops(tripId: number) {
+    return this.request(`/trips/${tripId}/stops`);
+  }
+
+  // Schedules
   async getSchedules() {
     return this.request('/schedules');
   }
 
-  async getBusesWithLocations() {
-    return this.request('/buses?with_location=true');
+  async createSchedule(data: any) {
+    return this.request('/schedules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
-  async getActiveTrips() {
-    return this.request('/trips?status=En Route');
+  async updateSchedule(id: number, data: any) {
+    return this.request(`/schedules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSchedule(id: number) {
+    return this.request(`/schedules/${id}`, { method: 'DELETE' });
   }
 
   // Announcements
@@ -222,17 +240,15 @@ class ApiClient {
     });
   }
 
-  async updateAnnouncement(announcementId: number, data: any) {
-    return this.request(`/announcements/${announcementId}`, {
+  async updateAnnouncement(id: number, data: any) {
+    return this.request(`/announcements/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteAnnouncement(announcementId: number) {
-    return this.request(`/announcements/${announcementId}`, {
-      method: 'DELETE',
-    });
+  async deleteAnnouncement(id: number) {
+    return this.request(`/announcements/${id}`, { method: 'DELETE' });
   }
 
   // Reports
@@ -240,8 +256,8 @@ class ApiClient {
     return this.request('/reports');
   }
 
-  async updateReportStatus(reportId: number, status: string) {
-    return this.request(`/reports/${reportId}/status`, {
+  async updateReportStatus(id: number, status: string) {
+    return this.request(`/reports/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });

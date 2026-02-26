@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import pool from '../database/db';
+import { validateBus } from '../middleware/validate';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -25,7 +27,42 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-router.post('/:id/location', async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, validateBus, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { bus_no } = req.body;
+    const result = await pool.query(
+      'INSERT INTO buses (bus_no) VALUES ($1) RETURNING *',
+      [bus_no]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.put('/:id', authenticateToken, validateBus, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { bus_no } = req.body;
+    const result = await pool.query(
+      'UPDATE buses SET bus_no = $1 WHERE bus_id = $2 RETURNING *',
+      [bus_no, req.params.id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.delete('/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    await pool.query('DELETE FROM buses WHERE bus_id = $1', [req.params.id]);
+    res.json({ message: 'Bus deleted' });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+router.post('/:id/location', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const { latitude, longitude, speed } = req.body;
     const result = await pool.query(

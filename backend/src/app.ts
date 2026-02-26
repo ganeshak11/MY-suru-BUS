@@ -13,6 +13,8 @@ import stopsRoutes from './routes/stops';
 import reportsRoutes from './routes/reports';
 import announcementsRoutes from './routes/announcements';
 import schedulesRoutes from './routes/schedules';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { rateLimiter } from './middleware/rateLimiter';
 
 dotenv.config();
 
@@ -27,6 +29,7 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+app.use(rateLimiter(100, 60000));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/routes', routesRoutes);
@@ -58,6 +61,9 @@ io.on('connection', (socket) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'MY(suru) BUS Backend is running!' });
 });
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

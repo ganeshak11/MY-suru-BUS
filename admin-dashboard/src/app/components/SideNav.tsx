@@ -3,7 +3,7 @@
 
 import { Fragment, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { apiClient } from '@/lib/apiClient';
 import { useRouter } from 'next/navigation';
 import HomeIcon from '@/app/components/icons/HomeIcon';
 import UsersIcon from '@/app/components/icons/UsersIcon';
@@ -51,9 +51,7 @@ export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }:
     
     setIsLoggingOut(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      router.refresh();
+      apiClient.logout();
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', error);

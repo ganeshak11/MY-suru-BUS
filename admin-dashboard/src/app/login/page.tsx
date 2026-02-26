@@ -18,13 +18,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await apiClient.login(email, password);
-      console.log('Login successful, token:', data.token.substring(0, 20));
-      document.cookie = `auth_token=${data.token}; path=/; max-age=86400; SameSite=Lax`;
-      console.log('Cookie set, redirecting...');
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 100);
+      await apiClient.adminLogin(email, password);
+      router.push('/');
     } catch (err: any) {
       setError(err.message || 'Invalid credentials');
       setLoading(false);

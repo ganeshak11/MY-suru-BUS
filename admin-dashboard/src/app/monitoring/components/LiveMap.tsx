@@ -3,8 +3,8 @@
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
-import { useEffect, useState, useCallback, useContext } from 'react'; // <--- 'useContext' is no longer needed
-import { supabase } from '@/lib/supabaseClient';
+import { useEffect, useState, useCallback } from 'react';
+import { apiClient } from '@/lib/apiClient';
 import type { Bus } from './types'; 
 // --- FIX 1: Import useTheme from next-themes ---
 import { useTheme } from 'next-themes'; 
@@ -75,53 +75,40 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
       setError(null);
       if (!selectedTripId) return;
       
-      const { data: tripData } = await supabase
-        .from('trips')
-        .select('schedules!inner(route_id)')
-        .eq('trip_id', selectedTripId)
-        .single();
-      
-      if (!tripData?.schedules) return;
-      const schedules = Array.isArray(tripData.schedules) ? tripData.schedules[0] : tripData.schedules;
-      if (!schedules?.route_id) return;
-      const routeId = schedules.route_id;
+      try {
+        const tripData = await apiClient.getTrip(selectedTripId);
+        if (!tripData?.schedule?.route_id) return;
+        const routeId = tripData.schedule.route_id;
 
-      const { data: stopsData } = await supabase
-        .from('route_stops')
-        .select('stops!inner(stop_name, latitude, longitude)')
-        .eq('route_id', routeId)
-        .order('stop_sequence');
+        const stopsData = await apiClient.getRouteStops(routeId);
 
-      if (stopsData && stopsData.length > 0) {
-        const waypoints = stopsData
-          .map(rs => {
-            const stop = Array.isArray(rs.stops) ? rs.stops[0] : rs.stops;
-            if (!stop || !stop.latitude || !stop.longitude) return null;
-            return L.latLng(parseFloat(stop.latitude), parseFloat(stop.longitude));
-          })
-          .filter((wp): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
-        
-        // Set all route stops with start/end flags
-        const allStops = stopsData.map((rs, index) => {
-          const stop = Array.isArray(rs.stops) ? rs.stops[0] : rs.stops;
-          return {
+        if (stopsData && stopsData.length > 0) {
+          const waypoints = stopsData
+            .map((stop: any) => {
+              if (!stop.latitude || !stop.longitude) return null;
+              return L.latLng(parseFloat(stop.latitude), parseFloat(stop.longitude));
+            })
+            .filter((wp): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
+          
+          const allStops = stopsData.map((stop: any, index: number) => ({
             lat: parseFloat(stop.latitude),
             lng: parseFloat(stop.longitude),
             name: stop.stop_name,
             isStart: index === 0,
             isEnd: index === stopsData.length - 1 && stopsData.length > 1
-          };
-        });
-        setRouteStops(allStops);
-        
-        if (waypoints.length > 1) {
-          await fetchOSRMRoute(waypoints);
+          }));
+          setRouteStops(allStops);
+          
+          if (waypoints.length > 1) {
+            await fetchOSRMRoute(waypoints);
+          }
         }
+      } catch (err) {
+        console.error('Error fetching route:', err);
       }
     };
     fetchRoutePath();
-  }, [selectedTripId, supabase, fetchOSRMRoute]);
-  // --- End of fixes ---
+  }, [selectedTripId, fetchOSRMRoute]);
 
   return (
     <MapContainer center={[12.2958, 76.6394]} zoom={13} style={{ height: '100%', width: '100%', touchAction: 'pan-x pan-y' }} className="z-10 touch-pan-x touch-pan-y">

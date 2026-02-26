@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import pool from '../database/db';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM drivers ORDER BY id');
     res.json(result.rows);
@@ -26,7 +27,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const { name, phone, license_number, status } = req.body;
   try {
     const result = await pool.query(
@@ -40,7 +41,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   const { name, phone, license_number, status } = req.body;
   try {
     const result = await pool.query(
@@ -57,7 +58,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('DELETE FROM drivers WHERE id = $1 RETURNING *', [req.params.id]);
     if (result.rows.length === 0) {

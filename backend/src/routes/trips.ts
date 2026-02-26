@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import pool from '../database/db';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
@@ -19,7 +20,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const trips = Array.isArray(req.body) ? req.body : [req.body];
     const values = trips.map((t: any) => `(${t.schedule_id}, ${t.bus_id}, ${t.driver_id}, '${t.trip_date}', '${t.status}')`);
@@ -34,7 +35,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-router.put('/:id', async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const { bus_id, driver_id, trip_date, status } = req.body;
     const result = await pool.query(
@@ -47,7 +48,7 @@ router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     await pool.query('DELETE FROM trip_stop_times WHERE trip_id = $1', [req.params.id]);
     await pool.query('UPDATE passenger_reports SET trip_id = NULL WHERE trip_id = $1', [req.params.id]);
@@ -90,7 +91,7 @@ router.patch('/:id/status', async (req: Request, res: Response): Promise<void> =
   }
 });
 
-router.post('/:id/start', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/start', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     await pool.query("UPDATE trips SET status = 'In Progress' WHERE trip_id = $1", [req.params.id]);
     res.json({ message: 'Trip started', trip_id: req.params.id });
@@ -99,7 +100,7 @@ router.post('/:id/start', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
-router.patch('/:id/pause', async (req: Request, res: Response): Promise<void> => {
+router.patch('/:id/pause', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     await pool.query("UPDATE trips SET status = 'Paused' WHERE trip_id = $1", [req.params.id]);
     res.json({ message: 'Trip paused' });
@@ -108,7 +109,7 @@ router.patch('/:id/pause', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
-router.patch('/:id/resume', async (req: Request, res: Response): Promise<void> => {
+router.patch('/:id/resume', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     await pool.query("UPDATE trips SET status = 'In Progress' WHERE trip_id = $1", [req.params.id]);
     res.json({ message: 'Trip resumed' });
@@ -117,7 +118,7 @@ router.patch('/:id/resume', async (req: Request, res: Response): Promise<void> =
   }
 });
 
-router.post('/:id/complete', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/complete', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     await pool.query("UPDATE trips SET status = 'Completed' WHERE trip_id = $1", [req.params.id]);
     res.json({ message: 'Trip completed' });
@@ -126,7 +127,7 @@ router.post('/:id/complete', async (req: Request, res: Response): Promise<void> 
   }
 });
 
-router.post('/:id/stops/:stopId/arrive', async (req: Request, res: Response): Promise<void> => {
+router.post('/:id/stops/:stopId/arrive', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     const { id: tripId, stopId } = req.params;
     const result = await pool.query(
