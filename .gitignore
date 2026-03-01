@@ -4,7 +4,8 @@ node_modules/
 package-lock.json
 yarn.lock
 githubprofile.md
-
+Docs/
+backend/
 # Logs
 logs/
 *.log
@@ -71,3 +72,5 @@ coverage/
 #settings extra
 .vscode
 .amazonq
+*.sh
+.env.*
