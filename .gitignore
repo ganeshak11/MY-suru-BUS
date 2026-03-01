@@ -4,6 +4,8 @@ node_modules/
 package-lock.json
 yarn.lock
 githubprofile.md
+
+Assets/
 Docs/
 backend/
 # Logs
