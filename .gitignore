@@ -57,7 +57,6 @@ web-build/
 Thumbs.db
 *.sublime-project
 *.sublime-workspace
-
 # Testing
 coverage/
 .nyc_output/
