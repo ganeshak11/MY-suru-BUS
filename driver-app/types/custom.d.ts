@@ -10,19 +10,25 @@ export type Driver = {
 };
 
 // Based on your 'trips' table schema
+// The backend returns a flat JOIN row, not nested objects.
 export type Trip = {
   trip_id: number;
   schedule_id: number;
   bus_id: number;
   driver_id: number;
   trip_date: string;
-  status: 'Scheduled' | 'En Route' | 'Completed' | 'Cancelled';
-  schedule: {
+  status: 'Scheduled' | 'En Route' | 'Completed' | 'Paused' | 'Cancelled';
+  // Flat columns from JOINs (returned by GET /api/trips/:id)
+  start_time: string;       // from schedules
+  route_id: number;         // from routes via schedules  
+  route_name: string;       // from routes
+  bus_no?: string;          // from buses
+  driver_name?: string;     // from drivers
+  // Legacy nested shape (kept for optional-chaining safety)
+  schedule?: {
     route_id: number;
     start_time: string;
-    routes?: {
-      route_name: string;
-    };
+    routes?: { route_name: string };
   };
   buses?: {
     bus_id: number;

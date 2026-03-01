@@ -172,6 +172,14 @@ export default function StopsPage() {
     setLoadingRoutes(true);
     setIsRoutesModalOpen(true);
     setSelectedStopRoutes([]);
+    
+    try {
+      const routes = await apiClient.getStopRoutes(stopId);
+      setSelectedStopRoutes(routes);
+    } catch (error) {
+      console.error('Error fetching stop routes:', error);
+    }
+    
     setLoadingRoutes(false);
   };
   // --- END UPDATE ---
@@ -241,12 +249,12 @@ export default function StopsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-secondary font-mono">
                       <div className="flex flex-col gap-0.5">
-                        <span>Lat: {stop.latitude.toFixed(6)}</span>
-                        <span>Lng: {stop.longitude.toFixed(6)}</span>
+                        <span>Lat: {Number(stop.latitude).toFixed(6)}</span>
+                        <span>Lng: {Number(stop.longitude).toFixed(6)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {stop.route_stops[0].count > 0 ? (
+                      {stop.route_stops?.[0]?.count > 0 ? (
                         <button
                           onClick={() => showStopRoutes(stop.stop_id)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"

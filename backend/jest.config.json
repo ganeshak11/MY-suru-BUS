@@ -1,0 +1,22 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "testMatch": ["**/__tests__/**/*.test.ts"],
+  "setupFiles": ["<rootDir>/src/__tests__/setup.ts"],
+  "forceExit": true,
+  "moduleNameMapper": {
+    "^.+/database/db$": "<rootDir>/src/__tests__/__mocks__/db.ts",
+    "^.+/instrument$": "<rootDir>/src/__tests__/__mocks__/instrument.ts"
+  },
+  "globals": {
+    "ts-jest": {
+      "tsconfig": "./tsconfig.test.json"
+    }
+  },
+  "coverageDirectory": "coverage",
+  "collectCoverageFrom": [
+    "src/routes/**/*.ts",
+    "src/middleware/**/*.ts",
+    "!src/**/__tests__/**"
+  ]
+}

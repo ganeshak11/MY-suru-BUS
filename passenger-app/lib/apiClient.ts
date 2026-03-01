@@ -1,10 +1,9 @@
-// API Client for Manual Backend
-// This replaces Supabase calls with our custom backend
+import Constants from 'expo-constants';
 
-// Change this to your backend URL
-// For local testing: http://localhost:3001/api
-// For production: https://your-backend-url.com/api
-const API_BASE_URL = 'http://10.24.88.123:3001/api';
+// In production: set EXPO_PUBLIC_API_BASE_URL in your .env
+// In development: automatically uses the Metro bundler host IP (works on any machine/device)
+const devHost = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${devHost}:3001/api`;
 
 export class BusAPI {
   // Routes
@@ -163,6 +162,18 @@ export class BusAPI {
       return await response.json();
     } catch (error) {
       console.error('Error fetching announcements:', error);
+      throw error;
+    }
+  }
+
+  // CRIT-10: Single efficient query — replaces N+1 getAllTrips + getAllBuses
+  static async getActiveTripsForRoute(routeId: string | number) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/routes/${routeId}/active-trips`);
+      if (!response.ok) throw new Error('Failed to fetch active trips');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching active trips for route:', error);
       throw error;
     }
   }

@@ -1,7 +1,11 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { supabase } from "./supabaseClient";
+/**
+ * Offline arrival queue — uses apiClient (REST backend).
+ * Replaces the old dead Supabase import (CRIT-05).
+ */
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiClient } from './apiClient';
 
-const ARRIVAL_QUEUE_KEY = "arrival_queue";
+const ARRIVAL_QUEUE_KEY = 'arrival_queue';
 
 export type QueuedArrival = {
   trip_id: number;
@@ -9,54 +13,56 @@ export type QueuedArrival = {
   actual_arrival_time: string;
 };
 
-// Add an arrival to the queue
-export const queueArrival = async (arrival: QueuedArrival) => {
+// Add an arrival to the persistent queue
+export const queueArrival = async (arrival: QueuedArrival): Promise<void> => {
   try {
     if (!arrival || typeof arrival.trip_id !== 'number' || typeof arrival.stop_id !== 'number') {
       throw new Error('Invalid arrival data');
     }
-    
-    const existingQueue = await AsyncStorage.getItem(ARRIVAL_QUEUE_KEY);
-    const queue: QueuedArrival[] = existingQueue ? JSON.parse(existingQueue) : [];
-    queue.push(arrival);
-    await AsyncStorage.setItem(ARRIVAL_QUEUE_KEY, JSON.stringify(queue));
+    const raw = await AsyncStorage.getItem(ARRIVAL_QUEUE_KEY);
+    const queue: QueuedArrival[] = raw ? JSON.parse(raw) : [];
+    // Deduplicate: skip if already queued for same trip+stop
+    const isDuplicate = queue.some(
+      (q) => q.trip_id === arrival.trip_id && q.stop_id === arrival.stop_id
+    );
+    if (!isDuplicate) {
+      queue.push(arrival);
+      await AsyncStorage.setItem(ARRIVAL_QUEUE_KEY, JSON.stringify(queue));
+    }
   } catch (e: any) {
-    const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
-    console.error("Failed to queue arrival:", errorMsg);
+    console.error('Failed to queue arrival:', e?.message || e);
   }
 };
 
-// Process the queue
-export const processArrivalQueue = async () => {
+// Flush the queue to the REST backend (CRIT-05 fix: was calling Supabase)
+export const processArrivalQueue = async (): Promise<void> => {
   try {
-    const existingQueue = await AsyncStorage.getItem(ARRIVAL_QUEUE_KEY);
-    if (!existingQueue) return;
+    const raw = await AsyncStorage.getItem(ARRIVAL_QUEUE_KEY);
+    if (!raw) return;
 
-    const queue: QueuedArrival[] = JSON.parse(existingQueue);
+    const queue: QueuedArrival[] = JSON.parse(raw);
     if (queue.length === 0) return;
 
-    // log removed for production
+    const succeeded: QueuedArrival[] = [];
 
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Queue processing timeout')), 15000)
-    );
-    
-    const insertPromise = supabase.from("trip_stop_times").insert(queue);
-    
-    const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
-
-    if (error) {
-      if (error.code === '23505') {
-        await AsyncStorage.removeItem(ARRIVAL_QUEUE_KEY);
-        return;
+    for (const arrival of queue) {
+      try {
+        await apiClient.markStopArrival(String(arrival.trip_id), String(arrival.stop_id));
+        succeeded.push(arrival);
+      } catch (err: any) {
+        // Keep in queue on network failure; stop processing to preserve order
+        console.error('Failed to flush arrival, will retry:', err?.message || err);
+        break;
       }
-      throw new Error(error.message || 'Failed to insert queue items');
     }
 
-    await AsyncStorage.removeItem(ARRIVAL_QUEUE_KEY);
-    // log removed for production
+    if (succeeded.length > 0) {
+      const remaining = queue.filter(
+        (q) => !succeeded.some((s) => s.trip_id === q.trip_id && s.stop_id === q.stop_id)
+      );
+      await AsyncStorage.setItem(ARRIVAL_QUEUE_KEY, JSON.stringify(remaining));
+    }
   } catch (e: any) {
-    const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
-    console.error("Failed to process arrival queue:", errorMsg);
+    console.error('Failed to process arrival queue:', e?.message || e);
   }
 };

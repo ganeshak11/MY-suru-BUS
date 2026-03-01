@@ -23,7 +23,8 @@ import { apiClient } from "../lib/apiClient";
 import { themeTokens, useTheme } from "../contexts/ThemeContext";
 import { Card } from "../components/Card";
 import { DangerButton } from "../components/StyledButton";
-import { getDistance } from "../lib/helpers";
+import { getDistance } from "../lib/helpers"; // Keep for other uses if any
+import { haversineDistance } from "../lib/haversine";
 import { Trip } from "../types/custom";
 import { processArrivalQueue, queueArrival } from "../lib/queue";
 import { StopsTimeline } from "../components/StopsTimeline";
@@ -62,7 +63,7 @@ export default function TripScreen() {
   // start foreground watcher on mount
   useEffect(() => {
     let locationSubscription: any = null;
-    
+
     const startWatching = async () => {
       try {
         // Request notification permissions
@@ -70,7 +71,7 @@ export default function TripScreen() {
         if (status !== 'granted') {
           console.warn('Notification permissions not granted');
         }
-        
+
         // Set up notification handler
         const subscription = Notifications.addNotificationResponseReceivedListener(response => {
           const data = response.notification.request.content.data;
@@ -78,7 +79,7 @@ export default function TripScreen() {
             handleStopTrip();
           }
         });
-        
+
         locationSubscription = await watchForegroundLocation();
       } catch (e: any) {
         const errorMsg = e?.message?.replace(/[\r\n]/g, ' ') || 'Unknown error';
@@ -86,7 +87,7 @@ export default function TripScreen() {
         // Don't crash if foreground watch fails - background tracking continues
       }
     };
-    
+
     startWatching();
 
     // Process queue on mount
@@ -105,7 +106,8 @@ export default function TripScreen() {
 
     return () => {
       clearInterval(queueProcessor);
-      if (locationSubscription && locationSubscription.remove) {
+      // HIGH-09: locationSubscription is now properly returned from watchForegroundLocation
+      if (locationSubscription && typeof locationSubscription.remove === 'function') {
         locationSubscription.remove();
       }
     };
@@ -150,10 +152,10 @@ export default function TripScreen() {
     ) return;
     const nextStop = stops[currentStopIndex];
     if (nextStop.status === "Completed") return;
-    
+
     let d: number;
     try {
-      d = getDistance(location.coords, {
+      d = haversineDistance(location.coords, {
         latitude: Number(nextStop.latitude),
         longitude: Number(nextStop.longitude),
       });
@@ -172,18 +174,11 @@ export default function TripScreen() {
     const timeMinutes = Math.round(timeHours * 60);
     setEta(timeMinutes > 0 ? `${timeMinutes} min` : "Arriving");
 
-    // Geofence trigger with debounce and direction check
-    if (d < nextStop.geofence_radius_meters) {
-      const now = Date.now();
-      const isApproaching = previousDistance === null || d < previousDistance;
-      const debounceTime = 5000; // 5 seconds
-      
-      if (isApproaching && (now - lastTriggerTime) > debounceTime) {
-        setLastTriggerTime(now);
-        handleStopArrival(nextStop, currentStopIndex);
-      }
-    }
-    
+    // HIGH-08: Foreground geofence trigger removed here.
+    // We now rely exclusively on the background location task (useDriverLocation.ts)
+    // to detect arrivals, queue them, and sync them securely. This prevents race
+    // conditions between foreground and background triggers.
+
     setPreviousDistance(d);
   }, [location, stops, currentStopIndex, isPaused]);
 
@@ -194,8 +189,8 @@ export default function TripScreen() {
       setTrip(tripData as Trip);
       // log removed for production
 
-      const stopsData = await apiClient.getRouteStops(tripData.schedules.route_id);
-      
+      const stopsData = await apiClient.getRouteStops(tripData.route_id); // HIGH-03: was tripData.schedules.route_id (crash)
+
       const formattedStops: StopDetails[] = stopsData.map((item: any) => {
         // Convert time string (HH:MM:SS) to minutes
         let offsetMinutes = 0;
@@ -203,15 +198,20 @@ export default function TripScreen() {
           const [hours, minutes] = item.time_offset_from_start.split(':').map(Number);
           offsetMinutes = (hours * 60) + minutes;
         }
-        
+
         return {
-          ...item.stops,
-          latitude: parseFloat(item.stops.latitude),
-          longitude: parseFloat(item.stops.longitude),
-          geofence_radius_meters: item.stops.geofence_radius_meters || 50,
+          ...item,
+          latitude: parseFloat(item.latitude),
+          longitude: parseFloat(item.longitude),
+          geofence_radius_meters: item.geofence_radius_meters || 50,
           stop_sequence: item.stop_sequence,
-          status: "Pending",
-          time_offset_from_start: offsetMinutes
+          status: "Pending" as const,
+          time_offset_from_start: (() => {
+            // MIN-01: parse HH:MM:SS properly including seconds
+            if (!item.time_offset_from_start) return 0;
+            const [h, m, s] = item.time_offset_from_start.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0) + (s || 0) / 60;
+          })(),
         };
       });
 
@@ -270,12 +270,12 @@ export default function TripScreen() {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: isLastStop ? "Final Stop Reached! 🎯" : "Stop Reached! 🚏",
-        body: isLastStop 
+        body: isLastStop
           ? `Arrived at ${stop.stop_name}. Tap to end trip.`
           : `Arrived at ${stop.stop_name}`,
         sound: true,
         priority: Notifications.AndroidNotificationPriority.HIGH,
-        data: { 
+        data: {
           action: isLastStop ? 'END_TRIP' : 'STOP_REACHED',
           trip_id: trip_id,
           stop_name: stop.stop_name
@@ -290,11 +290,11 @@ export default function TripScreen() {
       stop_id: stop.stop_id,
       actual_arrival_time: (() => {
         const now = new Date();
-        return now.getFullYear() + '-' + 
-          String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(now.getDate()).padStart(2, '0') + 'T' + 
-          String(now.getHours()).padStart(2, '0') + ':' + 
-          String(now.getMinutes()).padStart(2, '0') + ':' + 
+        return now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0') + 'T' +
+          String(now.getHours()).padStart(2, '0') + ':' +
+          String(now.getMinutes()).padStart(2, '0') + ':' +
           String(now.getSeconds()).padStart(2, '0');
       })(),
     });
@@ -421,7 +421,7 @@ export default function TripScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* GPS Status */}
         <LocationDebug location={location} isTracking={true} />
-        
+
         {/* Map Card */}
         <Card style={styles.mapCard}>
           <View style={styles.cardHeader}>
@@ -453,18 +453,18 @@ export default function TripScreen() {
               <Text style={styles.stopsTitle}>Route Stops</Text>
             </View>
             <View style={styles.stopsHeaderRight}>
-              {trip?.schedule?.start_time && stops.length > 0 && currentStopIndex < stops.length && stops[currentStopIndex]?.time_offset_from_start !== undefined && (() => {
+              {trip?.start_time && stops.length > 0 && currentStopIndex < stops.length && stops[currentStopIndex]?.time_offset_from_start !== undefined && (() => {
                 const currentStop = stops[currentStopIndex];
                 const now = new Date();
-                const today = now.getFullYear() + '-' + 
-                  String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+                const today = now.getFullYear() + '-' +
+                  String(now.getMonth() + 1).padStart(2, '0') + '-' +
                   String(now.getDate()).padStart(2, '0');
-                const tripStart = new Date(`${today}T${trip.schedule.start_time}`);
+                const tripStart = new Date(`${today}T${trip.start_time}`);
                 const elapsedMinutes = Math.round((now.getTime() - tripStart.getTime()) / 60000);
                 const delayMinutes = elapsedMinutes - (currentStop.time_offset_from_start || 0);
                 const isDelayed = delayMinutes > 0;
                 const isEarly = delayMinutes < -2;
-                
+
                 return (
                   <View style={[styles.delayBadge, isDelayed ? styles.delayBadgeDelayed : isEarly ? styles.delayBadgeEarly : styles.delayBadgeOnTime]}>
                     <Ionicons name={isDelayed ? "alert-circle" : isEarly ? "time" : "checkmark-circle"} size={11} color="#FFFFFF" />
@@ -493,13 +493,13 @@ export default function TripScreen() {
             stops={stops}
             currentStopIndex={currentStopIndex}
             eta={eta || undefined}
-            tripStartTime={trip?.schedule?.start_time}
+            tripStartTime={trip?.start_time}
             distanceToStop={
               location && currentStopIndex < stops.length
-                ? getDistance(location.coords, {
-                    latitude: Number(stops[currentStopIndex].latitude),
-                    longitude: Number(stops[currentStopIndex].longitude),
-                  })
+                ? haversineDistance(location.coords, {
+                  latitude: Number(stops[currentStopIndex].latitude),
+                  longitude: Number(stops[currentStopIndex].longitude),
+                })
                 : 0
             }
             currentLocation={location ? { latitude: location.coords.latitude, longitude: location.coords.longitude } : undefined}
@@ -597,9 +597,9 @@ export default function TripScreen() {
 
 const createStyles = (colors: typeof themeTokens.light) =>
   StyleSheet.create({
-    container: { 
-      flex: 1, 
-      backgroundColor: colors.mainBackground 
+    container: {
+      flex: 1,
+      backgroundColor: colors.mainBackground
     },
     header: {
       flexDirection: 'row',
@@ -729,10 +729,10 @@ const createStyles = (colors: typeof themeTokens.light) =>
     delayBadgeDelayed: {
       backgroundColor: "#f97316",
     },
-    delayText: { 
-      color: "#FFFFFF", 
-      fontSize: 11, 
-      fontWeight: "700" 
+    delayText: {
+      color: "#FFFFFF",
+      fontSize: 11,
+      fontWeight: "700"
     },
     etaBadge: {
       flexDirection: "row",
@@ -760,10 +760,10 @@ const createStyles = (colors: typeof themeTokens.light) =>
       paddingHorizontal: 10,
       paddingVertical: 5,
     },
-    progressText: { 
-      color: "#FFFFFF", 
-      fontSize: 12, 
-      fontWeight: "700" 
+    progressText: {
+      color: "#FFFFFF",
+      fontSize: 12,
+      fontWeight: "700"
     },
 
     // Bottom Action Bar
@@ -837,15 +837,15 @@ const createStyles = (colors: typeof themeTokens.light) =>
         },
       }),
     },
-    actionButtonTextDelay: { 
-      color: "#ea580c", 
-      fontWeight: "600", 
-      fontSize: 14 
+    actionButtonTextDelay: {
+      color: "#ea580c",
+      fontWeight: "600",
+      fontSize: 14
     },
-    actionButtonTextWhite: { 
-      color: "#FFFFFF", 
-      fontWeight: "600", 
-      fontSize: 14 
+    actionButtonTextWhite: {
+      color: "#FFFFFF",
+      fontWeight: "600",
+      fontSize: 14
     },
     modalOverlay: {
       flex: 1,

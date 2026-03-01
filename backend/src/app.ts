@@ -1,9 +1,12 @@
+import './instrument'; // Sentry must be imported before anything else
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
+import { logger } from './logger';
 import authRoutes from './routes/auth';
 import routesRoutes from './routes/routes';
 import busesRoutes from './routes/buses';
@@ -14,24 +17,31 @@ import reportsRoutes from './routes/reports';
 import announcementsRoutes from './routes/announcements';
 import schedulesRoutes from './routes/schedules';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { rateLimiter } from './middleware/rateLimiter';
+import { rateLimiter, authRateLimiter } from './middleware/rateLimiter';
 
 dotenv.config();
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS || 'http://localhost:3000,exp://localhost:19000'
+).split(',').map((o) => o.trim());
+
+export const app = express();
+export const server = http.createServer(app);
+export const io = new Server(server, {
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
 });
 
-app.use(cors());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
-app.use(rateLimiter(100, 60000));
 
-app.use('/api/auth', authRoutes);
+// Auth routes get a stricter rate limit (10 req/min)
+app.use('/api/auth', authRateLimiter, authRoutes);
+
+// General rate limit for all other routes (100 req/min)
+app.use(rateLimiter(100, 60_000));
+
 app.use('/api/routes', routesRoutes);
 app.use('/api/buses', busesRoutes);
 app.use('/api/drivers', driversRoutes);
@@ -41,33 +51,43 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/schedules', schedulesRoutes);
 
+// CRIT-S04: Socket authentication middleware.
+// Passengers are anonymous (no token) — they can connect and join rooms to watch buses.
+// Drivers must provide a valid JWT to emit location data.
+// We use "optional auth": always allow the connection, but tag authenticated sockets.
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token as string | undefined;
+  if (token) {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+      if (!err && decoded) {
+        socket.data.user = decoded; // attach user payload for driver checks below
+      }
+      // Even if token is invalid, we allow the connection (passenger use case)
+      next();
+    });
+  } else {
+    next(); // Unauthenticated — passenger
+  }
+});
+
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-  
-  socket.on('join-trip', (tripId: number) => {
-    socket.join(`trip-${tripId}`);
-    console.log(`Client joined trip ${tripId}`);
-  });
-  
-  socket.on('location-update', (data: { tripId: number; latitude: number; longitude: number; speed?: number }) => {
-    socket.to(`trip-${data.tripId}`).emit('bus-location', data);
-  });
-  
+  logger.debug({ socketId: socket.id, user: socket.data.user?.role }, 'Socket client connected');
+
+  socket.on('join-trip', (tripId: number) => socket.join(`trip-${tripId}`));
+  socket.on('join-bus', (busId: number) => socket.join(`bus-${busId}`));
+
+  // Note: GPS location updates come via REST (POST /api/buses/:id/location → buses.ts)
+  // which emits to bus-${busId} room. The passenger app listens on that room.
+  // There is no socket-based location injection path — by design, for security.
+
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    logger.debug({ socketId: socket.id }, 'Socket client disconnected');
   });
 });
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'MY(suru) BUS Backend is running!' });
+app.get('/health', (_req, res) => {
+  res.json({ status: 'OK', message: 'MY(suru) BUS Backend is running!', timestamp: new Date().toISOString() });
 });
 
 app.use(notFoundHandler);
 app.use(errorHandler);
-
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`🚌 MY(suru) BUS Backend running on port ${PORT}`);
-});
-
-export { app, io };

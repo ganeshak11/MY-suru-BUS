@@ -1,6 +1,13 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../types';
+export type { AuthRequest }; // re-export for convenience
+
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('[FATAL] JWT_SECRET environment variable is not set. Server cannot start.');
+}
+export { JWT_SECRET };
 
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const authHeader = req.headers['authorization'];
@@ -11,7 +18,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     return;
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'default-secret', (err, user) => {
+  jwt.verify(token, JWT_SECRET!, (err, user) => {
     if (err) {
       res.status(403).json({ error: 'Invalid or expired token' });
       return;

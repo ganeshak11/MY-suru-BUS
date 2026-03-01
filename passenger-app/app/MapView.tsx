@@ -4,10 +4,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BusAPI } from '../lib/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Constants from 'expo-constants';
 import { useTheme } from '../contexts/ThemeContext';
 import { RouteLeafletMap } from '../components/RouteLeafletMap';
 import { StopsTimeline } from '../components/StopsTimeline';
 import { Header } from '../components/Header';
+import { io, Socket } from 'socket.io-client';
+import { haversineDistance } from '../lib/haversine';
 
 type StopDetails = {
   stop_id: number;
@@ -34,16 +37,25 @@ const MapViewScreen: React.FC = () => {
   const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null);
   const [activeTripId, setActiveTripId] = useState<number | null>(null);
 
-  const getDistance = (from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }): number => {
-    const R = 6371e3;
-    const φ1 = (from.latitude * Math.PI) / 180;
-    const φ2 = (to.latitude * Math.PI) / 180;
-    const Δφ = ((to.latitude - from.latitude) * Math.PI) / 180;
-    const Δλ = ((to.longitude - from.longitude) * Math.PI) / 180;
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
+  const busLocationsRef = useRef<any[]>([]);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Keep busLocationsRef in sync so reconnect handler can access latest state
+  useEffect(() => {
+    busLocationsRef.current = busLocations;
+  }, [busLocations]);
+
+  // RT-04: Whenever busLocations changes (initial load OR any update), (re)join bus rooms.
+  // This handles both: initial load after socket connects, AND reconnect-before-data-loads.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !socket.connected || busLocations.length === 0) return;
+    busLocations.forEach((b: any) => {
+      if (b?.bus_id) socket.emit('join-bus', b.bus_id);
+    });
+  }, [busLocations]);
+
+  // getDistance removed in favor of shared haversineDistance
 
   useEffect(() => {
     try {
@@ -54,7 +66,7 @@ const MapViewScreen: React.FC = () => {
 
           for (let i = 0; i < stops.length; i++) {
             if (stops[i].status === 'Completed') continue;
-            const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
+            const d = haversineDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
             if (d < stops[i].geofence_radius_meters) {
               setStops(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'Completed' } : s));
               setCurrentStopIndex(i + 1);
@@ -80,7 +92,7 @@ const MapViewScreen: React.FC = () => {
 
         // Fetch route with stops from backend
         const routeData = await BusAPI.getRoute(rid);
-        
+
         if (!routeData) {
           console.error('Error fetching route');
           setLoading(false);
@@ -104,15 +116,16 @@ const MapViewScreen: React.FC = () => {
 
         setRoute({ route_id: routeData.route_id, route_name: routeData.route_name });
 
-        // Fetch all trips to get bus locations
-        const tripsData = await BusAPI.getAllTrips();
-        const routeTrips = tripsData.filter((t: any) => t.route_id === rid);
-        
-        if (routeTrips.length > 0) {
-          const busIds = Array.from(new Set(routeTrips.map((t: any) => t.bus_id)));
-          const allBuses = await BusAPI.getAllBuses();
-          const routeBuses = allBuses.filter((b: any) => busIds.includes(b.bus_id));
-          setBusLocations(routeBuses || []);
+        // Fetch only active trips for this specific route (CRIT-10 fix)
+        // This single endpoint replaces the N+1 `getAllTrips` + `getAllBuses` logic
+        const activeTrips = await BusAPI.getActiveTripsForRoute(rid);
+
+        if (activeTrips.length > 0) {
+          // The new endpoint embeds bus payload directly in the trip object
+          const routeBuses = activeTrips.map((t: any) => t.bus).filter(Boolean);
+          setBusLocations(routeBuses);
+
+
         }
       } catch (e) {
         console.error(e);
@@ -122,10 +135,50 @@ const MapViewScreen: React.FC = () => {
 
     load();
 
-    // TODO: Implement WebSocket connection for real-time updates
-    // const socket = io('http://localhost:3001');
-    // socket.on('bus-location', (data) => { ... });
-    
+    // CRIT-09: Real-time bus location via Socket.io (was commented-out TODO)
+    const BACKEND_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api', '')
+      ?? `http://${Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost'}:3001`;
+    const socket: Socket = io(BACKEND_URL, {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionDelay: 2000,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('[Socket] Connected:', socket.id);
+      // Rejoin rooms if socket reconnects after data is already loaded.
+      // If data hasn't loaded yet, the busLocations useEffect above handles joining
+      // once load() completes and setBusLocations fires.
+      busLocationsRef.current.forEach((b: any) => {
+        if (b?.bus_id) socket.emit('join-bus', b.bus_id);
+      });
+    });
+
+    // When bus locations are loaded, join each bus's room
+    socket.on('bus-location', (data: { busId: number; latitude: number; longitude: number; speed?: number; timestamp?: string }) => {
+      setBusLocations(prev =>
+        prev.map(b =>
+          b.bus_id === data.busId
+            ? { ...b, current_latitude: data.latitude, current_longitude: data.longitude, current_speed_kmh: data.speed }
+            : b
+        )
+      );
+    });
+
+    socket.on('trip-completed', (data: { trip_id: number }) => {
+      // Remove bus from live display when trip ends
+      setBusLocations(prev => prev.filter(b => b.current_trip_id !== data.trip_id));
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[Socket] Disconnected, will reconnect...');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [route_id]);
 
   const styles = React.useMemo(() => StyleSheet.create({
@@ -307,7 +360,7 @@ const MapViewScreen: React.FC = () => {
               <Text style={styles.detailLabel}>Distance: </Text>
               <Text style={styles.detailValue}>{stops.length > 0 ? `${(stops.reduce((acc, stop, idx) => {
                 if (idx === 0) return 0;
-                return acc + getDistance(
+                return acc + haversineDistance(
                   { latitude: stops[idx - 1].latitude, longitude: stops[idx - 1].longitude },
                   { latitude: stop.latitude, longitude: stop.longitude }
                 );

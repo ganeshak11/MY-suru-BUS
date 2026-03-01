@@ -1,0 +1,249 @@
+🧠 SECTION 1 — High-Level Architecture
+
+Why did you choose a 3-app architecture instead of a single unified app?
+
+Why REST + Socket.io instead of pure WebSocket or polling?
+
+Why PostgreSQL over NoSQL?
+
+Why not use Supabase fully instead of custom backend?
+
+Where is your single source of truth?
+
+What is the authoritative state for a trip?
+
+What happens if driver app and backend disagree about trip status?
+
+How would you scale this to 500 buses?
+
+How would you scale to 10,000 daily users?
+
+Where is your bottleneck today?
+
+🔐 SECTION 2 — Authentication & Security
+
+How is JWT validated?
+
+Why is a fallback JWT secret dangerous?
+
+What is token expiry and why 7 days?
+
+How would you implement token refresh?
+
+How do you prevent role escalation?
+
+What prevents a driver from deleting routes?
+
+How would you rotate JWT secrets safely?
+
+How would you invalidate tokens immediately?
+
+What happens if someone steals a driver’s token?
+
+How would you detect brute-force login attempts?
+
+Why is CORS wildcard dangerous?
+
+What is CSRF and does your system suffer from it?
+
+How would you secure WebSocket authentication?
+
+How would you implement password reset?
+
+How do you store passwords securely?
+
+🗄 SECTION 3 — Database & Integrity
+
+Why do you need transactions in multi-step deletes?
+
+What inconsistent state can occur without them?
+
+Why is ON DELETE CASCADE useful?
+
+What uniqueness constraints should exist in trips?
+
+Why is frontend debouncing not enough?
+
+What indexes are critical?
+
+What causes N+1 query problems?
+
+How would you monitor slow queries?
+
+What happens if DB connection pool is exhausted?
+
+How do you handle migrations?
+
+What happens if a schema change fails in production?
+
+How do you back up the database?
+
+How would you restore in disaster recovery?
+
+What isolation level does Postgres use by default?
+
+What race condition exists in duplicate trip creation?
+
+🚍 SECTION 4 — Trip Lifecycle
+
+What is the full lifecycle of a trip?
+
+What transitions are valid?
+
+What prevents invalid state transitions?
+
+What happens if driver closes app mid-trip?
+
+What happens if network drops mid-trip?
+
+When is current_trip_id set and cleared?
+
+What creates a ghost bus?
+
+How do you prevent duplicate arrivals?
+
+Who owns geofence logic?
+
+Should arrival detection be server-side?
+
+📡 SECTION 5 — Realtime
+
+Why does REST update not automatically notify passengers?
+
+Where should socket emission occur?
+
+What happens if socket server restarts?
+
+How do clients reconnect?
+
+How do you prevent memory leaks in socket listeners?
+
+What is backpressure in realtime systems?
+
+What happens if 500 passengers subscribe to one trip?
+
+How would you shard socket rooms?
+
+What guarantees delivery?
+
+Is your current system eventually consistent or strongly consistent?
+
+📱 SECTION 6 — Mobile App Behavior
+
+Why should background task own geofence?
+
+What caused double-trigger?
+
+Why is duplicated Haversine dangerous?
+
+What happens if watchPositionAsync subscription isn't removed?
+
+How do you reduce battery usage?
+
+How often should driver send location?
+
+What if GPS accuracy is 50m?
+
+How do you handle offline queue corruption?
+
+How do you prevent duplicate queue processing?
+
+What is the worst-case memory leak scenario?
+
+⚙️ SECTION 7 — DevOps & Deployment
+
+Why must you use HTTPS?
+
+Why must WebSocket use WSS?
+
+What headers are required for upgrade?
+
+What happens if reverse proxy misconfigured?
+
+Why is in-memory rate limiter bad?
+
+How does Redis-based rate limiting solve it?
+
+What happens during zero-downtime deploy?
+
+What is graceful shutdown?
+
+Why limit DB pool size?
+
+What happens if two backend instances run?
+
+📊 SECTION 8 — Performance & Scaling
+
+What breaks first under scale?
+
+How would you cache route data?
+
+Should trip status be cached?
+
+When would you introduce Redis?
+
+When would you separate read replicas?
+
+How would you scale socket servers?
+
+What is horizontal scaling challenge with WebSockets?
+
+How would you handle surge traffic?
+
+Where would you add observability?
+
+What metrics matter most?
+
+🧪 SECTION 9 — Testing & Reliability
+
+What are your most critical integration tests?
+
+How would you test SQL injection protection?
+
+How do you simulate network drop?
+
+How do you test race conditions?
+
+What test proves role isolation works?
+
+How do you test arrival logic?
+
+How do you load test?
+
+What logs are essential?
+
+How do you detect silent failures?
+
+How do you reproduce production-only bugs?
+
+🧨 SECTION 10 — Brutal Edge Cases
+
+Two drivers assigned same bus. What happens?
+
+Driver logs in from two phones.
+
+Admin deletes route mid-trip.
+
+Bus sends location for wrong trip.
+
+Timezone mismatch between DB and phone.
+
+Driver device clock incorrect.
+
+Passenger opens map after trip completed.
+
+DB goes read-only.
+
+Redis goes down.
+
+Server crashes during transaction.
+
+Token expires mid-trip.
+
+Driver password changed mid-session.
+
+10x traffic spike.
+
+Malicious driver sends fake GPS.
+
+Passenger refreshes map every second.

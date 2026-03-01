@@ -52,7 +52,7 @@ export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }:
     setIsLoggingOut(true);
     try {
       apiClient.logout();
-      router.push('/login');
+      router.replace('/login');
     } catch (error) {
       console.error('Logout error:', error);
       alert('Failed to logout. Please try again.');

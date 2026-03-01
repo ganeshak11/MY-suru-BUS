@@ -131,15 +131,9 @@ export default function SchedulesPage() {
 
     try {
       if (modalMode === 'add') {
-        await apiClient.request('/schedules', {
-          method: 'POST',
-          body: JSON.stringify({ route_id, start_time }),
-        });
+        await apiClient.createSchedule({ route_id, start_time });
       } else if (selectedSchedule) {
-        await apiClient.request(`/schedules/${selectedSchedule.schedule_id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ route_id, start_time }),
-        });
+        await apiClient.updateSchedule(selectedSchedule.schedule_id, { route_id, start_time });
       }
       fetchSchedules();
       closeModal();
@@ -168,9 +162,7 @@ export default function SchedulesPage() {
     if (!targetSchedule) return;
     
     try {
-      await apiClient.request(`/schedules/${targetSchedule.schedule_id}`, {
-        method: 'DELETE',
-      });
+      await apiClient.deleteSchedule(targetSchedule.schedule_id);
       fetchSchedules();
       setIsDeleteModalOpen(false);
       setScheduleToDelete(null);
@@ -214,7 +206,7 @@ export default function SchedulesPage() {
     const routeId = schedule.route_id;
     if (!acc[routeId]) {
       acc[routeId] = {
-        route: schedule.routes,
+        route: { route_id: schedule.route_id, route_name: schedule.route_name },
         schedules: []
       };
     }

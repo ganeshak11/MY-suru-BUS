@@ -174,12 +174,12 @@ export default function RoutesPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-secondary">
                     <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium">
-                      {route.route_stops[0]?.count || 0} stops
+                      {route.route_stops?.[0]?.count || 0} stops
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-secondary">
                     <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-medium">
-                      {route.schedules[0]?.count || 0} schedules
+                      {route.schedules?.[0]?.count || 0} schedules
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right whitespace-nowrap">

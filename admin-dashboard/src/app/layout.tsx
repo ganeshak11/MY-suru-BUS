@@ -46,6 +46,32 @@ function SessionTimeoutHandler() {
   return null; 
 }
 
+// Auth Check Component
+function AuthCheck({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const token = apiClient.getToken();
+    const isLoginPage = pathname === '/login';
+
+    if (!token && !isLoginPage) {
+      router.replace('/login');
+    } else if (token && isLoginPage) {
+      router.replace('/');
+    } else {
+      setIsChecking(false);
+    }
+  }, [pathname, router]);
+
+  if (isChecking) {
+    return null;
+  }
+
+  return <>{children}</>;
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -62,51 +88,51 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
       </head>
       <body className="h-full">
-        {/* --- ADDED: Session Handler Here --- */}
-        {showSideNav && <SessionTimeoutHandler />}
-        
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex h-full bg-background text-foreground">
-            {showSideNav && (
-              <>
-                {/* Hamburger button - only visible on mobile */}
-                <button
-                  onClick={() => setIsSideNavOpen(!isSideNavOpen)}
-                  className={`lg:hidden fixed top-4 left-4 z-50 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white bg-gradient-to-br from-blue-600 to-indigo-600 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group ${
-                    isSideNavOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                  }`}
-                >
-                  <Bars3Icon className="h-5 w-5 sm:h-6 sm:w-6 group-hover:rotate-180 transition-transform duration-300" />
-                </button>
-                {/* Left edge hover trigger - only on desktop */}
-                <div 
-                  className="hidden lg:block fixed left-0 top-0 bottom-0 w-4 z-30"
-                  onMouseEnter={() => setIsSideNavOpen(true)}
-                />
-                <SideNav
-                  isOpen={isSideNavOpen}
-                  onClose={() => setIsSideNavOpen(false)}
-                  onMouseEnter={() => setIsSideNavOpen(true)}
-                  onMouseLeave={() => setTimeout(() => setIsSideNavOpen(false), 300)}
-                />
-              </>
-            )}
-            <main className="flex-1 p-4 sm:p-6 lg:p-12 pt-20 lg:pt-6 overflow-y-auto bg-background relative">
+          <AuthCheck>
+            {showSideNav && <SessionTimeoutHandler />}
+            <div className="flex h-full bg-background text-foreground">
               {showSideNav && (
-                <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-40">
-                  <ThemeToggleButton />
-                </div>
+                <>
+                  {/* Hamburger button - only visible on mobile */}
+                  <button
+                    onClick={() => setIsSideNavOpen(!isSideNavOpen)}
+                    className={`lg:hidden fixed top-4 left-4 z-50 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white bg-gradient-to-br from-blue-600 to-indigo-600 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group ${
+                      isSideNavOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                    }`}
+                  >
+                    <Bars3Icon className="h-5 w-5 sm:h-6 sm:w-6 group-hover:rotate-180 transition-transform duration-300" />
+                  </button>
+                  {/* Left edge hover trigger - only on desktop */}
+                  <div 
+                    className="hidden lg:block fixed left-0 top-0 bottom-0 w-4 z-30"
+                    onMouseEnter={() => setIsSideNavOpen(true)}
+                  />
+                  <SideNav
+                    isOpen={isSideNavOpen}
+                    onClose={() => setIsSideNavOpen(false)}
+                    onMouseEnter={() => setIsSideNavOpen(true)}
+                    onMouseLeave={() => setTimeout(() => setIsSideNavOpen(false), 300)}
+                  />
+                </>
               )}
-              <div className="max-w-7xl mx-auto">
-                {children}
-              </div>
-            </main>
-          </div>
+              <main className="flex-1 p-4 sm:p-6 lg:p-12 pt-20 lg:pt-6 overflow-y-auto bg-background relative">
+                {showSideNav && (
+                  <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-40">
+                    <ThemeToggleButton />
+                  </div>
+                )}
+                <div className="max-w-7xl mx-auto">
+                  {children}
+                </div>
+              </main>
+            </div>
+          </AuthCheck>
         </ThemeProvider>
       </body>
     </html>

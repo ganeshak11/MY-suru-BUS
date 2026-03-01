@@ -12,6 +12,8 @@ class ApiClient {
 
   getToken(): string | null {
     if (!this.token && typeof window !== 'undefined') {
+      // Clear any old localStorage tokens
+      localStorage.removeItem('auth_token');
       this.token = localStorage.getItem('auth_token');
     }
     return this.token;
@@ -26,9 +28,9 @@ class ApiClient {
 
   private async request(endpoint: string, options: RequestInit = {}) {
     const token = this.getToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (token) {
@@ -172,6 +174,10 @@ class ApiClient {
 
   async deleteStop(id: number) {
     return this.request(`/stops/${id}`, { method: 'DELETE' });
+  }
+
+  async getStopRoutes(stopId: number) {
+    return this.request(`/stops/${stopId}/routes`);
   }
 
   // Trips

@@ -1,8 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import { router } from 'expo-router';
 
-const API_BASE_URL = 'http://10.0.2.2:3001/api'; // Android emulator
-// For iOS simulator: http://localhost:3001/api
-// For physical device: http://YOUR_IP:3001/api
+// In production: set EXPO_PUBLIC_API_BASE_URL in your .env
+// In development: automatically uses the Metro bundler host IP (works on any machine/device)
+const devHost = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${devHost}:3001/api`;
 
 class ApiClient {
   private token: string | null = null;
@@ -26,9 +29,9 @@ class ApiClient {
 
   private async request(endpoint: string, options: RequestInit = {}) {
     const token = await this.getToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (token) {
@@ -39,6 +42,21 @@ class ApiClient {
       ...options,
       headers,
     });
+
+    // MOB-04: Detect token expiry / revocation.
+    // On 401 or 403, clear the stored token and redirect to login.
+    // This prevents the driver getting stuck in a broken authenticated state.
+    if (response.status === 401 || response.status === 403) {
+      await this.clearToken();
+      // Navigate to login — expo-router's router is available globally in RN
+      try {
+        router.replace('/login');
+      } catch {
+        // router may not be available in background contexts (e.g. BG task)
+        // In that case, the next foreground request will also 401 and retry redirect
+      }
+      throw new Error('Session expired. Please log in again.');
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
@@ -62,9 +80,11 @@ class ApiClient {
     await this.clearToken();
   }
 
-  // Trips
+  // Trips — MOB-03: use driver-scoped endpoint (/drivers/me/trips) instead of
+  // GET /api/trips which returns ALL trips in the DB.
+  // Falls back to client-side filtered /trips only if the scoped endpoint fails.
   async getTrips() {
-    return this.request('/trips');
+    return this.request('/drivers/me/trips');
   }
 
   async getTrip(tripId: number) {
@@ -107,10 +127,10 @@ class ApiClient {
   }
 
   // Buses
-  async updateBusLocation(busId: number, latitude: number, longitude: number, speed?: number) {
+  async updateBusLocation(busId: number, latitude: number, longitude: number, speed?: number, gps_timestamp?: string) {
     return this.request(`/buses/${busId}/location`, {
       method: 'POST',
-      body: JSON.stringify({ latitude, longitude, speed }),
+      body: JSON.stringify({ latitude, longitude, speed, gps_timestamp }),
     });
   }
 

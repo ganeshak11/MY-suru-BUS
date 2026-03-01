@@ -202,7 +202,7 @@ export default function DriversPage() {
               </thead>
               <tbody className="divide-y divide-border bg-card">
                 {drivers.map((driver) => {
-                  const activeTrip = driver.trips.find(trip => trip.status === 'En Route');
+                  const activeTrip = driver.trips?.find(trip => trip.status === 'En Route');
                   const reportCount = driver.passenger_reports?.[0]?.count || 0;
                   
                   return (
