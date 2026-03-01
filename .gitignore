@@ -71,3 +71,4 @@ Docs/
 .vscode
 .amazonq
 *.sh
+*.vercel
