@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Copy package files and install ALL deps (including devDeps for tsc)
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source and compile
 COPY tsconfig.json ./
@@ -20,13 +20,14 @@ WORKDIR /app
 
 # Only production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
 
-# Copy migrations so the container can run them via the migrate script
+# Copy migrations and scripts so the container can run them
 COPY migrations ./migrations
+COPY scripts ./scripts
 
 EXPOSE 3001
 
