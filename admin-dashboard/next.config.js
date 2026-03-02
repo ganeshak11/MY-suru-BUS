@@ -13,6 +13,7 @@ const nextConfig = {
 
         ],
     },
+    output: 'standalone',
     experimental: {
         serverComponentsExternalPackages: ['@supabase/ssr', '@supabase/supabase-js']
     }
