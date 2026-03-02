@@ -9,6 +9,7 @@ import type { Bus } from './types';
 // --- FIX 1: Import useTheme from next-themes ---
 import { useTheme } from 'next-themes'; 
 import { MapMarkersClient as MapMarkers } from '../../components/MapMarkersClient';
+import { RssIcon } from '@heroicons/react/24/outline';
 
 // --- Prop Interface (No change) ---
 interface LiveMapProps {
@@ -94,15 +95,15 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
 
       if (stopsData && stopsData.length > 0) {
         const waypoints = stopsData
-          .map(rs => {
+          .map((rs: any) => {
             const stop = Array.isArray(rs.stops) ? rs.stops[0] : rs.stops;
             if (!stop || !stop.latitude || !stop.longitude) return null;
             return L.latLng(parseFloat(stop.latitude), parseFloat(stop.longitude));
           })
-          .filter((wp): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
+          .filter((wp: L.LatLng | null): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
         
         // Set all route stops with start/end flags
-        const allStops = stopsData.map((rs, index) => {
+        const allStops = stopsData.map((rs: any, index: number) => {
           const stop = Array.isArray(rs.stops) ? rs.stops[0] : rs.stops;
           return {
             lat: parseFloat(stop.latitude),
