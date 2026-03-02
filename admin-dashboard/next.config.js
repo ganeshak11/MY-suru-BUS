@@ -10,12 +10,10 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: 'raw.githubusercontent.com',
             },
-    
+
         ],
     },
-    experimental: {
-        serverComponentsExternalPackages: ['@supabase/ssr']
-    }
+    serverExternalPackages: ['@supabase/ssr', '@supabase/supabase-js']
 };
 
 module.exports = nextConfig;
