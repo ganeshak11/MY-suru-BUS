@@ -16,6 +16,7 @@ import stopsRoutes from './routes/stops';
 import reportsRoutes from './routes/reports';
 import announcementsRoutes from './routes/announcements';
 import schedulesRoutes from './routes/schedules';
+import osmRoutes from './routes/osm';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { rateLimiter, authRateLimiter } from './middleware/rateLimiter';
 
@@ -50,6 +51,7 @@ app.use('/api/stops', stopsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/announcements', announcementsRoutes);
 app.use('/api/schedules', schedulesRoutes);
+app.use('/api/osm', osmRoutes);
 
 // CRIT-S04: Socket authentication middleware.
 // Passengers are anonymous (no token) — they can connect and join rooms to watch buses.

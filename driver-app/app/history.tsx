@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Platform, RefreshControl } from "react-native";
 import { useTheme, themeTokens } from "../contexts/ThemeContext";
 import { useSession } from "../contexts/SessionContext";
-import { supabase } from "../lib/supabaseClient";
+import { apiClient } from "../lib/apiClient";
 import { Card } from "../components/Card";
 import { Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
@@ -12,15 +12,9 @@ interface Trip {
   trip_date: string;
   status: string;
   driver_id: number;
-  schedules?: {
-    start_time: string;
-    routes?: {
-      route_name: string;
-    };
-  };
-  buses?: {
-    bus_no: string;
-  };
+  route_name?: string;
+  bus_no?: string;
+  start_time?: string;
 }
 
 export default function History() {
@@ -33,57 +27,26 @@ export default function History() {
 
   useEffect(() => {
     fetchHistory().catch((e) => {
-      console.error('Initial fetch error:', e);
+      console.error("Initial fetch error:", e);
       setLoading(false);
     });
   }, []);
 
   const fetchHistory = async (isRefresh = false) => {
     if (!user) return;
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+
     try {
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 15000)
-      );
-      
-      const driverPromise = supabase
-        .from("drivers")
-        .select("driver_id")
-        .eq("auth_user_id", user.id)
-        .single();
-
-      const { data: driverRow, error: driverError } = await Promise.race([driverPromise, timeoutPromise]) as any;
-
-      if (driverError) {
-        throw new Error(driverError.message || 'Failed to fetch driver');
-      }
-
-      if (!driverRow) {
-        setTrips([]);
-        return;
-      }
-
-      const tripsPromise = supabase
-        .from("trips")
-        .select("*, schedules(start_time, routes(route_name)), buses!fk_trips_bus(bus_no)")
-        .eq("driver_id", driverRow.driver_id)
-        .eq("status", "Completed")
-        .order("trip_date", { ascending: false })
-        .limit(20);
-
-      const { data, error } = await Promise.race([tripsPromise, timeoutPromise]) as any;
-
-      if (error) {
-        throw new Error(error.message || 'Failed to fetch trips');
-      }
-
-      setTrips(data || []);
+      // GET /api/drivers/me/trips returns all trips for the logged-in driver.
+      // Filter to Completed ones client-side (backend returns latest 50).
+      const data: Trip[] = await apiClient.getTrips();
+      const completed = (data ?? [])
+        .filter((t) => t.status === "Completed")
+        .slice(0, 20);
+      setTrips(completed);
     } catch (e: any) {
-      console.error('Fetch history error:', e);
+      console.error("Fetch history error:", e);
       setTrips([]);
     } finally {
       setLoading(false);
@@ -118,10 +81,10 @@ export default function History() {
           />
         }
         renderItem={({ item }) => {
-          const routeName = item?.schedules?.routes?.route_name || 'Unknown Route';
-          const busNo = item?.buses?.bus_no || 'N/A';
-          const startTime = item?.schedules?.start_time ? item.schedules.start_time.slice(0, 5) : 'N/A';
-          
+          const routeName = item.route_name || "Unknown Route";
+          const busNo = item.bus_no || "N/A";
+          const startTime = item.start_time ? item.start_time.slice(0, 5) : "N/A";
+
           return (
             <Card style={styles.card}>
               <View style={styles.cardHeader}>

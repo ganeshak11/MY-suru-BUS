@@ -80,6 +80,25 @@ class ApiClient {
     await this.clearToken();
   }
 
+  // Profile (driver self-service)
+  async getProfile() {
+    return this.request('/drivers/me');
+  }
+
+  async updateProfile(data: { name?: string; phone_number?: string; profile_photo_url?: string }) {
+    return this.request('/drivers/me', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(current_password: string, new_password: string) {
+    return this.request('/drivers/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password, new_password }),
+    });
+  }
+
   // Trips — MOB-03: use driver-scoped endpoint (/drivers/me/trips) instead of
   // GET /api/trips which returns ALL trips in the DB.
   // Falls back to client-side filtered /trips only if the scoped endpoint fails.

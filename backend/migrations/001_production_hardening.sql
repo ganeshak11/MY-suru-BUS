@@ -24,9 +24,16 @@ ALTER TABLE public.admins
 -- This makes ON CONFLICT DO NOTHING in the bulk insert actually work.
 -- Without this, duplicate trips can be created freely.
 -- ──────────────────────────────────────────────────────────────
-ALTER TABLE public.trips
-  ADD CONSTRAINT IF NOT EXISTS uq_trips_schedule_date
-  UNIQUE (schedule_id, trip_date);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uq_trips_schedule_date'
+  ) THEN
+    ALTER TABLE public.trips
+      ADD CONSTRAINT uq_trips_schedule_date UNIQUE (schedule_id, trip_date);
+  END IF;
+END
+$$;
 
 -- ──────────────────────────────────────────────────────────────
 -- DB-03: Add UNIQUE constraint on trip_stop_times(trip_id, stop_id)
@@ -34,9 +41,16 @@ ALTER TABLE public.trips
 -- Without this, the ON CONFLICT clause has no matching constraint
 -- and the insert will always INSERT (creating duplicates) or error.
 -- ──────────────────────────────────────────────────────────────
-ALTER TABLE public.trip_stop_times
-  ADD CONSTRAINT IF NOT EXISTS uq_trip_stop_times_trip_stop
-  UNIQUE (trip_id, stop_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uq_trip_stop_times_trip_stop'
+  ) THEN
+    ALTER TABLE public.trip_stop_times
+      ADD CONSTRAINT uq_trip_stop_times_trip_stop UNIQUE (trip_id, stop_id);
+  END IF;
+END
+$$;
 
 -- ──────────────────────────────────────────────────────────────
 -- DB-04: Add missing indexes on high-traffic columns

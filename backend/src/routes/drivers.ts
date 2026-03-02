@@ -70,6 +70,44 @@ router.get('/me/trips', authenticateToken, async (req: any, res: any, next: any)
   }
 });
 
+// GET /drivers/me — own profile (driver reads their own row)
+router.get('/me', authenticateToken, requireDriver, async (req: AuthRequest, res: any, next: any) => {
+  const driverId = req.user?.driver_id;
+  try {
+    const result = await pool.query(
+      `SELECT ${DRIVER_SAFE_COLS} FROM drivers d WHERE d.driver_id = $1`,
+      [driverId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Driver not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    logger.error({ error }, 'Error fetching own profile');
+    next(error);
+  }
+});
+
+// PATCH /drivers/me — update own name and phone (driver self-service)
+router.patch('/me', authenticateToken, requireDriver, async (req: AuthRequest, res: any, next: any) => {
+  const driverId = req.user?.driver_id;
+  const { name, phone_number } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+  try {
+    const result = await pool.query(
+      `UPDATE drivers SET name = $1, phone_number = $2
+       WHERE driver_id = $3
+       RETURNING ${DRIVER_SAFE_COLS}`,
+      [name.trim(), phone_number?.trim() ?? null, driverId]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Driver not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    logger.error({ error }, 'Error updating own profile');
+    next(error);
+  }
+});
+
+
+
 // CRIT-S01 + MED-S01: Auth guarded, explicit columns (no password_hash)
 router.get('/:id', authenticateToken, async (req, res, next) => {
   try {

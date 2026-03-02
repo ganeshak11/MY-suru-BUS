@@ -224,4 +224,65 @@ router.get('/:id/stops', async (req: Request, res: Response, next: NextFunction)
   }
 });
 
+// POST /api/trips/reset-daily
+// Ported from the former Supabase edge function "reset-daily-trips".
+// For each schedule, looks up yesterday's trip assignment (bus + driver)
+// and creates today's trip if it doesn't already exist.
+// Intended to be called once per day by a cron job or the admin dashboard.
+router.post('/reset-daily', authenticateToken, requireAdmin, async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Compute today and yesterday as ISO date strings (YYYY-MM-DD)
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toDateStr = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const today = toDateStr(now);
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = toDateStr(yesterday);
+
+    // Single batch INSERT using a CTE:
+    // 1. Find all schedules that had a trip yesterday.
+    // 2. Filter out any that already have a trip today.
+    // 3. Insert the missing trips as "Scheduled".
+    const result = await client.query<{ trip_id: number }>(
+      `WITH yesterday_trips AS (
+         SELECT schedule_id, bus_id, driver_id
+         FROM   trips
+         WHERE  trip_date = $1::date
+       ),
+       today_existing AS (
+         SELECT schedule_id
+         FROM   trips
+         WHERE  trip_date = $2::date
+       )
+       INSERT INTO trips (schedule_id, bus_id, driver_id, trip_date, status)
+       SELECT yt.schedule_id, yt.bus_id, yt.driver_id, $2::date, 'Scheduled'
+       FROM   yesterday_trips yt
+       WHERE  yt.schedule_id NOT IN (SELECT schedule_id FROM today_existing)
+       RETURNING trip_id`,
+      [yesterdayStr, today]
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      message: `Created ${result.rowCount} trip(s) for ${today}`,
+      date: today,
+      created: result.rowCount,
+      trip_ids: result.rows.map((r) => r.trip_id),
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+});
+
 export default router;
+

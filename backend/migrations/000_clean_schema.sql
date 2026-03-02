@@ -4,8 +4,12 @@
 -- Run this on a fresh Supabase/Postgres project.
 -- ============================================================
 
--- Custom enum for trip status
-CREATE TYPE trip_status AS ENUM ('Scheduled', 'En Route', 'Paused', 'Completed');
+-- Custom enum for trip status (idempotent — safe to re-run)
+DO $$ BEGIN
+  CREATE TYPE trip_status AS ENUM ('Scheduled', 'En Route', 'Paused', 'Completed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 
 -- Admins
 CREATE TABLE IF NOT EXISTS public.admins (
