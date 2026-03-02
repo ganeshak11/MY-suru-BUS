@@ -20,7 +20,7 @@ export async function middleware(req: NextRequest) {
     console.error('Missing Supabase environment variables in middleware');
     return NextResponse.redirect(new URL('/login', req.url));
   }
-
+  
   const supabase = createServerClient(
     supabaseUrl,
     supabaseKey,
