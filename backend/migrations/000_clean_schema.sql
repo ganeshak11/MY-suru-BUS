@@ -86,10 +86,16 @@ CREATE TABLE IF NOT EXISTS public.trips (
   CONSTRAINT uq_trips_schedule_date UNIQUE (schedule_id, trip_date)  -- prevents duplicates
 );
 
--- Add circular FK after trips table exists
-ALTER TABLE public.buses
-  ADD CONSTRAINT fk_buses_current_trip FOREIGN KEY (current_trip_id)
-  REFERENCES public.trips(trip_id) ON DELETE SET NULL;
+-- Add circular FK after trips table exists (idempotent — safe to re-run)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_buses_current_trip'
+  ) THEN
+    ALTER TABLE public.buses
+      ADD CONSTRAINT fk_buses_current_trip FOREIGN KEY (current_trip_id)
+      REFERENCES public.trips(trip_id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Indexes for high-traffic query paths (DB-04)
 CREATE INDEX IF NOT EXISTS idx_trips_driver_id     ON public.trips(driver_id);
