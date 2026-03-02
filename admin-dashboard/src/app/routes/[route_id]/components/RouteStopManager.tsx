@@ -39,7 +39,7 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
         time_offset_from_start: '00:00:00',
     });
     const [error, setError] = useState<string | null>(null);
-    
+
     // --- ADDED: Delete Modal State ---
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [routeStopToDelete, setRouteStopToDelete] = useState<RouteStop | null>(null);
@@ -48,7 +48,7 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
     const fetchRouteStops = async () => {
         setLoading(true);
         try {
-            const data = await apiClient.request(`/routes/${routeId}/stops`);
+            const data = await apiClient.getRouteStops(routeId);
             setRouteStops(data || []);
             onStopsUpdated(data || []);
         } catch (error) {
@@ -132,31 +132,25 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
             setError("Stop, Sequence, and Time Offset are required.");
             return;
         }
-        
+
         const sequenceExists = routeStops.some(rs => rs.stop_sequence === parseInt(stop_sequence) && rs.route_stop_id !== selectedRouteStop?.route_stop_id);
         if (sequenceExists) {
-          setError("Stop sequence must be unique for this route.");
-          return;
+            setError("Stop sequence must be unique for this route.");
+            return;
         }
 
         try {
             if (modalMode === 'add') {
-                await apiClient.request(`/routes/${routeId}/stops`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        stop_id: parseInt(stop_id),
-                        stop_sequence: parseInt(stop_sequence),
-                        time_offset_from_start,
-                    }),
+                await apiClient.addRouteStop(routeId, {
+                    stop_id: parseInt(stop_id),
+                    stop_sequence: parseInt(stop_sequence),
+                    time_offset_from_start,
                 });
             } else if (selectedRouteStop) {
-                await apiClient.request(`/routes/${routeId}/stops/${selectedRouteStop.route_stop_id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        stop_id: parseInt(stop_id),
-                        stop_sequence: parseInt(stop_sequence),
-                        time_offset_from_start,
-                    }),
+                await apiClient.updateRouteStop(routeId, selectedRouteStop.route_stop_id, {
+                    stop_id: parseInt(stop_id),
+                    stop_sequence: parseInt(stop_sequence),
+                    time_offset_from_start,
                 });
             }
             fetchRouteStops();
@@ -176,11 +170,9 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
 
     const confirmDelete = async () => {
         if (!routeStopToDelete) return;
-        
+
         try {
-            await apiClient.request(`/routes/${routeId}/stops/${routeStopToDelete.route_stop_id}`, {
-                method: 'DELETE',
-            });
+            await apiClient.deleteRouteStop(routeId, routeStopToDelete.route_stop_id);
             fetchRouteStops();
         } catch (error: any) {
             console.error('Error deleting route stop:', error);
@@ -338,7 +330,7 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
                     </div>
                 </form>
             </Modal>
-            
+
             {/* --- DELETE CONFIRMATION MODAL --- */}
             <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirm Removal">
                 {routeStopToDelete && (
@@ -350,16 +342,16 @@ export default function RouteStopManager({ routeId, onStopsUpdated }: RouteStopM
                             Note: This does not delete the stop itself from the system, only its position on this route.
                         </p>
                         <div className="mt-6 flex justify-end space-x-4">
-                            <button 
-                                type="button" 
-                                onClick={() => setIsDeleteModalOpen(false)} 
+                            <button
+                                type="button"
+                                onClick={() => setIsDeleteModalOpen(false)}
                                 className="inline-flex w-full justify-center rounded-md border border-secondary bg-card px-4 py-2 text-base font-medium text-foreground shadow-sm hover:bg-card-foreground/5 sm:w-auto sm:text-sm"
                             >
                                 Cancel
                             </button>
-                            <button 
-                                type="button" 
-                                onClick={confirmDelete} 
+                            <button
+                                type="button"
+                                onClick={confirmDelete}
                                 className="inline-flex w-full justify-center rounded-md border border-transparent bg-danger px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-danger/80 sm:w-auto sm:text-sm"
                             >
                                 Remove Stop

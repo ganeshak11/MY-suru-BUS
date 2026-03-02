@@ -34,7 +34,7 @@ export default function SchedulesPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  
+
   // --- ADDED: Delete Modal State ---
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<Schedule | null>(null);
@@ -44,7 +44,7 @@ export default function SchedulesPage() {
   const [filters, setFilters] = useState({
     route_id: '',
     start_time: ''
-  }); 
+  });
 
   useEffect(() => {
     fetchSchedules();
@@ -98,7 +98,7 @@ export default function SchedulesPage() {
       setSelectedSchedule(null);
       setAvailableSchedules([]);
       setFormState({
-        route_id: routes.length > 0 ? routes[0].route_id : 0, 
+        route_id: routes.length > 0 ? routes[0].route_id : 0,
         start_time: '00:00:00',
       });
       setIsModalOpen(true);
@@ -125,8 +125,8 @@ export default function SchedulesPage() {
     const { route_id, start_time } = formState;
 
     if (!route_id || !start_time) {
-        setError("All fields are required.");
-        return;
+      setError("All fields are required.");
+      return;
     }
 
     try {
@@ -160,7 +160,7 @@ export default function SchedulesPage() {
   const confirmDelete = async () => {
     const targetSchedule = scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId);
     if (!targetSchedule) return;
-    
+
     try {
       await apiClient.deleteSchedule(targetSchedule.schedule_id);
       fetchSchedules();
@@ -206,7 +206,7 @@ export default function SchedulesPage() {
     const routeId = schedule.route_id;
     if (!acc[routeId]) {
       acc[routeId] = {
-        route: { route_id: schedule.route_id, route_name: schedule.route_name },
+        route: { route_id: schedule.route_id, route_name: schedule.routes?.route_name ?? '', route_no: schedule.routes?.route_no ?? '' },
         schedules: []
       };
     }
@@ -269,40 +269,40 @@ export default function SchedulesPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {Object.values(groupedSchedules).map((group) => (
-                      <tr key={group.route?.route_id} className="hover:bg-primary/5 transition-colors">
-                        <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-primary text-sm sm:text-base">
-                          <div className="truncate max-w-[120px] sm:max-w-none" title={group.route?.route_name}>
-                            {group.route?.route_name || '—'}
-                          </div>
-                        </td>
-                        <td className="px-3 sm:px-6 py-3 sm:py-4">
-                          <div className="flex flex-wrap gap-1 sm:gap-2">
-                            {group.schedules.map((schedule) => (
-                              <span key={schedule.schedule_id} className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary text-xs sm:text-sm font-mono">
-                                {schedule.start_time.slice(0, 5)}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-3 sm:px-6 py-3 sm:py-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1 sm:gap-2">
-                            <button 
-                              onClick={() => openModal('edit', group.schedules)} 
-                              className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
-                              title="Edit schedule"
-                            >
-                              <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(group.schedules)} 
-                              className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                              title="Delete schedule"
-                            >
-                              <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                    <tr key={group.route?.route_id} className="hover:bg-primary/5 transition-colors">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 font-medium text-primary text-sm sm:text-base">
+                        <div className="truncate max-w-[120px] sm:max-w-none" title={group.route?.route_name}>
+                          {group.route?.route_name || '—'}
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                          {group.schedules.map((schedule) => (
+                            <span key={schedule.schedule_id} className="inline-flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary text-xs sm:text-sm font-mono">
+                              {schedule.start_time.slice(0, 5)}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1 sm:gap-2">
+                          <button
+                            onClick={() => openModal('edit', group.schedules)}
+                            className="w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all"
+                            title="Edit schedule"
+                          >
+                            <PencilIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(group.schedules)}
+                            className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                            title="Delete schedule"
+                          >
+                            <TrashIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
@@ -398,7 +398,7 @@ export default function SchedulesPage() {
           </div>
         </div>
       </Modal>
-      
+
       {/* --- ADDED: Delete Confirmation Modal --- */}
       <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Confirm Deletion">
         <div>
@@ -435,16 +435,16 @@ export default function SchedulesPage() {
             </div>
           )}
           <div className="mt-6 flex justify-end space-x-4">
-            <button 
-              type="button" 
-              onClick={() => setIsDeleteModalOpen(false)} 
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(false)}
               className="inline-flex w-full justify-center rounded-md border border-secondary bg-card px-4 py-2 text-base font-medium text-foreground shadow-sm hover:bg-card-foreground/5 sm:w-auto sm:text-sm"
             >
               Cancel
             </button>
-            <button 
-              type="button" 
-              onClick={confirmDelete} 
+            <button
+              type="button"
+              onClick={confirmDelete}
               className="inline-flex w-full justify-center rounded-md border border-transparent bg-danger px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-danger/80 sm:w-auto sm:text-sm"
             >
               Delete Schedule

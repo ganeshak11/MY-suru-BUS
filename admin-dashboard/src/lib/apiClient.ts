@@ -91,6 +91,29 @@ class ApiClient {
     return this.request(`/buses/${id}`, { method: 'DELETE' });
   }
 
+  // Route Stops
+  async getRouteStops(routeId: number) {
+    return this.request(`/routes/${routeId}/stops`);
+  }
+
+  async addRouteStop(routeId: number, data: { stop_id: number; stop_sequence: number; time_offset_from_start: string }) {
+    return this.request(`/routes/${routeId}/stops`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRouteStop(routeId: number, routeStopId: number, data: { stop_id: number; stop_sequence: number; time_offset_from_start: string }) {
+    return this.request(`/routes/${routeId}/stops/${routeStopId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRouteStop(routeId: number, routeStopId: number) {
+    return this.request(`/routes/${routeId}/stops/${routeStopId}`, { method: 'DELETE' });
+  }
+
   // Drivers
   async getDrivers() {
     return this.request('/drivers');
@@ -143,10 +166,6 @@ class ApiClient {
 
   async deleteRoute(id: number) {
     return this.request(`/routes/${id}`, { method: 'DELETE' });
-  }
-
-  async getRouteStops(routeId: number) {
-    return this.request(`/routes/${routeId}/stops`);
   }
 
   // Stops
