@@ -13,7 +13,9 @@ const nextConfig = {
 
         ],
     },
-    serverExternalPackages: ['@supabase/ssr', '@supabase/supabase-js']
+    experimental: {
+        serverComponentsExternalPackages: ['@supabase/ssr', '@supabase/supabase-js']
+    }
 };
 
 module.exports = nextConfig;
