@@ -199,7 +199,6 @@ npm start/ npx expo start
 **Real-time updates not working**
 - Verify Supabase Realtime is enabled in dashboard
 - Check RLS policies allow subscriptions
-
 ---
 
 ## Key Design Decisions
