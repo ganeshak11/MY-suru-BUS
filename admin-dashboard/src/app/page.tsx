@@ -1,5 +1,5 @@
 // src/app/page.tsx
-'use client'; 
+'use client';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -34,38 +34,28 @@ export default function DashboardPage() {
   // 2. Fetch stats on page load
   useEffect(() => {
     const fetchStats = async () => {
-      // Fetch active trips (count)
-      const { count: activeTrips } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'En Route');
+      const [tripsRes, busesRes, driversRes, reportsRes] = await Promise.all([
+        supabase.from('trips').select('*', { count: 'exact', head: true }).eq('status', 'En Route'),
+        supabase.from('buses').select('*', { count: 'exact', head: true }),
+        supabase.from('drivers').select('*', { count: 'exact', head: true }),
+        supabase.from('passenger_reports').select('*', { count: 'exact', head: true }).eq('status', 'New'),
+      ]);
 
-      // Fetch total buses (count)
-      const { count: totalBuses } = await supabase
-        .from('buses')
-        .select('*', { count: 'exact', head: true });
-        
-      // Fetch total drivers (count)
-      const { count: totalDrivers } = await supabase
-        .from('drivers')
-        .select('*', { count: 'exact', head: true });
-
-      // Fetch new reports (count)
-      const { count: newReports } = await supabase
-        .from('passenger_reports')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'New');
+      if (tripsRes.error) console.error('Failed to fetch trips:', tripsRes.error.message);
+      if (busesRes.error) console.error('Failed to fetch buses:', busesRes.error.message);
+      if (driversRes.error) console.error('Failed to fetch drivers:', driversRes.error.message);
+      if (reportsRes.error) console.error('Failed to fetch reports:', reportsRes.error.message);
 
       setStats({
-        activeTrips: activeTrips ?? 0,
-        totalBuses: totalBuses ?? 0,
-        totalDrivers: totalDrivers ?? 0,
-        newReports: newReports ?? 0,
+        activeTrips: tripsRes.count ?? 0,
+        totalBuses: busesRes.count ?? 0,
+        totalDrivers: driversRes.count ?? 0,
+        newReports: reportsRes.count ?? 0,
       });
     };
 
     fetchStats();
-  }, [supabase]);
+  }, []);
 
   // 3. Define all your features with icons and stats
   const features = [
@@ -73,7 +63,7 @@ export default function DashboardPage() {
       name: 'Live Monitoring',
       description: 'Track all active buses in real-time on a map.',
       href: '/monitoring',
-      stat: stats.activeTrips, 
+      stat: stats.activeTrips,
       statLabel: 'Active Trips',
       icon: <MapIcon className="h-8 w-8 text-primary" />,
     },
@@ -87,9 +77,9 @@ export default function DashboardPage() {
       name: 'Passenger Reports',
       description: 'View and manage all new passenger reports.',
       href: '/reports',
-      stat: stats.newReports, 
+      stat: stats.newReports,
       statLabel: 'New Reports',
-      icon: <UsersIcon className="h-8 w-8 text-danger" />, 
+      icon: <UsersIcon className="h-8 w-8 text-danger" />,
     },
     {
       name: 'Manage Buses',
@@ -159,7 +149,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
           <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full -mr-12 -mt-12 sm:-mr-16 sm:-mt-16 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="relative flex items-center justify-between">
@@ -172,7 +162,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="relative overflow-hidden bg-gradient-to-br from-violet-500 via-violet-600 to-violet-700 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
           <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full -mr-12 -mt-12 sm:-mr-16 sm:-mt-16 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="relative flex items-center justify-between">
@@ -185,7 +175,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="relative overflow-hidden bg-gradient-to-br from-rose-500 via-rose-600 to-rose-700 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 group">
           <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-white/10 rounded-full -mr-12 -mt-12 sm:-mr-16 sm:-mt-16 group-hover:scale-150 transition-transform duration-500"></div>
           <div className="relative flex items-center justify-between">
@@ -205,7 +195,7 @@ export default function DashboardPage() {
         <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">Quick Actions</h2>
         <p className="text-sm sm:text-base text-secondary">Access key features and management tools</p>
       </div>
-      
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {features.map((feature) => (
           <Link
@@ -214,21 +204,21 @@ export default function DashboardPage() {
             className="group relative bg-card rounded-lg sm:rounded-xl lg:rounded-2xl p-3 sm:p-5 lg:p-7 shadow-soft hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border-2 border-border/50 hover:border-primary/50 overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 lg:w-40 lg:h-40 bg-primary/5 rounded-full -mr-12 -mt-12 sm:-mr-16 sm:-mt-16 lg:-mr-20 lg:-mt-20 group-hover:scale-150 transition-transform duration-500"></div>
-            
+
             <div className="relative">
               <div className="flex items-start justify-between mb-3 sm:mb-4 lg:mb-5">
                 <div className="bg-gradient-to-br from-primary/10 to-primary/5 p-2 sm:p-3 lg:p-4 rounded-lg sm:rounded-xl lg:rounded-2xl group-hover:from-primary/20 group-hover:to-primary/10 transition-all group-hover:scale-110 shadow-sm">
                   {feature.icon}
                 </div>
               </div>
-              
+
               <h3 className="text-sm sm:text-lg lg:text-xl font-bold text-foreground mb-1 sm:mb-2 group-hover:text-primary transition-colors">
                 {feature.name}
               </h3>
               <p className="text-[10px] sm:text-xs lg:text-sm text-secondary leading-relaxed mb-2 sm:mb-3 lg:mb-4">
                 {feature.description}
               </p>
-              
+
               <div className="flex items-center text-primary text-xs sm:text-sm font-semibold group-hover:gap-2 transition-all">
                 <span>Open</span>
                 <svg className="w-3 h-3 sm:w-4 sm:h-4 ml-1 group-hover:translate-x-2 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

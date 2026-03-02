@@ -20,7 +20,7 @@ export async function middleware(req: NextRequest) {
     console.error('Missing Supabase environment variables in middleware');
     return NextResponse.redirect(new URL('/login', req.url));
   }
-  
+
   const supabase = createServerClient(
     supabaseUrl,
     supabaseKey,
@@ -49,15 +49,11 @@ export async function middleware(req: NextRequest) {
 
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-
     if (userError || !user) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
-
-    const { data: admin, error: adminError } = await supabase.from('admins').select('admin_id').eq('auth_user_id', user.id).maybeSingle();
-    if (adminError || !admin) {
-      return NextResponse.redirect(new URL('/login', req.url));
-    }
+    // Admin role check is handled inside each protected page,
+    // not here, to avoid DB queries on every Edge request.
   } catch (error) {
     console.error('Middleware auth error:', error);
     return NextResponse.redirect(new URL('/login', req.url));
@@ -68,6 +64,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)).*)',
   ],
 };

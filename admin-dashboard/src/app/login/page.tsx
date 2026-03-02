@@ -40,7 +40,7 @@ export default function LoginPage() {
         .from('admins')
         .select('admin_id')
         .eq('auth_user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (adminError || !admin) {
         await supabase.auth.signOut();
@@ -68,7 +68,7 @@ export default function LoginPage() {
       {/* Login Card */}
       <div className="relative w-full max-w-md mx-4">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl blur-2xl opacity-20 animate-pulse"></div>
-        
+
         <div className="relative bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-700/50 p-8 space-y-8">
           {/* Logo & Branding */}
           <div className="text-center space-y-3">
