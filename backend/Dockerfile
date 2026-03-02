@@ -29,10 +29,11 @@ COPY --from=builder /app/dist ./dist
 COPY migrations ./migrations
 COPY scripts ./scripts
 
-EXPOSE 3001
+EXPOSE ${PORT:-10000}
 
-# Healthcheck so Railway knows when the service is ready
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3001/health || exit 1
+# Healthcheck — Render uses dynamic PORT, default 10000 on free tier
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:${PORT:-10000}/health || exit 1
 
-CMD ["node", "dist/server.js"]
+# Run DB migrations then start the server
+CMD sh -c "node scripts/migrate.js && node dist/server.js"
