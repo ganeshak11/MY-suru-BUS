@@ -20,7 +20,7 @@ services:
       - key: JWT_SECRET
         generateValue: true         # Render auto-generates a secure secret
       - key: ALLOWED_ORIGINS
-        value: "*"                  # TODO: replace with your Vercel URL after deploying admin dashboard
+        value: "https://my-suru-bus.vercel.app"
       - key: LOG_LEVEL
         value: info
       - key: OSRM_BASE_URL
