@@ -5,14 +5,14 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import { useEffect, useState, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import type { Bus } from './types'; 
+import type { Bus } from './types';
 // --- FIX 1: Import useTheme from next-themes ---
-import { useTheme } from 'next-themes'; 
+import { useTheme } from 'next-themes';
 import { MapMarkersClient as MapMarkers } from '../../components/MapMarkersClient';
 
 // --- Prop Interface (No change) ---
 interface LiveMapProps {
-  buses: Bus[]; 
+  buses: Bus[];
   selectedTripId: number | null;
   setSelectedTripId: (id: number | null) => void;
 }
@@ -31,10 +31,10 @@ function MapEffects({ selectedBus }: { selectedBus: Bus | null }) {
 // --- Main Component ---
 export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: LiveMapProps) {
   const [routePolyline, setRoutePolyline] = useState<L.LatLngExpression[]>([]);
-  const [routeStops, setRouteStops] = useState<{lat: number, lng: number, name: string, isStart: boolean, isEnd: boolean}[]>([]);
+  const [routeStops, setRouteStops] = useState<{ lat: number, lng: number, name: string, isStart: boolean, isEnd: boolean }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  
+
   // --- FIX 1 (cont.): Use the correct theme hook ---
   const { theme } = useTheme();
 
@@ -74,7 +74,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
       setRouteStops([]);
       setError(null);
       if (!selectedTripId) return;
-      
+
       try {
         const tripData = await apiClient.getTrip(selectedTripId);
         if (!tripData?.schedule?.route_id) return;
@@ -88,8 +88,8 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
               if (!stop.latitude || !stop.longitude) return null;
               return L.latLng(parseFloat(stop.latitude), parseFloat(stop.longitude));
             })
-            .filter((wp): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
-          
+            .filter((wp: L.LatLng | null): wp is L.LatLng => wp !== null && !isNaN(wp.lat) && !isNaN(wp.lng));
+
           const allStops = stopsData.map((stop: any, index: number) => ({
             lat: parseFloat(stop.latitude),
             lng: parseFloat(stop.longitude),
@@ -98,7 +98,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
             isEnd: index === stopsData.length - 1 && stopsData.length > 1
           }));
           setRouteStops(allStops);
-          
+
           if (waypoints.length > 1) {
             await fetchOSRMRoute(waypoints);
           }
@@ -114,7 +114,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
     <MapContainer center={[12.2958, 76.6394]} zoom={13} style={{ height: '100%', width: '100%', touchAction: 'pan-x pan-y' }} className="z-10 touch-pan-x touch-pan-y">
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       <MapEffects selectedBus={selectedBus} />
-      
+
       {/* "Show All" Button */}
       {selectedTripId && (
         <div className="absolute top-4 right-4 z-[1000]">
@@ -136,7 +136,7 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
       {routeStops.map((stop, index) => {
         let icon = MapMarkers.intermediateStop;
         let label = 'Stop';
-        
+
         if (stop.isStart) {
           icon = MapMarkers.startStop;
           label = 'Start Stop';
@@ -144,12 +144,12 @@ export default function LiveMap({ buses, selectedTripId, setSelectedTripId }: Li
           icon = MapMarkers.endStop;
           label = 'End Stop';
         }
-        
+
         return (
-          <Marker 
-            key={index} 
-            position={[stop.lat, stop.lng]} 
-            icon={icon} 
+          <Marker
+            key={index}
+            position={[stop.lat, stop.lng]}
+            icon={icon}
             zIndexOffset={500}
           >
             <Popup>
