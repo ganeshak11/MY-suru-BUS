@@ -3,12 +3,6 @@
 -- Run with: npm run seed
 -- ============================================================
 
--- Admin (password: Admin@123)
--- Hash generated with bcrypt rounds=12
-INSERT INTO public.admins (name, email, password_hash) VALUES
-  ('Ganesh Kumar', 'admin@mysurubus.com', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TdxUKjXkHpPEqIbP0qe3HMH.Ywm6')
-ON CONFLICT (email) DO NOTHING;
-
 -- Stops (Mysuru city stops)
 INSERT INTO public.stops (stop_name, latitude, longitude, geofence_radius_meters) VALUES
   ('Mysuru City Bus Stand',   12.3051,  76.6551, 100),

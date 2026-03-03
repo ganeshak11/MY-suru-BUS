@@ -12,6 +12,9 @@
       },
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:3001/api"
       }
     },
     "preview": {
@@ -21,6 +24,9 @@
       },
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mysurubus-backend.onrender.com/api"
       }
     },
     "production": {
@@ -30,6 +36,9 @@
       },
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mysurubus-backend.onrender.com/api"
       }
     }
   },

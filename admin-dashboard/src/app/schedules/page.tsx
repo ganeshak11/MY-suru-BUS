@@ -15,8 +15,9 @@ interface Route {
 interface Schedule {
   schedule_id: number;
   route_id: number;
-  start_time: string; // HH:MM:SS
-  routes?: Route; // Joined route data, now an object
+  start_time: string;
+  route_name?: string;  // returned as flat field from backend JOIN
+  routes?: Route;       // fallback nested shape
 }
 
 type FormState = Omit<Schedule, 'schedule_id' | 'routes'>;
@@ -206,7 +207,11 @@ export default function SchedulesPage() {
     const routeId = schedule.route_id;
     if (!acc[routeId]) {
       acc[routeId] = {
-        route: { route_id: schedule.route_id, route_name: schedule.routes?.route_name ?? '', route_no: schedule.routes?.route_no ?? '' },
+        route: {
+          route_id: schedule.route_id,
+          route_name: schedule.route_name ?? schedule.routes?.route_name ?? '',
+          route_no: schedule.routes?.route_no ?? ''
+        },
         schedules: []
       };
     }
@@ -419,7 +424,7 @@ export default function SchedulesPage() {
             </div>
           )}
           <p className="text-sm text-secondary">
-            Are you sure you want to delete the schedule for route <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.routes?.route_name || 'N/A'}</strong> at <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.start_time}</strong>?
+            Are you sure you want to delete the schedule for route <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.route_name || (scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.routes?.route_name || 'N/A'}</strong> at <strong>{(scheduleToDelete || availableSchedules.find(s => s.schedule_id === selectedScheduleId))?.start_time}</strong>?
           </p>
           <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
             <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
