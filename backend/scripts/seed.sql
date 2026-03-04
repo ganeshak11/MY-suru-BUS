@@ -77,9 +77,9 @@ ON CONFLICT DO NOTHING;
 
 -- Drivers (password: Driver@123 — same hash for all for seed data)
 INSERT INTO public.drivers (name, email, phone_number, password_hash) VALUES
-  ('Ravi Kumar',     'ravi.driver@mysurubus.com',   '+919876543210', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TdxUKjXkHpPEqIbP0qe3HMH.Ywm6'),
-  ('Suresh Babu',    'suresh.driver@mysurubus.com', '+919876543211', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TdxUKjXkHpPEqIbP0qe3HMH.Ywm6'),
-  ('Manjunath S',    'manju.driver@mysurubus.com',  '+919876543212', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TdxUKjXkHpPEqIbP0qe3HMH.Ywm6')
+  ('Ravi Kumar',     'ravi.driver@mysurubus.com',   '+919876543210', '$2a$12$HyIO7r3GuKgznuAk9vMOgujIu5FytY5sS0UTc5OJpejE63lvuzoay'),
+  ('Suresh Babu',    'suresh.driver@mysurubus.com', '+919876543211', '$2a$12$HyIO7r3GuKgznuAk9vMOgujIu5FytY5sS0UTc5OJpejE63lvuzoay'),
+  ('Manjunath S',    'manju.driver@mysurubus.com',  '+919876543212', '$2a$12$HyIO7r3GuKgznuAk9vMOgujIu5FytY5sS0UTc5OJpejE63lvuzoay')
 ON CONFLICT (phone_number) DO NOTHING;
 
 -- Buses
