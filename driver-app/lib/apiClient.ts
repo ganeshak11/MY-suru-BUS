@@ -1,11 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { Platform } from 'react-native';
 
 // In production: set EXPO_PUBLIC_API_BASE_URL in your .env
-// In development: automatically uses the Metro bundler host IP (works on any machine/device)
-const devHost = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
+// In development: Metro provides hostUri (e.g. "192.168.x.x:8081").
+// On Android, 'localhost' refers to the device itself — use 10.0.2.2 to reach the host machine.
+const rawHost = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
+const devHost = Platform.OS === 'android' && rawHost === 'localhost' ? '10.0.2.2' : rawHost;
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${devHost}:3001/api`;
+console.log('[apiClient] API_BASE_URL resolved to:', API_BASE_URL);
 
 class ApiClient {
   private token: string | null = null;
@@ -38,28 +42,49 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const fullUrl = `${API_BASE_URL}${endpoint}`;
+    console.log(`[apiClient] --> ${options.method ?? 'GET'} ${fullUrl}`);
+    if (options.body) {
+      // Log body but mask password
+      try {
+        const parsed = JSON.parse(options.body as string);
+        if (parsed.password) parsed.password = '***';
+        console.log('[apiClient] body:', JSON.stringify(parsed));
+      } catch { /* ignore */ }
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(fullUrl, { ...options, headers });
+    } catch (networkErr: any) {
+      console.error('[apiClient] NETWORK ERROR:', networkErr?.message ?? networkErr);
+      throw new Error(`Network error: ${networkErr?.message ?? 'Cannot reach server'}`);
+    }
+
+    console.log(`[apiClient] <-- ${response.status} ${response.statusText} from ${endpoint}`);
 
     // MOB-04: Detect token expiry / revocation.
     // On 401 or 403, clear the stored token and redirect to login.
     // This prevents the driver getting stuck in a broken authenticated state.
     if (response.status === 401 || response.status === 403) {
-      await this.clearToken();
-      // Navigate to login — expo-router's router is available globally in RN
-      try {
-        router.replace('/login');
-      } catch {
-        // router may not be available in background contexts (e.g. BG task)
-        // In that case, the next foreground request will also 401 and retry redirect
+      const body = await response.json().catch(() => ({}));
+      console.warn('[apiClient] 401/403 — body:', JSON.stringify(body), '| endpoint:', endpoint);
+      // Only redirect & clear token for authenticated requests (not the login call itself)
+      if (endpoint !== '/auth/driver/login') {
+        await this.clearToken();
+        try {
+          router.replace('/');
+        } catch {
+          // router may not be available in background contexts (e.g. BG task)
+        }
+        throw new Error('Session expired. Please log in again.');
       }
-      throw new Error('Session expired. Please log in again.');
+      throw new Error(body.error || `HTTP ${response.status}`);
     }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
+      console.error(`[apiClient] Error response from ${endpoint}:`, JSON.stringify(error));
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
@@ -68,10 +93,12 @@ class ApiClient {
 
   // Auth
   async login(phone_number: string, password: string) {
+    console.log('[apiClient] login() called with phone_number:', phone_number);
     const data = await this.request('/auth/driver/login', {
       method: 'POST',
       body: JSON.stringify({ phone_number, password }),
     });
+    console.log('[apiClient] login() success — driver_id:', data?.driver?.driver_id);
     await this.setToken(data.token);
     return data;
   }

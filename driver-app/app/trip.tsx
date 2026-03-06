@@ -12,7 +12,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -66,19 +68,21 @@ export default function TripScreen() {
 
     const startWatching = async () => {
       try {
-        // Request notification permissions
-        const { status } = await Notifications.requestPermissionsAsync();
-        if (status !== 'granted') {
-          console.warn('Notification permissions not granted');
-        }
-
-        // Set up notification handler
-        const subscription = Notifications.addNotificationResponseReceivedListener(response => {
-          const data = response.notification.request.content.data;
-          if (data.action === 'END_TRIP' && data.trip_id === trip_id) {
-            handleStopTrip();
+        // Request notification permissions only in real builds
+        if (!IS_EXPO_GO) {
+          const Notifications = await import('expo-notifications');
+          const { status } = await Notifications.requestPermissionsAsync();
+          if (status !== 'granted') {
+            console.warn('Notification permissions not granted');
           }
-        });
+
+          Notifications.addNotificationResponseReceivedListener(response => {
+            const data = response.notification.request.content.data;
+            if (data.action === 'END_TRIP' && data.trip_id === trip_id) {
+              handleStopTrip();
+            }
+          });
+        }
 
         locationSubscription = await watchForegroundLocation();
       } catch (e: any) {
@@ -266,23 +270,26 @@ export default function TripScreen() {
     // Check if this is the last stop
     const isLastStop = index === stops.length - 1;
 
-    // Send notification
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: isLastStop ? "Final Stop Reached! 🎯" : "Stop Reached! 🚏",
-        body: isLastStop
-          ? `Arrived at ${stop.stop_name}. Tap to end trip.`
-          : `Arrived at ${stop.stop_name}`,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-        data: {
-          action: isLastStop ? 'END_TRIP' : 'STOP_REACHED',
-          trip_id: trip_id,
-          stop_name: stop.stop_name
+    // Send notification (only in real builds — not Expo Go)
+    if (!IS_EXPO_GO) {
+      const Notifications = await import('expo-notifications');
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: isLastStop ? "Final Stop Reached! 🎯" : "Stop Reached! 🚏",
+          body: isLastStop
+            ? `Arrived at ${stop.stop_name}. Tap to end trip.`
+            : `Arrived at ${stop.stop_name}`,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: {
+            action: isLastStop ? 'END_TRIP' : 'STOP_REACHED',
+            trip_id: trip_id,
+            stop_name: stop.stop_name
+          },
         },
-      },
-      trigger: null,
-    });
+        trigger: null,
+      }).catch((err: any) => console.error('Stop notification error:', err?.message));
+    }
 
     // Queue the arrival for background processing
     await queueArrival({

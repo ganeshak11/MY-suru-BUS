@@ -7,7 +7,7 @@ import { useEffect, useMemo } from 'react';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 function AuthLayout() {
-  const { session, isLoading } = useSession();
+  const { driver, isLoading } = useSession();
   const { colors } = useTheme();
   const segments = useSegments(); // Gets the current URL path
 
@@ -25,15 +25,16 @@ function AuthLayout() {
     const inApp = segments.length > 0;
 
     // If user is NOT logged in and is trying to access an app screen
-    if (!session && inApp) {
+    if (!driver && inApp) {
       router.replace('/'); // Force redirect to login
     }
-    
+
     // If user IS logged in and is on the login screen
-    if (session && atLogin) {
+    if (driver && atLogin) {
       router.replace('/home'); // Force redirect to dashboard
     }
-  }, [session, isLoading, segmentsKey]);
+  }, [driver, isLoading, segmentsKey]);
+
 
   if (isLoading) {
     return (
@@ -58,10 +59,8 @@ function AuthLayout() {
       <Stack.Screen name="history" options={{ title: 'Trip History' }} />
       <Stack.Screen name="announcements" options={{ title: 'Announcements' }} />
       <Stack.Screen name="report" options={{ title: 'Report to Admin' }} />
-      <Stack.Screen
-        name="trip"
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="trip" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
     </Stack>
   );
 }

@@ -12,28 +12,44 @@ const router = Router();
 
 router.post('/driver/login', async (req: Request, res: Response): Promise<void> => {
   const { phone_number, password } = req.body;
+  logger.info({ phone_number }, '[driver/login] Login attempt');
 
   if (!phone_number || !password) {
+    logger.warn('[driver/login] Missing phone_number or password in request body');
     res.status(400).json({ error: 'Phone number and password required' });
     return;
   }
 
+  // Normalize: accept both "9876543210" and "+919876543210"
+  const normalized = phone_number.startsWith('+') ? phone_number : `+91${phone_number}`;
+  logger.info({ normalized }, '[driver/login] Normalized phone number');
+
   try {
-    const result = await pool.query('SELECT * FROM drivers WHERE phone_number = $1', [phone_number]);
+    const result = await pool.query(
+      'SELECT * FROM drivers WHERE phone_number = $1 OR phone_number = $2',
+      [phone_number, normalized]
+    );
     const driver = result.rows[0];
+    logger.info({ found: !!driver, driver_id: driver?.driver_id }, '[driver/login] DB lookup result');
 
     if (!driver) {
+      logger.warn({ phone_number, normalized }, '[driver/login] No driver found with that phone number');
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
 
     if (!driver.password_hash) {
+      logger.warn({ driver_id: driver.driver_id }, '[driver/login] Driver has no password_hash — not activated');
       res.status(401).json({ error: 'Account not activated. Contact your admin for credentials.' });
       return;
     }
 
+    logger.info({ driver_id: driver.driver_id }, '[driver/login] Comparing password with bcrypt...');
     const validPassword = await bcrypt.compare(password, driver.password_hash);
+    logger.info({ driver_id: driver.driver_id, validPassword }, '[driver/login] bcrypt.compare result');
+
     if (!validPassword) {
+      logger.warn({ driver_id: driver.driver_id }, '[driver/login] Password mismatch');
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
@@ -45,6 +61,7 @@ router.post('/driver/login', async (req: Request, res: Response): Promise<void> 
       { expiresIn: '24h' }
     );
 
+    logger.info({ driver_id: driver.driver_id }, '[driver/login] Login SUCCESS — token issued');
     res.json({
       token,
       driver: {
@@ -55,6 +72,7 @@ router.post('/driver/login', async (req: Request, res: Response): Promise<void> 
       }
     });
   } catch (err) {
+    logger.error({ err }, '[driver/login] Unexpected error during login');
     res.status(500).json({ error: 'Login failed' });
   }
 });

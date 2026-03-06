@@ -7,8 +7,9 @@ import { logger } from '../logger';
 const router = Router();
 
 // Explicit safe column list — never expose password_hash
+// NOTE: no table alias prefix so this works in both SELECT and UPDATE...RETURNING
 const DRIVER_SAFE_COLS = `
-  d.driver_id, d.name, d.email, d.phone_number, d.profile_photo_url
+  driver_id, name, email, phone_number, profile_photo_url
 `;
 
 // CRIT-S01 + MED-S01: Auth guarded, explicit columns (no password_hash)

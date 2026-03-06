@@ -20,7 +20,7 @@ interface Trip {
 export default function History() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const { user } = useSession();
+  const { driver } = useSession();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,7 +33,7 @@ export default function History() {
   }, []);
 
   const fetchHistory = async (isRefresh = false) => {
-    if (!user) return;
+    if (!driver) return;
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
 

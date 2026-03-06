@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { apiClient } from '../lib/apiClient';
 import { Driver } from '../types/custom';
 
@@ -13,7 +13,29 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Start as true so the layout shows a spinner while we restore the session
+  const [isLoading, setIsLoading] = useState(true);
+
+  // On mount: check for a saved token and restore the session if valid
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        const token = await apiClient.getToken();
+        if (token) {
+          // Validate the token and fetch the driver's profile
+          const profile = await apiClient.getProfile();
+          setDriver(profile);
+        }
+      } catch {
+        // Token is expired or invalid — clear it and show login
+        await apiClient.clearToken();
+        setDriver(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    bootstrap();
+  }, []);
 
   const login = async (phone_number: string, password: string) => {
     setIsLoading(true);
