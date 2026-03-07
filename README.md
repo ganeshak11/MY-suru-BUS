@@ -2,7 +2,7 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)](https://supabase.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Platform](https://img.shields.io/badge/Platform-Web%20%2B%20Mobile-blue)]()
 
 ## Real-Time Bus Tracking & Fleet Management System
@@ -30,7 +30,7 @@ Built from scratch as a full-stack, multi-module monorepo with a custom Node.js 
 │  └──────────────┬──────────────────┘                   │
 │                 │                                       │
 │  ┌──────────────┴──────────────────┐                   │
-│  │  PostgreSQL (Supabase hosted)   │                   │
+│  │  PostgreSQL (Render managed)     │                   │
 │  └─────────────────────────────────┘                   │
 │                                                         │
 │  ┌──────────────┐                                       │
@@ -89,7 +89,7 @@ Built from scratch as a full-stack, multi-module monorepo with a custom Node.js 
 - Node.js 18+
 - npm 9+
 - Expo CLI: `npm install -g expo-cli`
-- A Supabase project (PostgreSQL)
+- A PostgreSQL database (local or hosted)
 
 ### 2. Clone & Install
 
@@ -105,7 +105,7 @@ cd passenger-app && npm install && cd ..
 
 ### 3. Database Setup
 
-In your Supabase SQL Editor, run `backend/migrations/000_clean_schema.sql`, then `001_production_hardening.sql`.
+In your PostgreSQL client, run `backend/migrations/000_clean_schema.sql`, then `001_production_hardening.sql`.
 
 Insert your first admin:
 ```sql
@@ -118,7 +118,7 @@ Generate the hash: `node -e "require('bcryptjs').hash('YourPass',12).then(consol
 
 ```bash
 # backend/.env
-DATABASE_URL=postgresql://...  # from Supabase → Settings → Database
+DATABASE_URL=postgresql://...  # your PostgreSQL connection string
 DATABASE_SSL=true
 JWT_SECRET=your_strong_random_secret
 PORT=3001
@@ -171,7 +171,7 @@ MY-suru-BUS/
 - ✅ **Admin Dashboard** — Fully functional, JWT auth
 - ✅ **Driver App** — GPS tracking, offline sync, geofencing
 - ✅ **Passenger App** — Live bus tracking, route search
-- ⏳ **DB Migration** — Pending Supabase project setup (see `backend/migrations/`)
+- ⏳ **DB Migration** — See `backend/migrations/` for setup
 
 ---
 

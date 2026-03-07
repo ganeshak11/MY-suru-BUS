@@ -1,7 +1,6 @@
 -- ============================================================
--- Schema for MY(suru) BUS — Standalone PostgreSQL / Supabase
--- This is a CLEAN schema with no Supabase auth dependencies.
--- Run this on a fresh Supabase/Postgres project.
+-- Schema for MY(suru) BUS — Standalone PostgreSQL
+-- Run this on a fresh PostgreSQL database.
 -- ============================================================
 
 -- Custom enum for trip status (idempotent — safe to re-run)

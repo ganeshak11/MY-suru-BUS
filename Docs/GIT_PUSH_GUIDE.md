@@ -4,10 +4,10 @@
 
 | Branch | Purpose |
 |---|---|
-| `main` | Stable MVP (Supabase backend — legacy) |
+| `main` | Stable MVP (legacy — archived) |
 | `dev` | Active development (custom backend — live on Render) |
 
-> ⚠️ All new work goes on `dev`. `main` is preserved as the Supabase MVP baseline.
+> ⚠️ All new work goes on `dev`. `main` is preserved as the legacy MVP baseline.
 
 ---
 

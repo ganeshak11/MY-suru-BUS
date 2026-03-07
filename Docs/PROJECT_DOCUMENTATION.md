@@ -46,7 +46,7 @@ MY(suru) BUS is a full-stack real-time public transportation management platform
 
 | Branch | Purpose | Backend | Database |
 |---|---|---|---|
-| `main` | Stable MVP — Supabase | Supabase | Supabase |
+| `main` | Stable MVP (legacy) | Legacy | Legacy |
 | `dev` | Active — Custom backend | Render (Express) | Render (PostgreSQL) |
 
 ---
@@ -57,8 +57,8 @@ MY(suru) BUS is a full-stack real-time public transportation management platform
 - Custom Express backend — all endpoints live on Render
 - PostgreSQL schema with idempotent migrations
 - Admin dashboard — live on Vercel, login working
-- Driver app — Supabase fully removed, uses REST API + 30s polling for trips
-- Passenger app — Supabase fully removed, uses REST API
+- Driver app — uses REST API + 30s polling for trips
+- Passenger app — uses REST API + WebSocket for live tracking
 - JWT authentication (admin + driver roles)
 - Rate limiting, structured logging (Pino), Sentry, graceful shutdown
 - Docker multi-stage build via `render.yaml`

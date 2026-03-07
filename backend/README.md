@@ -2,7 +2,7 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)](https://supabase.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
 The REST API and real-time server powering the MY(suru) BUS platform. Handles authentication, fleet management, GPS tracking, and live socket broadcasts.
 
@@ -15,7 +15,7 @@ The REST API and real-time server powering the MY(suru) BUS platform. Handles au
 | Runtime | Node.js 18+ |
 | Framework | Express.js |
 | Language | TypeScript |
-| Database | PostgreSQL (Supabase hosted) |
+| Database | PostgreSQL (Render managed) |
 | Real-time | Socket.io |
 | Auth | JWT (jsonwebtoken + bcryptjs) |
 | Logging | Pino |
@@ -90,7 +90,7 @@ Located in `migrations/`:
 
 | File | Purpose |
 |---|---|
-| `000_clean_schema.sql` | Full fresh schema — run on a new Supabase project |
+| `000_clean_schema.sql` | Full fresh schema — run on a new PostgreSQL database |
 | `001_production_hardening.sql` | Constraints, indexes, GIN search indexes — run on existing project |
 | `002_data_export_queries.sql` | Data migration helpers — export from old project |
 

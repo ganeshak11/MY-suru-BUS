@@ -225,7 +225,7 @@ router.get('/:id/stops', async (req: Request, res: Response, next: NextFunction)
 });
 
 // POST /api/trips/reset-daily
-// Ported from the former Supabase edge function "reset-daily-trips".
+// Resets daily trip assignments.
 // For each schedule, looks up yesterday's trip assignment (bus + driver)
 // and creates today's trip if it doesn't already exist.
 // Intended to be called once per day by a cron job or the admin dashboard.

@@ -20,39 +20,16 @@
 
 ---
 
-## 2. Evolution — From Supabase to Custom Backend
+## 2. Architecture — Custom Backend
 
-### Phase 1: `main` branch — Supabase era
-The original system was built entirely on **Supabase**:
-- **Database:** Supabase PostgreSQL with PostGIS + Row Level Security (RLS)
-- **Auth:** Supabase Auth (magic links + phone OTP)
-- **Realtime:** Supabase Realtime subscriptions for live bus tracking
-- **Edge Functions:** Supabase Deno edge functions for business logic:
-  - `update-location` — driver GPS updates
-  - `driver-auth` — driver authentication
-  - `trip-control` — start/pause/resume/complete trip
-  - `stop-arrival` — geofence-triggered stop detection
-- **Admin Dashboard:** Next.js using `@supabase/supabase-js` directly
-- **Driver App:** React Native Expo using Supabase SDK
-- **Passenger App:** React Native Expo using Supabase SDK
-
-**Why migrated away from Supabase:**
-- Edge function cold starts
-- Supabase auth dependency for every feature
-- Vendor lock-in
-- Less control over business logic
-- Wanted a fully owned, portable system
-
-### Phase 2: `dev` branch — Custom Backend (CURRENT)
-All Supabase dependencies removed. Replaced with:
+The system is fully self-hosted with no third-party BaaS dependencies:
 - **Backend:** Custom Node.js + Express + TypeScript API server
 - **Database:** PostgreSQL (local for dev, Render managed for prod)
 - **Auth:** Custom JWT with bcrypt password hashing
 - **Realtime:** Socket.io WebSocket server
-- **Edge functions:** All migrated to Express route handlers
-- **Admin Dashboard:** Migrated from Supabase SDK to custom apiClient
-- **Driver App:** Migrated from Supabase SDK to REST API + 30s polling
-- **Passenger App:** Migrated from Supabase realtime to WebSocket
+- **Admin Dashboard:** Next.js using custom apiClient
+- **Driver App:** React Native Expo using REST API + 30s polling
+- **Passenger App:** React Native Expo using REST API + WebSocket
 
 ---
 
@@ -118,7 +95,7 @@ Each module has 4 `.env` files:
 .env              ← active (managed by post-checkout + never committed)
 .env.example      ← template (committed)
 .env.dev          ← dev branch PROD config (Render/Vercel URLs — committed)
-.env.main         ← main branch Supabase config (committed)
+.env.main         ← main branch config (committed)
 ```
 
 ### Two environments within `dev` branch

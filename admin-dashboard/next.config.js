@@ -14,10 +14,6 @@ const nextConfig = {
     
         ],
     },
-    // Fix network timeout issues
-    experimental: {
-        serverComponentsExternalPackages: ['@supabase/ssr']
-    }
 };
 
 module.exports = nextConfig;

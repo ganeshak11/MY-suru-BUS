@@ -6,7 +6,7 @@ Why REST + Socket.io instead of pure WebSocket or polling?
 
 Why PostgreSQL over NoSQL?
 
-Why not use Supabase fully instead of custom backend?
+Why a custom Express backend instead of a BaaS?
 
 Where is your single source of truth?
 

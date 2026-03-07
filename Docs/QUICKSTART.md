@@ -113,7 +113,7 @@ EAS builds in the cloud (~10-15 min). Download link provided on completion.
 
 | Git Branch | Backend | DB | Admin |
 |---|---|---|---|
-| `main` | Supabase (legacy) | Supabase | — |
+| `main` | Legacy (archived) | — | — |
 | `dev` | Render (live) | Render PostgreSQL | Vercel |
 
 ---

@@ -1,13 +1,12 @@
 -- ============================================================
 -- Migration 001 — Production Hardening: Constraints & Indexes
--- Run this in your Supabase SQL editor (Settings → SQL Editor)
+-- Run this in your PostgreSQL SQL editor
 -- Each statement is idempotent (safe to re-run)
 -- ============================================================
 
 -- ──────────────────────────────────────────────────────────────
--- DB-01: Remove unused Supabase auth_user_id columns
--- These columns were created when the app used Supabase Auth.
--- The backend now uses its own password-based auth — these are orphaned.
+-- DB-01: Remove unused auth_user_id columns
+-- The backend uses its own password-based auth — these are orphaned.
 -- ──────────────────────────────────────────────────────────────
 ALTER TABLE public.admins
   DROP COLUMN IF EXISTS auth_user_id;
@@ -105,7 +104,7 @@ CREATE INDEX IF NOT EXISTS idx_trip_stop_times_trip_id
 --   WHERE stop_name ILIKE '%query%'
 -- Without this, Postgres does a full sequential scan of stops on every
 -- keystroke. The GIN index turns this into a fast index scan.
--- Requires the pg_trgm extension (pre-installed on Supabase).
+-- Requires the pg_trgm extension.
 -- ──────────────────────────────────────────────────────────────
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 

@@ -1,6 +1,5 @@
 /**
  * Offline arrival queue — uses apiClient (REST backend).
- * Replaces the old dead Supabase import (CRIT-05).
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from './apiClient';
@@ -34,7 +33,7 @@ export const queueArrival = async (arrival: QueuedArrival): Promise<void> => {
   }
 };
 
-// Flush the queue to the REST backend (CRIT-05 fix: was calling Supabase)
+// Flush the queue to the REST backend
 export const processArrivalQueue = async (): Promise<void> => {
   try {
     const raw = await AsyncStorage.getItem(ARRIVAL_QUEUE_KEY);

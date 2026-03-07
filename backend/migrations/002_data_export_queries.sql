@@ -1,5 +1,5 @@
 -- ============================================================
--- Data Export Queries — Run in OLD Supabase SQL Editor
+-- Data Export Queries — Run in OLD PostgreSQL instance
 -- Each query produces ONE cell containing all INSERT statements.
 -- Click the cell → Ctrl+A → Ctrl+C to copy. Then paste in new project.
 -- Run in order (1 → 13) to respect FK dependencies.
@@ -56,7 +56,7 @@ SELECT string_agg(
   E'\n' ORDER BY bus_id
 ) AS sql_output FROM public.buses;
 
--- 6. DRIVERS (skips auth_user_id — Supabase-only, not in new schema)
+-- 6. DRIVERS (skips auth_user_id — not in new schema)
 SELECT string_agg(
   'INSERT INTO public.drivers (driver_id, name, email, phone_number, profile_photo_url) OVERRIDING SYSTEM VALUE VALUES ('
   || driver_id || ','

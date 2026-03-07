@@ -3,7 +3,7 @@
 ## Current State (March 2026)
 ✅ Backend live on Render
 ✅ Admin dashboard live on Vercel (login works)
-✅ Both apps Supabase-free, EAS build configs ready
+✅ Both apps use custom backend, EAS build configs ready
 ✅ 10 drivers, 10 buses, 15 schedules seeded in prod DB
 
 ---

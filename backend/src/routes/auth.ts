@@ -95,7 +95,6 @@ router.post('/admin/login', async (req: Request, res: Response): Promise<void> =
     }
 
     // MIN-S01: admins table must have a password_hash column.
-    // Run in Supabase SQL editor:
     //   ALTER TABLE admins ADD COLUMN IF NOT EXISTS password_hash text;
     // Then set a password for your admin row:
     //   UPDATE admins SET password_hash = crypt('YourPassword', gen_salt('bf')) WHERE email = 'admin@mybus.com';
