@@ -12,9 +12,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: mysurubus-prod-db
-          property: connectionString
+        sync: false                 # Neon connection string, set in the Render dashboard
       - key: DATABASE_SSL
         value: "true"
       - key: JWT_SECRET
@@ -26,10 +24,5 @@ services:
       - key: OSRM_BASE_URL
         value: ""                   # blank = use public OSRM demo server
 
-databases:
-  # ─── PostgreSQL (Render free tier — 90 day expiry, then upgrade) ─────────────
-  - name: mysurubus-prod-db
-    plan: free                      # 1 GB storage, 97 connection limit
-    databaseName: mysurubus_prod
-    user: mysurubus
-    region: singapore
+# The database is hosted on Neon (free tier, no expiry), not on Render:
+# Render's free Postgres expires, which took the demo down.

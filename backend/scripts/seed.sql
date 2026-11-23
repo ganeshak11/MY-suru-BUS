@@ -27,37 +27,37 @@ ON CONFLICT DO NOTHING;
 -- Route stops for Route 1A: City Stand → KR Circle → University → Vijayanagar → Infosys
 WITH r AS (SELECT route_id FROM public.routes WHERE route_no = '1A')
 INSERT INTO public.route_stops (route_id, stop_id, stop_sequence, time_offset_from_start)
-SELECT r.route_id, s.stop_id, s.seq, s.offset FROM r,
+SELECT r.route_id, s.stop_id, s.seq, s.t_offset FROM r,
 (VALUES
   ((SELECT stop_id FROM public.stops WHERE stop_name='Mysuru City Bus Stand'),    1, '00:00:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='KR Circle'),                2, '00:10:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='University of Mysore'),     3, '00:25:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='Vijayanagar 4th Stage'),   4, '00:40:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='Infosys Mysuru Campus'),   5, '00:55:00'::time)
-) AS s(stop_id, seq, offset)
+) AS s(stop_id, seq, t_offset)
 ON CONFLICT DO NOTHING;
 
 -- Route stops for Route 2B: Railway Station → KR Circle → Palace
 WITH r AS (SELECT route_id FROM public.routes WHERE route_no = '2B')
 INSERT INTO public.route_stops (route_id, stop_id, stop_sequence, time_offset_from_start)
-SELECT r.route_id, s.stop_id, s.seq, s.offset FROM r,
+SELECT r.route_id, s.stop_id, s.seq, s.t_offset FROM r,
 (VALUES
   ((SELECT stop_id FROM public.stops WHERE stop_name='Mysuru Railway Station'), 1, '00:00:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='KR Circle'),              2, '00:12:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='Mysuru Palace'),          3, '00:20:00'::time)
-) AS s(stop_id, seq, offset)
+) AS s(stop_id, seq, t_offset)
 ON CONFLICT DO NOTHING;
 
 -- Route stops for Route 3C: Hebbal → Bannimantap → City Stand → Chamundi Hill
 WITH r AS (SELECT route_id FROM public.routes WHERE route_no = '3C')
 INSERT INTO public.route_stops (route_id, stop_id, stop_sequence, time_offset_from_start)
-SELECT r.route_id, s.stop_id, s.seq, s.offset FROM r,
+SELECT r.route_id, s.stop_id, s.seq, s.t_offset FROM r,
 (VALUES
   ((SELECT stop_id FROM public.stops WHERE stop_name='Hebbal Circle'),          1, '00:00:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='Bannimantap'),            2, '00:08:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='Mysuru City Bus Stand'),  3, '00:18:00'::time),
   ((SELECT stop_id FROM public.stops WHERE stop_name='Chamundi Hill Base'),     4, '00:35:00'::time)
-) AS s(stop_id, seq, offset)
+) AS s(stop_id, seq, t_offset)
 ON CONFLICT DO NOTHING;
 
 -- Schedules
