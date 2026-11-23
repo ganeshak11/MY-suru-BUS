@@ -15,7 +15,7 @@
 **Developer:** Ganesh A K | ganeshangadi13012006@gmail.com | GitHub: ganeshak11
 **Repo:** https://github.com/ganeshak11/MY-suru-BUS
 **Current Deployment:**
-- Backend API: https://mysurubus-backend.onrender.com
+- Backend API: https://mysurubus-backend-720g.onrender.com
 - Admin Dashboard: https://my-suru-bus.vercel.app
 
 ---
@@ -105,7 +105,7 @@ Each module has 4 `.env` files:
 ### Mobile app env via EAS profiles
 The `.env` files for driver-app and passenger-app are **empty** (no API URL) during local dev — Expo Go auto-detects Metro bundler. For EAS builds, the env is baked in per profile inside `eas.json`:
 - `development` profile → `EXPO_PUBLIC_API_BASE_URL: ""`
-- `preview` profile → `EXPO_PUBLIC_API_BASE_URL: "https://mysurubus-backend.onrender.com/api"`
+- `preview` profile → `EXPO_PUBLIC_API_BASE_URL: "https://mysurubus-backend-720g.onrender.com/api"`
 - `production` profile → same as preview
 
 **Why this is the right approach:** No manual env file switching before builds. The correct backend URL is baked in automatically based on which build profile you choose.
@@ -292,7 +292,7 @@ idx_passenger_reports_driver_id ON passenger_reports(driver_id)
 
 ## 8. API Endpoints
 
-Base URL (prod): `https://mysurubus-backend.onrender.com/api`
+Base URL (prod): `https://mysurubus-backend-720g.onrender.com/api`
 Base URL (dev): `http://localhost:3001/api`
 
 ### Auth
@@ -452,7 +452,7 @@ Server → emit('bus-location', data)    → GPS update broadcast to all in bus 
 
 ### EAS Build:
 - `eas.json` has `development`, `preview`, `production` profiles all outputting APK
-- `preview` and `production` have `EXPO_PUBLIC_API_BASE_URL: "https://mysurubus-backend.onrender.com/api"` baked in
+- `preview` and `production` have `EXPO_PUBLIC_API_BASE_URL: "https://mysurubus-backend-720g.onrender.com/api"` baked in
 - `development` has empty URL (auto-detects localhost via Metro)
 
 ---

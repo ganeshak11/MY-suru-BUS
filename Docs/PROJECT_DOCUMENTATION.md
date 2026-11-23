@@ -99,7 +99,7 @@ MY(suru) BUS is a full-stack real-time public transportation management platform
 
 ## API Summary
 
-**Base URL (prod):** `https://mysurubus-backend.onrender.com/api`
+**Base URL (prod):** `https://mysurubus-backend-720g.onrender.com/api`
 **Base URL (dev):** `http://localhost:3001/api`
 
 | Method | Endpoint | Auth | Description |
@@ -145,14 +145,14 @@ SENTRY_DSN=            # Optional
 
 ### Admin Dashboard
 ```env
-NEXT_PUBLIC_API_URL=https://mysurubus-backend.onrender.com/api
+NEXT_PUBLIC_API_URL=https://mysurubus-backend-720g.onrender.com/api
 ```
 
 ### Mobile Apps (baked in via eas.json per profile)
 ```
 development → EXPO_PUBLIC_API_BASE_URL=""  (auto-detects localhost)
-preview     → EXPO_PUBLIC_API_BASE_URL="https://mysurubus-backend.onrender.com/api"
-production  → EXPO_PUBLIC_API_BASE_URL="https://mysurubus-backend.onrender.com/api"
+preview     → EXPO_PUBLIC_API_BASE_URL="https://mysurubus-backend-720g.onrender.com/api"
+production  → EXPO_PUBLIC_API_BASE_URL="https://mysurubus-backend-720g.onrender.com/api"
 ```
 
 ---

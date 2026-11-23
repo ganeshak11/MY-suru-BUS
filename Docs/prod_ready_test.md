@@ -7,7 +7,7 @@ Run this checklist before demos or pitches to verify the full system is working.
 ## 1. Backend Health
 
 ```bash
-curl https://mysurubus-backend.onrender.com/health
+curl https://mysurubus-backend-720g.onrender.com/health
 # Expected: {"status":"OK","message":"MY(suru) BUS Backend is running!",...}
 ```
 

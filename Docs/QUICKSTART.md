@@ -103,9 +103,9 @@ EAS builds in the cloud (~10-15 min). Download link provided on completion.
 
 | Service | URL |
 |---|---|
-| Backend API | https://mysurubus-backend.onrender.com |
+| Backend API | https://mysurubus-backend-720g.onrender.com |
 | Admin Dashboard | https://my-suru-bus.vercel.app |
-| Health Check | https://mysurubus-backend.onrender.com/health |
+| Health Check | https://mysurubus-backend-720g.onrender.com/health |
 
 ---
 

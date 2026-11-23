@@ -29,7 +29,7 @@ Last reviewed: March 2026 | Current deployment: Render (backend) + Vercel (admin
 
 ### 1. Render Cold Start
 **Problem:** Free tier sleeps after 15 min inactivity. First request takes ~30s.
-**Fix:** Add UptimeRobot (free) to ping `https://mysurubus-backend.onrender.com/health` every 5 min.
+**Fix:** Add UptimeRobot (free) to ping `https://mysurubus-backend-720g.onrender.com/health` every 5 min.
 
 ### 2. Driver JWT Expires Mid-Shift
 **Problem:** 24h expiry. A driver starting a shift at night could get logged out mid-trip.

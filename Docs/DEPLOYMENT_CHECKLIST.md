@@ -71,7 +71,7 @@
 
 | Service | URL / Login |
 |---|---|
-| Backend | https://mysurubus-backend.onrender.com |
+| Backend | https://mysurubus-backend-720g.onrender.com |
 | Admin Dashboard | https://my-suru-bus.vercel.app |
 | Admin Login | admin@mybus.com / Admin@123 |
 | DB (pgAdmin) | dpg-d6iu2mua2pns73e6ds50-a.singapore-postgres.render.com |
