@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import pool from '../database/db';
 import { validateBus } from '../middleware/validate';
-import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { authenticateToken, requireAdmin, requireDriver, AuthRequest } from '../middleware/auth';
 import { io } from '../app';
 
 const router = Router();
@@ -85,7 +85,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res:
   }
 });
 
-router.post('/:id/location', authenticateToken, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/:id/location', authenticateToken, requireDriver, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   // HIGH-S03: Validate GPS bounds — reject malicious or corrupt coordinates
   const { latitude, longitude, speed, gps_timestamp } = req.body;
   const lat = parseFloat(latitude);
@@ -114,7 +114,26 @@ router.post('/:id/location', authenticateToken, async (req: Request, res: Respon
   }
 
   const busId = req.params.id;
+  if (!/^\d+$/.test(busId)) {
+    res.status(400).json({ error: 'Invalid bus id' });
+    return;
+  }
   try {
+    // Only the driver running a live trip on this bus may report its position.
+    // 'Paused' is allowed because a server restart pauses in-flight trips.
+    // 409 (not 403) on purpose: the driver app logs out on 401/403, and a late
+    // queued point after a trip ends is a state conflict, not a bad session.
+    const activeTrip = await pool.query(
+      `SELECT 1 FROM trips
+       WHERE bus_id = $1 AND driver_id = $2 AND status IN ('En Route', 'Paused')
+       LIMIT 1`,
+      [busId, req.user?.driver_id]
+    );
+    if (activeTrip.rows.length === 0) {
+      res.status(409).json({ error: 'You have no active trip on this bus' });
+      return;
+    }
+
     const result = await pool.query(
       `UPDATE buses SET
         current_latitude = $1,

@@ -5,7 +5,8 @@ import { AuthRequest } from '../types';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response): Promise<void> => {
+// Admin only: reports contain complaint text and driver names.
+router.get('/', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -25,18 +26,62 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// Passengers can POST reports anonymously; driver_id attached from JWT if available
+const MAX_TYPE_LEN = 50;
+const MAX_MESSAGE_LEN = 1000;
+const toId = (v: unknown): string | null =>
+  v === undefined || v === null || v === '' ? null : /^\d+$/.test(String(v)) ? String(v) : 'invalid';
+
+// Anyone (passengers are anonymous) can file a report. The driver it concerns is
+// derived from the trip on the server; a client-supplied driver_id is ignored so
+// reports can't be pinned on an arbitrary driver.
 router.post('/', async (req: Request, res: Response): Promise<void> => {
+  const { report_type, message } = req.body ?? {};
+  if (typeof report_type !== 'string' || !report_type.trim() || report_type.trim().length > MAX_TYPE_LEN) {
+    res.status(400).json({ error: `report_type is required (max ${MAX_TYPE_LEN} characters)` });
+    return;
+  }
+  if (typeof message !== 'string' || !message.trim() || message.trim().length > MAX_MESSAGE_LEN) {
+    res.status(400).json({ error: `message is required (max ${MAX_MESSAGE_LEN} characters)` });
+    return;
+  }
+  const tripId = toId(req.body.trip_id);
+  let busId = toId(req.body.bus_id);
+  let routeId = toId(req.body.route_id);
+  if ([tripId, busId, routeId].includes('invalid')) {
+    res.status(400).json({ error: 'trip_id, bus_id and route_id must be numeric ids' });
+    return;
+  }
+
   try {
-    const { report_type, message, trip_id, bus_id, driver_id, route_id } = req.body;
+    let driverId: string | null = null;
+    if (tripId) {
+      const trip = await pool.query(
+        `SELECT t.driver_id, t.bus_id, s.route_id
+         FROM trips t JOIN schedules s ON t.schedule_id = s.schedule_id
+         WHERE t.trip_id = $1`,
+        [tripId]
+      );
+      if (trip.rows.length === 0) {
+        res.status(400).json({ error: 'Unknown trip_id' });
+        return;
+      }
+      ({ driver_id: driverId } = trip.rows[0]);
+      busId = trip.rows[0].bus_id;
+      routeId = trip.rows[0].route_id;
+    }
+
     const result = await pool.query(
-      `INSERT INTO passenger_reports (report_type, message, trip_id, bus_id, driver_id, route_id) 
+      `INSERT INTO passenger_reports (report_type, message, trip_id, bus_id, driver_id, route_id)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING report_id`,
-      [report_type, message, trip_id || null, bus_id || null, driver_id || null, route_id || null]
+      [report_type.trim(), message.trim(), tripId, busId, driverId, routeId]
     );
     res.status(201).json({ message: 'Report created', report_id: result.rows[0].report_id });
-  } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+  } catch (err: any) {
+    if (err.code === '23503') {
+      res.status(400).json({ error: 'Unknown bus_id or route_id' });
+      return;
+    }
+    res.status(500).json({ error: 'Failed to create report' });
   }
 });
 

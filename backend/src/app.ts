@@ -29,6 +29,10 @@ const allowedOrigins = (
 ).split(',').map((o) => o.trim());
 
 export const app = express();
+// Render (and most hosts) sit behind one reverse proxy. Without this, req.ip is the
+// proxy's address and every client shares a single rate-limit bucket.
+// Override with TRUST_PROXY_HOPS if the deployment adds more proxy layers.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
 export const server = http.createServer(app);
 export const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },

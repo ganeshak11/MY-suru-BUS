@@ -107,8 +107,13 @@ const processLocationQueue = async (): Promise<void> => {
       );
       queue.shift();
       await writeQueueAtomic(queue);
-    } catch {
-      // Keep in queue if network failed
+    } catch (err: any) {
+      // 409 = the server will never accept this point (its trip has ended).
+      // Drop it so it doesn't block the rest of the queue; keep it on network errors.
+      if (err?.status === 409) {
+        queue.shift();
+        await writeQueueAtomic(queue);
+      }
     }
   } catch (e) {
     console.error("Failed to process offline queue", e);

@@ -17,7 +17,9 @@ describe('POST /api/buses/:id/location', () => {
         expect(res.status).toBe(401);
     });
 
-    it('returns 200 with valid driver token', async () => {
+    it('returns 200 for a driver with a live trip on the bus', async () => {
+        // Active-trip check (driver runs a trip on this bus)
+        mockQuery.mockResolvedValueOnce({ rows: [{ '?column?': 1 }] });
         mockQuery.mockResolvedValueOnce({
             rows: [{ bus_id: 1, current_latitude: 12.9716, current_longitude: 77.5946 }],
         });

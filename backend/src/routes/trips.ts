@@ -6,8 +6,30 @@ import { io } from '../app';
 
 const router = Router();
 
+// ─── Ownership ────────────────────────────────────────────────────────────────
+// Drivers may only act on trips assigned to them. Responds and returns false when
+// the request must stop. node-postgres returns bigint ids as strings, so compare
+// as strings (JWT ids come from the same column).
+const ensureOwnTrip = async (req: AuthRequest, res: Response): Promise<boolean> => {
+  if (!/^\d+$/.test(req.params.id)) {
+    res.status(400).json({ error: 'Invalid trip id' });
+    return false;
+  }
+  const result = await pool.query('SELECT driver_id FROM trips WHERE trip_id = $1', [req.params.id]);
+  if (result.rows.length === 0) {
+    res.status(404).json({ error: 'Trip not found' });
+    return false;
+  }
+  if (req.user?.role === 'admin') return true;
+  if (String(result.rows[0].driver_id) !== String(req.user?.driver_id)) {
+    res.status(403).json({ error: 'You are not assigned to this trip' });
+    return false;
+  }
+  return true;
+};
+
 // CRIT-S02: Auth guarded. DB-06: Pagination via ?limit=&offset=
-router.get('/', authenticateToken, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
   const offset = parseInt(req.query.offset as string) || 0;
   try {
@@ -83,8 +105,9 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res:
 });
 
 // CRIT-S02: Added authenticateToken — trip detail is no longer public.
-router.get('/:id', authenticateToken, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.get('/:id', authenticateToken, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!(await ensureOwnTrip(req, res))) return;
     const result = await pool.query(`
       SELECT t.*, b.bus_no, d.name as driver_name, s.start_time, r.route_name, r.route_id
       FROM trips t
@@ -116,19 +139,7 @@ router.patch('/:id/status', authenticateToken, requireDriver, async (req: AuthRe
       return;
     }
 
-    // MED-S03: Verify the driver owns this trip
-    const ownership = await pool.query(
-      'SELECT driver_id FROM trips WHERE trip_id = $1',
-      [req.params.id]
-    );
-    if (ownership.rows.length === 0) {
-      res.status(404).json({ error: 'Trip not found' });
-      return;
-    }
-    if (ownership.rows[0].driver_id !== req.user?.driver_id) {
-      res.status(403).json({ error: 'You are not assigned to this trip' });
-      return;
-    }
+    if (!(await ensureOwnTrip(req, res))) return;
 
     await pool.query('UPDATE trips SET status = $1 WHERE trip_id = $2', [status, req.params.id]);
     res.json({ message: 'Status updated' });
@@ -137,8 +148,9 @@ router.patch('/:id/status', authenticateToken, requireDriver, async (req: AuthRe
   }
 });
 
-router.post('/:id/start', authenticateToken, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/:id/start', authenticateToken, requireDriver, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!(await ensureOwnTrip(req, res))) return;
     const trip = await pool.query(
       "UPDATE trips SET status = 'En Route' WHERE trip_id = $1 RETURNING bus_id",
       [req.params.id]
@@ -154,8 +166,9 @@ router.post('/:id/start', authenticateToken, requireDriver, async (req: Request,
   }
 });
 
-router.patch('/:id/pause', authenticateToken, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.patch('/:id/pause', authenticateToken, requireDriver, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!(await ensureOwnTrip(req, res))) return;
     await pool.query("UPDATE trips SET status = 'Paused' WHERE trip_id = $1", [req.params.id]);
     res.json({ message: 'Trip paused' });
   } catch (err) {
@@ -163,8 +176,9 @@ router.patch('/:id/pause', authenticateToken, requireDriver, async (req: Request
   }
 });
 
-router.patch('/:id/resume', authenticateToken, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.patch('/:id/resume', authenticateToken, requireDriver, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!(await ensureOwnTrip(req, res))) return;
     await pool.query("UPDATE trips SET status = 'En Route' WHERE trip_id = $1", [req.params.id]);
     res.json({ message: 'Trip resumed' });
   } catch (err) {
@@ -172,8 +186,9 @@ router.patch('/:id/resume', authenticateToken, requireDriver, async (req: Reques
   }
 });
 
-router.post('/:id/complete', authenticateToken, requireDriver, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/:id/complete', authenticateToken, requireDriver, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!(await ensureOwnTrip(req, res))) return;
     const trip = await pool.query(
       "UPDATE trips SET status = 'Completed' WHERE trip_id = $1 RETURNING bus_id",
       [req.params.id]
@@ -189,8 +204,9 @@ router.post('/:id/complete', authenticateToken, requireDriver, async (req: Reque
   }
 });
 
-router.post('/:id/stops/:stopId/arrive', authenticateToken, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/:id/stops/:stopId/arrive', authenticateToken, requireDriver, async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (!(await ensureOwnTrip(req, res))) return;
     const { id: tripId, stopId } = req.params;
     const result = await pool.query(
       `INSERT INTO trip_stop_times (trip_id, stop_id, actual_arrival_time)

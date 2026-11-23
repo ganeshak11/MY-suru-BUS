@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../database/db';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { authenticateToken, requireAdmin, requireDriver, AuthRequest } from '../middleware/auth';
 import { logger } from '../logger';
 
@@ -110,7 +111,8 @@ router.patch('/me', authenticateToken, requireDriver, async (req: AuthRequest, r
 
 
 // CRIT-S01 + MED-S01: Auth guarded, explicit columns (no password_hash)
-router.get('/:id', authenticateToken, async (req, res, next) => {
+// Admin only: drivers read their own profile via GET /me.
+router.get('/:id', authenticateToken, requireAdmin, async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT ${DRIVER_SAFE_COLS} FROM drivers d WHERE d.driver_id = $1`,
@@ -132,7 +134,8 @@ router.post('/', authenticateToken, requireAdmin, async (req, res, next) => {
     return res.status(400).json({ error: 'Name and phone_number are required' });
   }
   try {
-    const rawPassword = password || Math.random().toString(36).slice(-10);
+    // Cryptographically random initial password (12 chars), shown once to the admin.
+    const rawPassword = password || crypto.randomBytes(9).toString('base64url');
     const password_hash = await bcrypt.hash(rawPassword, 12);
     const result = await pool.query(
       'INSERT INTO drivers (name, phone_number, email, password_hash) VALUES ($1, $2, $3, $4) RETURNING driver_id, name, phone_number, email',
