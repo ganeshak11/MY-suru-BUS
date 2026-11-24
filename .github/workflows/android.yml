@@ -86,6 +86,14 @@ jobs:
       - name: Generate the native Android project
         run: npx expo prebuild --platform android --no-install --clean
 
+      - name: Gradle memory
+        # The generated project allows 512 MB of JVM metaspace, which a full
+        # React Native release build overruns (OutOfMemoryError: Metaspace).
+        # Runners have 16 GB of RAM.
+        run: |
+          sed -i '/^org.gradle.jvmargs=/d' android/gradle.properties
+          echo 'org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8' >> android/gradle.properties
+
       - name: Version
         id: version
         run: |
