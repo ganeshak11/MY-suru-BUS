@@ -9,9 +9,10 @@ name: Demo bus
 
 on:
   schedule:
-    # Every 30 min from 05:30 to 22:00 IST (00:00–16:30 UTC). GitHub may start
-    # runs a few minutes late; the bus then shows as running late, as real ones do.
-    - cron: "0,30 0-16 * * *"
+    # At :07 and :37, 05:37–22:07 IST (00:07–16:37 UTC). GitHub delays or drops
+    # scheduled runs at busy minutes like :00/:30, so this avoids them; the script
+    # still takes a departure up to 20 min after its time (the bus shows as late).
+    - cron: "7,37 0-16 * * *"
   workflow_dispatch:
 
 concurrency:

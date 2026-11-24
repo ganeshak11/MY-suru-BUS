@@ -67,6 +67,9 @@ export default function LiveNetworkMap({
   return (
     <MapContainer center={MYSURU} zoom={13} className="h-full w-full" zoomControl={false}>
       <TileLayer
+        // Recreate the layer when the theme resolves: Leaflet applies className
+        // only when a layer is created, so tiles loaded earlier would stay light.
+        key={dark ? 'dark' : 'light'}
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         maxZoom={19}
         className={dark ? 'osm-dark' : undefined}
