@@ -20,4 +20,7 @@ export interface Trip {
     stops: { stop_name: string } | null;
   }[];
   latest_stop: string;
+  status?: string;
+  /** When the trip's bus last reported a position. */
+  last_seen?: string | null;
 }

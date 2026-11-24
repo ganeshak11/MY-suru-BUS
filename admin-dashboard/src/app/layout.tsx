@@ -6,7 +6,6 @@ import { apiClient } from '@/lib/apiClient';
 import './globals.css';
 import SideNav from '@/app/components/SideNav';
 import { ThemeProvider } from '@/app/components/ThemeProvider';
-import { ThemeToggleButton } from '@/app/components/ThemeToggleButton';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
 // Time in milliseconds (10 minutes)
@@ -98,33 +97,21 @@ export default function RootLayout({
             {showSideNav && <SessionTimeoutHandler />}
             <div className="flex h-full bg-background text-foreground">
               {showSideNav && (
-                <>
-                  {/* Hamburger button - only visible on mobile */}
-                  <button
-                    onClick={() => setIsSideNavOpen(!isSideNavOpen)}
-                    className={`lg:hidden fixed top-4 left-4 z-50 p-2 sm:p-3 rounded-lg sm:rounded-xl text-white bg-gradient-to-br from-blue-600 to-indigo-600 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group ${
-                      isSideNavOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                    }`}
-                  >
-                    <Bars3Icon className="h-5 w-5 sm:h-6 sm:w-6 group-hover:rotate-180 transition-transform duration-300" />
-                  </button>
-                  {/* Left edge hover trigger - only on desktop */}
-                  <div 
-                    className="hidden lg:block fixed left-0 top-0 bottom-0 w-4 z-30"
-                    onMouseEnter={() => setIsSideNavOpen(true)}
-                  />
-                  <SideNav
-                    isOpen={isSideNavOpen}
-                    onClose={() => setIsSideNavOpen(false)}
-                    onMouseEnter={() => setIsSideNavOpen(true)}
-                    onMouseLeave={() => setTimeout(() => setIsSideNavOpen(false), 300)}
-                  />
-                </>
+                <SideNav isOpen={isSideNavOpen} onClose={() => setIsSideNavOpen(false)} />
               )}
-              <main className="flex-1 p-4 sm:p-6 lg:p-12 pt-20 lg:pt-6 overflow-y-auto bg-background relative">
+              <main className="relative flex-1 overflow-y-auto bg-background p-4 sm:p-6 lg:p-10">
                 {showSideNav && (
-                  <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-40">
-                    <ThemeToggleButton />
+                  // Menu button for small screens; the sidebar is permanent from lg up.
+                  <div className="-mx-4 -mt-4 mb-4 flex items-center gap-3 border-b border-border/60 px-4 py-3 sm:-mx-6 sm:-mt-6 sm:px-6 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={() => setIsSideNavOpen(true)}
+                      className="rounded-lg p-2 text-foreground hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label="Open menu"
+                    >
+                      <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+                    </button>
+                    <span className="font-bold text-foreground">MY(suru) BUS</span>
                   </div>
                 )}
                 <div className="max-w-7xl mx-auto">

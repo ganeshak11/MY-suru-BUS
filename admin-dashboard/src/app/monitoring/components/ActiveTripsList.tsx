@@ -103,12 +103,22 @@ export default function ActiveTripsList({
               <div className="text-sm text-secondary mb-2">
                 {trip.buses?.bus_no} • {trip.drivers?.name}
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                  {trip.latest_stop}
-                </div>
-              </div>
+              {(() => {
+                // How much to trust this bus's position: paused, live, stale or silent.
+                const mins = trip.last_seen ? Math.floor((Date.now() - new Date(trip.last_seen).getTime()) / 60_000) : null;
+                const [dot, text, label] =
+                  trip.status === 'Paused' ? ['bg-secondary', 'text-secondary', 'Paused by driver']
+                  : mins === null ? ['bg-red-500', 'text-red-600 dark:text-red-400', 'No location yet']
+                  : mins < 2 ? ['bg-green-500 animate-pulse', 'text-green-600 dark:text-green-400', `Live · ${trip.latest_stop}`]
+                  : mins < 5 ? ['bg-amber-500', 'text-amber-600 dark:text-amber-400', `Updated ${mins} min ago`]
+                  : ['bg-red-500', 'text-red-600 dark:text-red-400', `No signal for ${mins} min`];
+                return (
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${dot}`}></div>
+                    <div className={`text-sm font-medium ${text}`}>{label}</div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

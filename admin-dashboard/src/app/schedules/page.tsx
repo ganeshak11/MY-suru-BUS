@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { PlusIcon, PencilIcon, TrashIcon, ClockIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import Modal from '@/app/components/Modal';
+import type { ScheduleFormState } from './types';
 import ScheduleForm from './components/ScheduleForm';
 
 interface Route {
@@ -18,9 +19,21 @@ interface Schedule {
   start_time: string;
   route_name?: string;  // returned as flat field from backend JOIN
   routes?: Route;       // fallback nested shape
+  days_of_week?: number[];
+  default_bus_id?: number | null;
+  default_driver_id?: number | null;
 }
 
-type FormState = Omit<Schedule, 'schedule_id' | 'routes'>;
+type FormState = ScheduleFormState;
+
+const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
+const toForm = (s: Schedule): FormState => ({
+  route_id: s.route_id,
+  start_time: s.start_time,
+  days_of_week: s.days_of_week?.length ? s.days_of_week : ALL_DAYS,
+  default_bus_id: s.default_bus_id ?? null,
+  default_driver_id: s.default_driver_id ?? null,
+});
 
 export default function SchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -32,7 +45,12 @@ export default function SchedulesPage() {
   const [formState, setFormState] = useState<FormState>({
     route_id: 0,
     start_time: '00:00:00',
+    days_of_week: ALL_DAYS,
+    default_bus_id: null,
+    default_driver_id: null,
   });
+  const [buses, setBuses] = useState<{ bus_id: number; bus_no: string }[]>([]);
+  const [drivers, setDrivers] = useState<{ driver_id: number; name: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
@@ -66,7 +84,9 @@ export default function SchedulesPage() {
 
   const fetchRoutes = async () => {
     try {
-      const data = await apiClient.getRoutes();
+      const [data, b, d] = await Promise.all([apiClient.getRoutes(), apiClient.getBuses(), apiClient.getDrivers()]);
+      setBuses(b || []);
+      setDrivers(d || []);
       setRoutes(data || []);
     } catch (error) {
       console.error('Error fetching routes:', error);
@@ -79,20 +99,14 @@ export default function SchedulesPage() {
     if (mode === 'edit' && schedules) {
       if (schedules.length === 1) {
         setSelectedSchedule(schedules[0]);
-        setFormState({
-          route_id: schedules[0].route_id,
-          start_time: schedules[0].start_time,
-        });
+        setFormState(toForm(schedules[0]));
         setIsModalOpen(true);
       } else {
         setAvailableSchedules(schedules);
         setSelectedScheduleId(schedules[0].schedule_id);
         const firstSchedule = schedules[0];
         setSelectedSchedule(firstSchedule);
-        setFormState({
-          route_id: firstSchedule.route_id,
-          start_time: firstSchedule.start_time,
-        });
+        setFormState(toForm(firstSchedule));
         setIsModalOpen(true);
       }
     } else {
@@ -101,6 +115,9 @@ export default function SchedulesPage() {
       setFormState({
         route_id: routes.length > 0 ? routes[0].route_id : 0,
         start_time: '00:00:00',
+        days_of_week: ALL_DAYS,
+        default_bus_id: null,
+        default_driver_id: null,
       });
       setIsModalOpen(true);
     }
@@ -115,26 +132,42 @@ export default function SchedulesPage() {
     setFormState(prevState => ({
       ...prevState,
       // Ensure numerical fields are parsed correctly
-      [name]: name === 'route_id' ? parseInt(value) : value,
+      [name]: name === 'route_id'
+        ? parseInt(value)
+        : name === 'default_bus_id' || name === 'default_driver_id'
+          ? (value ? parseInt(value) : null)
+          : value,
     }));
   };
+
+  const toggleDay = (day: number) =>
+    setFormState((prev) => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter((d) => d !== day)
+        : [...prev.days_of_week, day].sort(),
+    }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    const { route_id, start_time } = formState;
+    const { route_id, start_time, days_of_week } = formState;
 
     if (!route_id || !start_time) {
       setError("All fields are required.");
       return;
     }
+    if (days_of_week.length === 0) {
+      setError("Pick at least one day this schedule runs.");
+      return;
+    }
 
     try {
       if (modalMode === 'add') {
-        await apiClient.createSchedule({ route_id, start_time });
+        await apiClient.createSchedule(formState);
       } else if (selectedSchedule) {
-        await apiClient.updateSchedule(selectedSchedule.schedule_id, { route_id, start_time });
+        await apiClient.updateSchedule(selectedSchedule.schedule_id, formState);
       }
       fetchSchedules();
       closeModal();
@@ -329,10 +362,7 @@ export default function SchedulesPage() {
                 const schedule = availableSchedules.find(s => s.schedule_id === scheduleId);
                 if (schedule) {
                   setSelectedSchedule(schedule);
-                  setFormState({
-                    route_id: schedule.route_id,
-                    start_time: schedule.start_time,
-                  });
+                  setFormState(toForm(schedule));
                 }
               }}
               className="w-full px-3 py-2 border rounded-xl bg-background text-foreground border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
@@ -353,6 +383,9 @@ export default function SchedulesPage() {
           modalMode={modalMode}
           closeModal={closeModal}
           routes={routes}
+          buses={buses}
+          drivers={drivers}
+          toggleDay={toggleDay}
         />
       </Modal>
 

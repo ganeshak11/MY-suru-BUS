@@ -41,7 +41,7 @@ interface Trip {
   bus_id: number;
   driver_id: number;
   trip_date: string; 
-  status: 'Scheduled' | 'En Route' | 'Completed' | 'Cancelled';
+  status: 'Scheduled' | 'En Route' | 'Paused' | 'Completed' | 'Cancelled';
   bus_no?: string;
   driver_name?: string;
   start_time?: string;
@@ -51,7 +51,7 @@ interface Trip {
 
 type FormState = Omit<Trip, 'trip_id' | 'schedules' | 'buses' | 'drivers'> & { route_id: number };
 
-const tripStatuses = ['Scheduled', 'En Route', 'Completed', 'Cancelled'];
+const tripStatuses = ['Scheduled', 'En Route', 'Paused', 'Completed', 'Cancelled'];
 
 // --- Helper function for dynamic status colors ---
 const getStatusClasses = (status: Trip['status']) => {
@@ -60,6 +60,8 @@ const getStatusClasses = (status: Trip['status']) => {
             return 'bg-secondary/30 text-secondary';
         case 'En Route':
             return 'bg-success/30 text-success';
+        case 'Paused':
+            return 'bg-warning/30 text-warning';
         case 'Completed':
             return 'bg-primary/30 text-primary';
         case 'Cancelled':
@@ -99,6 +101,8 @@ export default function TripsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [tripToDelete, setTripToDelete] = useState<Trip | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  // Result of the last "Generate" run, shown above the list.
+  const [notice, setNotice] = useState<{ kind: 'ok' | 'warn' | 'error'; text: string; details?: string[] } | null>(null);
 
 
   useEffect(() => {
@@ -255,11 +259,31 @@ export default function TripsPage() {
     setError(null);
   };
 
+  // The server also does this by itself every 30 minutes for today and tomorrow;
+  // this runs it now (e.g. right after adding schedules).
   const generateDailyTrips = async () => {
     setIsGenerating(true);
-    setError(null);
-    setIsGenerating(false);
-    setError('Daily trip generation not yet implemented in API');
+    setNotice(null);
+    try {
+      const r = await apiClient.generateTrips();
+      const missing: string[] = (r.missing_defaults ?? []).map(
+        (m: any) => `${m.route_name} at ${String(m.start_time).slice(0, 5)}`
+      );
+      setNotice({
+        kind: missing.length ? 'warn' : 'ok',
+        text: r.created > 0
+          ? `Created ${r.created} trip${r.created === 1 ? '' : 's'} for today.`
+          : "Today's trips are already in place.",
+        details: missing.length
+          ? [`${missing.length} schedule(s) run today but have no default bus and driver, so they have no trip. Set them on the Schedules page, or add the trips here:`, ...missing]
+          : undefined,
+      });
+      fetchTrips();
+    } catch (e: any) {
+      setNotice({ kind: 'error', text: `Could not generate trips: ${e.message}` });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const confirmDelete = async () => {
@@ -313,6 +337,30 @@ export default function TripsPage() {
           </button>
         </div>
       </div>
+
+      {notice && (
+        <div
+          role="status"
+          className={`mb-4 flex-shrink-0 rounded-xl border px-4 py-3 text-sm ${
+            notice.kind === 'ok' ? 'border-success/40 bg-success/10 text-foreground'
+              : notice.kind === 'warn' ? 'border-warning/50 bg-warning/10 text-foreground'
+              : 'border-danger/50 bg-danger/10 text-foreground'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-medium">{notice.text}</p>
+              {notice.details && (
+                <ul className="mt-1 list-disc pl-5 text-secondary">
+                  <li className="list-none -ml-5">{notice.details[0]}</li>
+                  {notice.details.slice(1).map((d) => <li key={d}>{d}</li>)}
+                </ul>
+              )}
+            </div>
+            <button type="button" onClick={() => setNotice(null)} className="text-secondary hover:text-foreground" aria-label="Dismiss">✕</button>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 sm:mb-6 flex-shrink-0">
         <span className="text-sm font-medium text-foreground mb-2 block sm:inline sm:mb-0">Filter by Status:</span>

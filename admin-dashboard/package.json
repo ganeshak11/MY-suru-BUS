@@ -17,23 +17,28 @@
     "@types/leaflet-routing-machine": "^3.2.9",
     "leaflet": "^1.9.4",
     "leaflet-routing-machine": "^3.2.12",
-    "next": "14.2.35",
-    "next-themes": "^0.3.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-leaflet": "^4.2.1",
-    "supertest": "^7.2.2"
+    "next": "^15.5.29",
+    "next-themes": "^0.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.12",
     "@types/node": "^20.14.2",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
-    "eslint-config-next": "14.2.3",
+    "eslint-config-next": "^15.5.29",
     "postcss": "^8.4.38",
+    "supertest": "^7.3.2",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.4.5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.33"
+    }
   }
 }

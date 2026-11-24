@@ -31,24 +31,25 @@ export default function MonitoringDashboard() {
 
   // --- Data Fetching & Real-time ---
   useEffect(() => {
-    const processTripData = (rawTrips: any[]): Trip[] => {
-      return rawTrips.map(trip => {
-        const latestStopTime = trip.trip_stop_times
-          ?.filter((tst: any) => tst.actual_arrival_time)
-          .sort((a: any, b: any) => new Date(b.actual_arrival_time).getTime() - new Date(a.actual_arrival_time).getTime());
-        
-        const latest_stop = latestStopTime?.length > 0 && latestStopTime[0].stops 
-          ? `At ${latestStopTime[0].stops.stop_name}` 
-          : 'Trip Started';
-
-        return { ...trip, latest_stop };
-      });
-    };
+    // The API returns flat rows (route_name, bus_no, driver_name, start_time);
+    // the list and map components use a nested shape from the old Supabase API.
+    const processTripData = (rawTrips: any[]): Trip[] =>
+      rawTrips.map((t) => ({
+        ...t,
+        buses: t.bus_no ? { bus_no: t.bus_no } : null,
+        drivers: t.driver_name ? { name: t.driver_name } : null,
+        schedules: {
+          start_time: t.start_time,
+          routes: t.route_name ? { route_name: t.route_name } : null,
+        },
+        trip_stop_times: [],
+        latest_stop: t.start_time ? `Departed ${String(t.start_time).slice(0, 5)}` : 'Trip started',
+      }));
 
     const fetchActiveTrips = async () => {
       try {
         const data = await apiClient.getTrips();
-        const activeTrips = data.filter((t: any) => t.status === 'En Route');
+        const activeTrips = data.filter((t: any) => t.status === 'En Route' || t.status === 'Paused');
         setAllTrips(processTripData(activeTrips));
       } catch (error) {
         console.error("Error fetching trips:", error);
@@ -72,7 +73,7 @@ export default function MonitoringDashboard() {
     const interval = setInterval(() => {
       fetchActiveTrips();
       fetchBusLocations();
-    }, 3000);
+    }, 10_000); // 2 requests every 10 s; the API allows 100 requests/min per client
 
     return () => clearInterval(interval);
   }, []);
@@ -81,12 +82,15 @@ export default function MonitoringDashboard() {
 
   // 1. Calculate filtered trips for the list
   const filteredTrips = useMemo(() => {
-    return allTrips.filter(trip => {
+    return allTrips.map(trip => ({
+      ...trip,
+      last_seen: allBuses.find(b => b.current_trip_id === trip.trip_id)?.last_updated ?? null,
+    })).filter(trip => {
       const routeMatch = selectedRoute === 'all' || trip.schedules?.routes?.route_name === selectedRoute;
       const driverMatch = selectedDriver === 'all' || trip.drivers?.name === selectedDriver;
       return routeMatch && driverMatch;
     });
-  }, [allTrips, selectedRoute, selectedDriver]);
+  }, [allTrips, allBuses, selectedRoute, selectedDriver]);
 
   // 2. Calculate buses to show on the map (THE KEY LOGIC)
   const busesToDisplay = useMemo(() => {

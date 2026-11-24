@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, UserCircleIcon, KeyIcon, ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 import Modal from '@/app/components/Modal';
 import DriverForm from './components/DriverForm';
 
@@ -36,6 +36,25 @@ export default function DriversPage() {
   // --- ADDED: State for delete modal ---
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
+  // Login details to hand to a driver: shown once after creating a driver or resetting a password.
+  const [credentials, setCredentials] = useState<{ name: string; phone_number: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [driverToReset, setDriverToReset] = useState<Driver | null>(null);
+
+  const showCredentials = (d: { name: string; phone_number: string; initial_password: string }) => {
+    setCopied(false);
+    setCredentials({ name: d.name, phone_number: d.phone_number, password: d.initial_password });
+  };
+
+  const confirmReset = async () => {
+    if (!driverToReset) return;
+    try {
+      showCredentials(await apiClient.resetDriverPassword(driverToReset.driver_id));
+    } catch (error: any) {
+      setError(`Failed to reset password: ${error.message}`);
+    }
+    setDriverToReset(null);
+  };
 
   useEffect(() => {
     fetchDrivers();
@@ -108,7 +127,7 @@ export default function DriversPage() {
 
     try {
       if (modalMode === 'add') {
-        await apiClient.createDriver(updatedFormState);
+        showCredentials(await apiClient.createDriver(updatedFormState));
       } else if (selectedDriver) {
         await apiClient.updateDriver(selectedDriver.driver_id, updatedFormState);
       }
@@ -272,6 +291,14 @@ export default function DriversPage() {
                           >
                             <PencilIcon className="h-5 w-5" />
                           </button>
+                          <button
+                            onClick={() => setDriverToReset(driver)}
+                            className="w-8 h-8 flex items-center justify-center text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
+                            title="Reset password"
+                            aria-label={`Reset password for ${driver.name}`}
+                          >
+                            <KeyIcon className="h-5 w-5" />
+                          </button>
                           <button 
                             onClick={() => handleDelete(driver)} 
                             className="w-8 h-8 flex items-center justify-center text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
@@ -301,6 +328,50 @@ export default function DriversPage() {
           modalMode={modalMode}
           closeModal={closeModal}
         />
+      </Modal>
+
+      {/* Reset password confirmation */}
+      <Modal isOpen={!!driverToReset} onClose={() => setDriverToReset(null)} title="Reset password?">
+        {driverToReset && (
+          <div>
+            <p className="text-sm text-secondary">
+              <strong>{driverToReset.name}</strong>&apos;s current password stops working right away. You&apos;ll see the new one once, to pass on to them.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setDriverToReset(null)} className="rounded-md border border-secondary bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-card-foreground/5 focus:outline-none focus:ring-2 focus:ring-primary">Cancel</button>
+              <button type="button" onClick={confirmReset} className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500">Reset password</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* One-time login details */}
+      <Modal isOpen={!!credentials} onClose={() => setCredentials(null)} title="Driver login details">
+        {credentials && (
+          <div>
+            <p className="text-sm text-secondary">
+              Give these to <strong>{credentials.name}</strong> to sign in to the driver app. The password is shown only now; they can change it from their profile.
+            </p>
+            <dl className="mt-4 space-y-2 rounded-lg border border-border/60 bg-background p-4 font-mono text-sm">
+              <div className="flex justify-between gap-4"><dt className="text-secondary">Phone</dt><dd className="text-foreground">{credentials.phone_number}</dd></div>
+              <div className="flex justify-between gap-4"><dt className="text-secondary">Password</dt><dd className="select-all text-foreground">{credentials.password}</dd></div>
+            </dl>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(`Phone: ${credentials.phone_number}\nPassword: ${credentials.password}`);
+                  setCopied(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-md border border-secondary bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-card-foreground/5 focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                {copied ? <CheckIcon className="h-4 w-4" /> : <ClipboardDocumentIcon className="h-4 w-4" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+              <button type="button" onClick={() => setCredentials(null)} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary">Done</button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* --- ADDED: Delete Confirmation Modal --- */}

@@ -4,7 +4,8 @@
 import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/apiClient';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { ThemeToggleButton } from '@/app/components/ThemeToggleButton';
 import HomeIcon from '@/app/components/icons/HomeIcon';
 import UsersIcon from '@/app/components/icons/UsersIcon';
 import MapIcon from '@/app/components/icons/MapIcon';
@@ -42,134 +43,122 @@ const navigation = [
   { name: 'Announcements', href: '/announcements', icon: MegaphoneIcon },
 ];
 
-export default function SideNav({ isOpen, onClose, onMouseEnter, onMouseLeave }: { isOpen: boolean; onClose: () => void; onMouseEnter: () => void; onMouseLeave: () => void }) {
+function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     if (isLoggingOut) return;
-    
     setIsLoggingOut(true);
-    try {
-      apiClient.logout();
-      router.replace('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-      alert('Failed to logout. Please try again.');
-      setIsLoggingOut(false);
-    }
+    apiClient.logout();
+    router.replace('/login');
   };
 
-  return (
-    <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-40" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="transition-opacity ease-linear duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="transition-opacity ease-linear duration-300"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-secondary/75" />
-        </Transition.Child>
+  const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`));
 
-        <div className="fixed inset-0 z-40 flex">
+  return (
+    <div className="flex h-full flex-col">
+      {/* Brand */}
+      <div className="flex h-16 shrink-0 items-center gap-3 border-b border-border/60 px-5">
+        <div className="rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 p-2 shadow">
+          <TruckIcon className="h-5 w-5 text-white" aria-hidden="true" />
+        </div>
+        <div className="leading-tight">
+          <div className="text-base font-extrabold text-foreground">MY(suru) BUS</div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-secondary">Admin</div>
+        </div>
+      </div>
+
+      {/* Links */}
+      <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {navigation.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              onClick={onNavigate}
+              aria-current={active ? 'page' : undefined}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                active
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-foreground hover:bg-primary/10'
+              }`}
+            >
+              <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+              {item.name}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="flex shrink-0 items-center gap-2 border-t border-border/60 p-3">
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="flex flex-1 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-red-500/10 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50"
+        >
+          <LogoutIcon className="h-5 w-5" />
+          {isLoggingOut ? 'Signing out…' : 'Sign out'}
+        </button>
+        <ThemeToggleButton />
+      </div>
+    </div>
+  );
+}
+
+// Permanent sidebar on large screens; slide-in drawer (opened from the menu
+// button in the layout) on smaller ones.
+export default function SideNav({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <>
+      <aside className="hidden w-64 shrink-0 border-r border-border/60 bg-card text-card-foreground lg:block">
+        <div className="sticky top-0 h-screen">
+          <NavContent />
+        </div>
+      </aside>
+
+      <Transition.Root show={isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50 lg:hidden" onClose={onClose}>
           <Transition.Child
             as={Fragment}
-            // SUGGESTION: Slower transition for UX
-            enter="transition ease-in-out duration-500 transform" 
-            enterFrom="-translate-x-full"
-            enterTo="translate-x-0"
-            leave="transition ease-in-out duration-500 transform"
-            leaveFrom="translate-x-0"
-            leaveTo="-translate-x-full"
+            enter="transition-opacity ease-linear duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="transition-opacity ease-linear duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
-            <Dialog.Panel
-              className="relative flex w-full max-w-xs flex-1 flex-col bg-gradient-to-b from-card via-card to-slate-50 dark:to-slate-900 text-card-foreground border-r-2 border-primary/20 shadow-2xl"
-              onMouseEnter={onMouseEnter}
-              onMouseLeave={onMouseLeave}
-            >
-              <Transition.Child
-                as={Fragment}
-                enter="ease-in-out duration-500"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="ease-in-out duration-500"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                {/* Close button for mobile/touch users (hidden outside of Dialog context) */}
-                <div className="absolute top-0 right-0 -mr-12 pt-2 sm:hidden">
-                  <button
-                    type="button"
-                    className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                    onClick={onClose}
-                  >
-                    <span className="sr-only">Close sidebar</span>
-                    <XMarkIcon className="h-6 w-6 text-foreground" aria-hidden="true" />
-                  </button>
-                </div>
-              </Transition.Child>
-
-              {/* Logo/Brand Header */}
-              <div className="relative h-24 flex items-center justify-center text-2xl font-bold shrink-0 border-b-2 border-primary/20 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10"></div>
-                <div className="relative flex items-center gap-3">
-                  <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-3 rounded-2xl shadow-lg transform hover:scale-110 transition-transform">
-                    <TruckIcon className="h-7 w-7 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">MY(suru) BUS</div>
-                    <div className="text-[10px] font-semibold text-secondary uppercase tracking-wider">Admin Portal</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Navigation Links */}
-              <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="group relative flex items-center px-4 py-3.5 text-sm font-semibold rounded-xl text-foreground hover:bg-gradient-to-r hover:from-blue-600 hover:to-indigo-600 hover:text-white transition-all duration-300 hover:shadow-lg hover:translate-x-2 overflow-hidden"
-                    onClick={onClose}
-                  >
-                    <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div className="relative flex items-center w-full">
-                      <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-primary/10 group-hover:bg-white/20 transition-all group-hover:scale-110">
-                        <item.icon className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                      </div>
-                      <span className="ml-3">{item.name}</span>
-                      <svg className="ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </Link>
-                ))}
-              </nav>
-
-              {/* Footer (Logout) */}
-              <div className="p-4 border-t-2 border-primary/20 shrink-0 bg-gradient-to-t from-slate-50/50 dark:from-slate-900/50">
-                <button
-                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                  className="group relative flex items-center w-full px-4 py-3.5 text-sm font-semibold rounded-xl text-foreground hover:bg-gradient-to-r hover:from-red-600 hover:to-rose-600 hover:text-white transition-all duration-300 hover:shadow-lg overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="absolute inset-0 bg-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  <div className="relative flex items-center w-full">
-                    <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg bg-red-500/10 group-hover:bg-white/20 transition-all">
-                      <LogoutIcon className="h-5 w-5" />
-                    </div>
-                    <span className="ml-3">{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
-                  </div>
-                </button>
-              </div>
-            </Dialog.Panel>
+            <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
           </Transition.Child>
-        </div>
-      </Dialog>
-    </Transition.Root>
+
+          <div className="fixed inset-0 flex">
+            <Transition.Child
+              as={Fragment}
+              enter="transition ease-out duration-200 transform"
+              enterFrom="-translate-x-full"
+              enterTo="translate-x-0"
+              leave="transition ease-in duration-150 transform"
+              leaveFrom="translate-x-0"
+              leaveTo="-translate-x-full"
+            >
+              <Dialog.Panel className="relative w-72 max-w-[85vw] bg-card text-card-foreground shadow-2xl">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="absolute right-2 top-3 rounded-lg p-2 text-secondary hover:bg-primary/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <span className="sr-only">Close menu</span>
+                  <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                </button>
+                <NavContent onNavigate={onClose} />
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
+        </Dialog>
+      </Transition.Root>
+    </>
   );
 }

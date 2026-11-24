@@ -5,7 +5,8 @@ import { SunIcon, MoonIcon } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 
 export function ThemeToggleButton() {
-  const { theme, setTheme } = useTheme();
+  // resolvedTheme is the theme actually shown ('system' resolves to light or dark).
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -13,26 +14,23 @@ export function ThemeToggleButton() {
   }, []);
 
   if (!mounted) {
-    return (
-      <div className="relative p-3 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-2 border-white/20 dark:border-slate-700/50 shadow-xl w-12 h-12" />
-    );
+    return <div className="h-10 w-10" aria-hidden="true" />;
   }
 
+  const next = resolvedTheme === 'dark' ? 'light' : 'dark';
   return (
     <button
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="relative p-3 rounded-2xl bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border-2 border-white/20 dark:border-slate-700/50 shadow-xl hover:shadow-2xl hover:scale-110 transition-all duration-300 group overflow-hidden w-12 h-12"
-      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      type="button"
+      onClick={() => setTheme(next)}
+      className="flex h-10 w-10 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-primary/10 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      aria-label={`Switch to ${next} mode`}
+      title={`Switch to ${next} mode`}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-400/20 to-orange-400/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-      <div className="relative">
-        {theme === 'light' ? (
-          <MoonIcon className="h-6 w-6 text-slate-700 dark:text-slate-300 group-hover:rotate-12 transition-transform" />
-        ) : (
-          <SunIcon className="h-6 w-6 text-amber-500 group-hover:rotate-90 transition-transform" />
-        )}
-      </div>
+      {resolvedTheme === 'dark' ? (
+        <SunIcon className="h-5 w-5 text-amber-500" aria-hidden="true" />
+      ) : (
+        <MoonIcon className="h-5 w-5" aria-hidden="true" />
+      )}
     </button>
   );
 }

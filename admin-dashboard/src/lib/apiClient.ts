@@ -12,8 +12,6 @@ class ApiClient {
 
   getToken(): string | null {
     if (!this.token && typeof window !== 'undefined') {
-      // Clear any old localStorage tokens
-      localStorage.removeItem('auth_token');
       this.token = localStorage.getItem('auth_token');
     }
     return this.token;
@@ -41,6 +39,15 @@ class ApiClient {
       ...options,
       headers,
     });
+
+    // 401 = missing, invalid or expired session (403 means "signed in but not allowed").
+    if (response.status === 401 && endpoint !== '/auth/admin/login') {
+      this.clearToken();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
+      throw new Error('Your session has expired. Please sign in again.');
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }));
@@ -137,6 +144,10 @@ class ApiClient {
     });
   }
 
+  async resetDriverPassword(id: number) {
+    return this.request(`/drivers/${id}/reset-password`, { method: 'POST' });
+  }
+
   async deleteDriver(id: number) {
     return this.request(`/drivers/${id}`, { method: 'DELETE' });
   }
@@ -224,6 +235,14 @@ class ApiClient {
 
   async deleteTrip(id: number) {
     return this.request(`/trips/${id}`, { method: 'DELETE' });
+  }
+
+  // Create a day's trips from the schedules (default: today in India).
+  async generateTrips(date?: string) {
+    return this.request('/trips/generate', {
+      method: 'POST',
+      body: JSON.stringify(date ? { date } : {}),
+    });
   }
 
   async getTripStops(tripId: number) {

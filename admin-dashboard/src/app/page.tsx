@@ -15,39 +15,40 @@ import HomeIcon from './components/icons/HomeIcon'; // Using HomeIcon temporaril
 
 // 1. Define Stats state
 interface DashboardStats {
-  activeTrips: number;
-  totalBuses: number;
-  totalDrivers: number;
-  newReports: number;
+  // null = still loading or failed to load (shown as "—", never as a misleading 0)
+  activeTrips: number | null;
+  totalBuses: number | null;
+  totalDrivers: number | null;
+  newReports: number | null;
 }
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
-    activeTrips: 0,
-    totalBuses: 0,
-    totalDrivers: 0,
-    newReports: 0,
+    activeTrips: null,
+    totalBuses: null,
+    totalDrivers: null,
+    newReports: null,
   });
 
   useEffect(() => {
     const fetchStats = async () => {
-      try {
-        const [trips, buses, drivers, reports] = await Promise.all([
-          apiClient.getTrips(),
-          apiClient.getBuses(),
-          apiClient.getDrivers(),
-          apiClient.getReports()
-        ]);
-
-        setStats({
-          activeTrips: trips.filter((t: any) => t.status === 'En Route').length,
-          totalBuses: buses.length,
-          totalDrivers: drivers.length,
-          newReports: reports.filter((r: any) => r.status === 'New').length,
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      }
+      // Load each stat on its own, so one failing request doesn't zero the rest.
+      const [trips, buses, drivers, reports] = await Promise.allSettled([
+        apiClient.getTrips(),
+        apiClient.getBuses(),
+        apiClient.getDrivers(),
+        apiClient.getReports(),
+      ]);
+      const list = (r: PromiseSettledResult<any>) => (r.status === 'fulfilled' && Array.isArray(r.value) ? r.value : null);
+      [trips, buses, drivers, reports].forEach((r) => {
+        if (r.status === 'rejected') console.error('Error fetching stats:', r.reason);
+      });
+      setStats({
+        activeTrips: list(trips)?.filter((t: any) => t.status === 'En Route').length ?? null,
+        totalBuses: list(buses)?.length ?? null,
+        totalDrivers: list(drivers)?.length ?? null,
+        newReports: list(reports)?.filter((r: any) => r.status === 'New').length ?? null,
+      });
     };
 
     fetchStats();
@@ -138,7 +139,7 @@ export default function DashboardPage() {
           <div className="relative flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-[10px] sm:text-xs lg:text-sm font-semibold mb-1 uppercase tracking-wide">Active Trips</p>
-              <p className="text-xl sm:text-2xl lg:text-5xl font-bold">{stats.activeTrips}</p>
+              <p className="text-xl sm:text-2xl lg:text-5xl font-bold">{stats.activeTrips ?? '—'}</p>
             </div>
             <div className="bg-white/20 backdrop-blur-sm p-1.5 sm:p-2 lg:p-4 rounded-lg sm:rounded-xl lg:rounded-2xl group-hover:scale-110 transition-transform">
               <MapIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-9 lg:w-9" />
@@ -151,7 +152,7 @@ export default function DashboardPage() {
           <div className="relative flex items-center justify-between">
             <div>
               <p className="text-emerald-100 text-xs sm:text-sm font-semibold mb-1 sm:mb-2 uppercase tracking-wide">Total Buses</p>
-              <p className="text-2xl sm:text-3xl lg:text-5xl font-bold">{stats.totalBuses}</p>
+              <p className="text-2xl sm:text-3xl lg:text-5xl font-bold">{stats.totalBuses ?? '—'}</p>
             </div>
             <div className="bg-white/20 backdrop-blur-sm p-2 sm:p-3 lg:p-4 rounded-xl sm:rounded-2xl group-hover:scale-110 transition-transform">
               <BusIcon className="h-5 w-5 sm:h-7 sm:w-7 lg:h-9 lg:w-9" />
@@ -164,7 +165,7 @@ export default function DashboardPage() {
           <div className="relative flex items-center justify-between">
             <div>
               <p className="text-violet-100 text-xs sm:text-sm font-semibold mb-1 sm:mb-2 uppercase tracking-wide">Total Drivers</p>
-              <p className="text-2xl sm:text-3xl lg:text-5xl font-bold">{stats.totalDrivers}</p>
+              <p className="text-2xl sm:text-3xl lg:text-5xl font-bold">{stats.totalDrivers ?? '—'}</p>
             </div>
             <div className="bg-white/20 backdrop-blur-sm p-2 sm:p-3 lg:p-4 rounded-xl sm:rounded-2xl group-hover:scale-110 transition-transform">
               <UsersIcon className="h-5 w-5 sm:h-7 sm:w-7 lg:h-9 lg:w-9" />
@@ -177,7 +178,7 @@ export default function DashboardPage() {
           <div className="relative flex items-center justify-between">
             <div>
               <p className="text-rose-100 text-xs sm:text-sm font-semibold mb-1 sm:mb-2 uppercase tracking-wide">New Reports</p>
-              <p className="text-2xl sm:text-3xl lg:text-5xl font-bold">{stats.newReports}</p>
+              <p className="text-2xl sm:text-3xl lg:text-5xl font-bold">{stats.newReports ?? '—'}</p>
             </div>
             <div className="bg-white/20 backdrop-blur-sm p-2 sm:p-3 lg:p-4 rounded-xl sm:rounded-2xl group-hover:scale-110 transition-transform">
               <UsersIcon className="h-5 w-5 sm:h-7 sm:w-7 lg:h-9 lg:w-9" />
