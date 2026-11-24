@@ -11,6 +11,24 @@ MY(suru) BUS is a **real-time public transportation management platform** built 
 
 Built from scratch as a full-stack, multi-module monorepo with a custom Node.js backend, JWT authentication, and WebSocket real-time updates.
 
+**Live map:** [my-suru-bus.vercel.app/live](https://my-suru-bus.vercel.app/live). No sign-in needed. Route **D** is a simulated demo bus that a GitHub Actions job drives through the real API every 30 minutes, 06:00–21:30 IST, so there is always a bus to watch.
+
+![Public live map: every route, live buses, next stop, ETA and delay](Assets/screenshots/live-light.jpg)
+
+<details>
+<summary><b>More screenshots</b></summary>
+
+| | |
+|---|---|
+| ![Admin: live monitoring](Assets/screenshots/monitoring.jpg) | ![Admin: route with its stops](Assets/screenshots/route-detail.jpg) |
+| **Admin · Live monitoring**: running and paused trips with how recently each bus reported | **Admin · Route**: stops, time offsets and the route on the map |
+| ![Admin: trips](Assets/screenshots/trips.jpg) | ![Admin: schedule with weekdays and default bus and driver](Assets/screenshots/schedule-form.jpg) |
+| **Admin · Trips**: created automatically each day from the schedules | **Admin · Schedule**: weekdays plus a default bus and driver |
+| ![Live map, dark theme](Assets/screenshots/live-dark.jpg) | <img src="Assets/screenshots/live-mobile.jpg" alt="Live map on a phone" width="260"> |
+| **Live map · dark theme** | **Live map · phone** |
+
+</details>
+
 ---
 
 ## System Architecture
@@ -167,11 +185,12 @@ MY-suru-BUS/
 
 ## Current Status
 
-- ✅ **Backend** — Production-hardened, 14/14 tests passing
-- ✅ **Admin Dashboard** — Fully functional, JWT auth
-- ✅ **Driver App** — GPS tracking, offline sync, geofencing
-- ✅ **Passenger App** — Live bus tracking, route search
-- ⏳ **DB Migration** — See `backend/migrations/` for setup
+- ✅ **Backend**: server-side trip progress and ETAs (schedule + live delay), automatic daily trips, 68 tests
+- ✅ **Admin Dashboard**: Next.js 15; trips, schedules, routes, drivers, live monitoring; public `/live` map
+- ✅ **Driver App**: background GPS with offline queue, sessions that renew mid-shift
+- ✅ **Passenger App**: route search, live buses with stops passed, ETAs and delay
+- ✅ **Builds**: Android APKs built on GitHub Actions ([Docs/ANDROID_BUILDS.md](Docs/ANDROID_BUILDS.md))
+- 📄 **Audits**: [code](Docs/AUDIT_2026-11.md) and [implementation](Docs/IMPLEMENTATION_AUDIT_2026-11.md)
 
 ---
 
