@@ -78,6 +78,8 @@ export default function RootLayout({
 }) {
   const pathname = usePathname();
   const showSideNav = pathname !== '/login';
+  // Public pages: no sign-in, no admin chrome.
+  const isPublicPage = pathname === '/live';
   const [isSideNavOpen, setIsSideNavOpen] = useState(false);
 
   return (
@@ -93,6 +95,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          {isPublicPage ? (
+            <div className="h-full bg-background text-foreground">{children}</div>
+          ) : (
           <AuthCheck>
             {showSideNav && <SessionTimeoutHandler />}
             <div className="flex h-full bg-background text-foreground">
@@ -120,6 +125,7 @@ export default function RootLayout({
               </main>
             </div>
           </AuthCheck>
+          )}
         </ThemeProvider>
       </body>
     </html>

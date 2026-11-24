@@ -1,0 +1,36 @@
+# Drives the demo route's bus ("D — Demo city loop (simulated)") so the public
+# /live page always shows a bus moving. Each run takes the departure due now
+# (one every 30 min, 06:00–21:30 IST), runs it at about the scheduled pace and
+# completes it. See backend/scripts/demo-bus.js and migration 005.
+#
+# Needs the DEMO_DRIVER_PASSWORD repository secret. Disable this workflow to
+# switch the demo off.
+name: Demo bus
+
+on:
+  schedule:
+    # Every 30 min from 05:30 to 22:00 IST (00:00–16:30 UTC). GitHub may start
+    # runs a few minutes late; the bus then shows as running late, as real ones do.
+    - cron: "0,30 0-16 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: demo-bus
+  cancel-in-progress: false
+
+jobs:
+  drive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: backend/scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Drive the demo bus
+        env:
+          API_BASE_URL: https://mysurubus-backend-720g.onrender.com/api
+          DEMO_DRIVER_PASSWORD: ${{ secrets.DEMO_DRIVER_PASSWORD }}
+        run: node backend/scripts/demo-bus.js

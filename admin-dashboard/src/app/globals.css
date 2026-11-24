@@ -77,3 +77,7 @@ body {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 }
+/* Dark map: invert OpenStreetMap tiles instead of using a second tile provider. */
+.osm-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}

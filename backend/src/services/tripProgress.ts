@@ -82,13 +82,35 @@ const lastPassedIndex = (stops: StopRow[]): number => {
   return last;
 };
 
+// Distance (m) from point p to the segment a→b, and how far along it p projects
+// (t: 0 at a, 1 at b). A flat local projection is plenty at city scale.
+const toSegment = (
+  p: { lat: number; lon: number },
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number }
+): { dist: number; t: number } => {
+  const k = Math.cos(toRad(a.lat));
+  const ax = 0, ay = 0;
+  const bx = (b.lon - a.lon) * k, by = b.lat - a.lat;
+  const px = (p.lon - a.lon) * k, py = p.lat - a.lat;
+  const len2 = bx * bx + by * by;
+  const tRaw = len2 === 0 ? 0 : ((px - ax) * bx + (py - ay) * by) / len2;
+  const t = Math.max(0, Math.min(1, tRaw));
+  const cx = bx * t, cy = by * t;
+  const degDist = Math.hypot(px - cx, py - cy);
+  return { dist: degDist * 111_320, t: tRaw };
+};
+
 /**
  * Decide which stops a position means the trip has now passed.
  * Pure, so it can be tested without a database.
  *  - Inside a later stop's circle → that stop is reached (measured); any stops
  *    between it and the last passed one were passed without a fix (inferred).
- *  - Otherwise, clearly beyond the next stop (out of its circle by 2× its radius
- *    and closer to the stop after it than the next stop is) → next stop inferred.
+ *  - Otherwise, the next stop counts as passed (inferred) when the bus is clearly
+ *    on the road *after* it: outside its circle (by 2× the radius), nearer to the
+ *    segment next→after than to the segment leading into the next stop, and
+ *    actually along that segment. Comparing segments, not distances to stops,
+ *    keeps this right on bending routes and loops.
  * Returns the indexes to record, each with whether it was inferred.
  */
 export const stopsPassedAt = (
@@ -108,13 +130,17 @@ export const stopsPassedAt = (
     out.push({ index: reached, inferred: false });
     return out;
   }
+
   const next = lastIdx + 1;
   const after = next + 1;
-  if (after < stops.length) {
-    const legM = distanceM(stops[next].latitude, stops[next].longitude, stops[after].latitude, stops[after].longitude);
-    if (d[next] > 2 * stops[next].radius && d[after] < legM) {
-      return [{ index: next, inferred: true }];
-    }
+  if (after >= stops.length || d[next] <= 2 * stops[next].radius) return [];
+  const pt = { lat, lon };
+  const at = (i: number) => ({ lat: stops[i].latitude, lon: stops[i].longitude });
+  const outward = toSegment(pt, at(next), at(after));
+  const inward = lastIdx >= 0 ? toSegment(pt, at(lastIdx), at(next)) : null;
+  const onOutward = outward.t > 0.05 && outward.dist < 400;
+  if (onOutward && (!inward || outward.dist < inward.dist)) {
+    return [{ index: next, inferred: true }];
   }
   return [];
 };

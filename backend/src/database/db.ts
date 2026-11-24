@@ -10,6 +10,10 @@ dotenv.config();
 // latitude.toFixed, …). Parse them once here.
 types.setTypeParser(types.builtins.INT8, (v) => parseInt(v, 10));
 types.setTypeParser(types.builtins.NUMERIC, (v) => parseFloat(v));
+// A DATE has no time zone: return it as the 'YYYY-MM-DD' it is. Turning it into a
+// JS Date puts it at the server's local midnight, which on a server outside UTC
+// shifts it to the previous day once serialised.
+types.setTypeParser(types.builtins.DATE, (v) => v);
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

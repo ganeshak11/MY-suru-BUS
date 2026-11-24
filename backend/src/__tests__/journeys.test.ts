@@ -39,6 +39,22 @@ describe('which stops a position passes', () => {
     expect(stopsPassedAt(STOPS, 0, 12.305, 76.650)).toEqual([]);
   });
 
+  it('a bending route: just leaving stop 1 is not "beyond" stop 2', () => {
+    // Demo route D: City Bus Stand → KR Circle (south-west) → Railway Station (north).
+    // Right after leaving the bus stand the bus is closer to the railway station
+    // than KR Circle is, but it is on the first leg, not past KR Circle.
+    const D = [
+      { latitude: 12.3051, longitude: 76.6551, radius: 75 },
+      { latitude: 12.2958, longitude: 76.6394, radius: 75 },
+      { latitude: 12.3142, longitude: 76.6374, radius: 75 },
+      { latitude: 12.3011, longitude: 76.6653, radius: 75 },
+    ];
+    expect(stopsPassedAt(D, 0, 12.3040, 76.6532)).toEqual([]);
+    expect(stopsPassedAt(D, 0, 12.3000, 76.6465)).toEqual([]);
+    // Heading north from KR Circle towards the railway station → KR Circle passed.
+    expect(stopsPassedAt(D, 0, 12.3040, 76.6385)).toEqual([{ index: 1, inferred: true }]);
+  });
+
   it('progress never goes backwards', () => {
     expect(stopsPassedAt(STOPS, 1, 12.3001, 76.650)).toEqual([]);
   });

@@ -56,9 +56,10 @@ export default function Home() {
       // after the app is killed or the phone restarts mid-trip, the driver must be
       // able to get straight back to it. Otherwise, today's next scheduled trip.
       const running = trips.find((t: any) => t.status === 'En Route' || t.status === 'Paused');
-      const today = new Date().toDateString();
+      // trip_date is 'YYYY-MM-DD'; compare with today's local date in the same form.
+      const today = new Date().toLocaleDateString('en-CA');
       const nextScheduled = trips
-        .filter((t: any) => t.status === 'Scheduled' && new Date(t.trip_date).toDateString() === today)
+        .filter((t: any) => t.status === 'Scheduled' && String(t.trip_date).slice(0, 10) === today)
         .sort((a: any, b: any) => (a.start_time || '').localeCompare(b.start_time || ''))[0];
       const nextTripData = running ?? nextScheduled;
 
