@@ -35,7 +35,13 @@ interface StopsTimelineProps {
   currentLocation?: { latitude: number; longitude: number };
   tripId?: number;
   busSpeed?: number | null;
+  /** Server times per stop_id (ISO). When given, these replace the on-phone ETA guess. */
+  times?: Record<number, { scheduled?: string | null; eta?: string | null; arrived?: string | null }>;
 }
+
+// HH:MM in India time.
+const clock = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
 
 export const StopsTimeline: React.FC<StopsTimelineProps> = ({
   stops,
@@ -44,6 +50,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
   currentLocation,
   tripId,
   busSpeed,
+  times,
 }) => {
   const { colors } = useTheme();
   const [predictedTimes, setPredictedTimes] = useState<Record<number, string>>({});
@@ -91,7 +98,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
   }, [currentLocation, currentStopIndex]);
 
   useEffect(() => {
-    if (!currentLocation || stops.length === 0) return;
+    if (times || !currentLocation || stops.length === 0) return;
 
     const etas = calculateETAs(
       currentLocation.latitude,
@@ -100,12 +107,12 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
       busSpeed
     );
 
-    const times: Record<number, string> = {};
+    const computed: Record<number, string> = {};
     Object.entries(etas).forEach(([stopId, etaDate]) => {
-      times[Number(stopId)] = etaDate.toISOString();
+      computed[Number(stopId)] = etaDate.toISOString();
     });
-    setPredictedTimes(times);
-  }, [currentLocation, stops, busSpeed]);
+    setPredictedTimes(computed);
+  }, [currentLocation, stops, busSpeed, times]);
 
   const isCompleted = (index: number) => stops[index]?.status === 'Completed';
   const isCurrent = (index: number) => index === currentStopIndex && currentLocation !== undefined;
@@ -190,8 +197,28 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                     {stop.stop_name}
                   </Text>
                   <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                    {/* Server times: scheduled (grey), then arrival or ETA */}
+                    {times?.[stop.stop_id]?.scheduled && (
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.secondaryText }}>
+                        {clock(times[stop.stop_id].scheduled!)}
+                      </Text>
+                    )}
+                    {times && completed && times[stop.stop_id]?.arrived && (
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857' }}>
+                        {clock(times[stop.stop_id].arrived!)}
+                      </Text>
+                    )}
+                    {times && !completed && times[stop.stop_id]?.eta && (() => {
+                      const t = times[stop.stop_id];
+                      const late = t.scheduled ? new Date(t.eta!).getTime() - new Date(t.scheduled).getTime() > 60_000 : false;
+                      return (
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: late ? '#b91c1c' : '#047857' }}>
+                          {late ? 'Expected ' : 'On time '}{clock(t.eta!)}
+                        </Text>
+                      );
+                    })()}
                     {/* Always show scheduled time in grey */}
-                    {stop.time_offset_from_start !== undefined && tripStartTime && (() => {
+                    {!times && stop.time_offset_from_start !== undefined && tripStartTime && (() => {
                       const [startHours, startMinutes] = tripStartTime.split(':').map(Number);
                       const startTotalMinutes = (startHours * 60) + startMinutes;
                       const scheduledTotalMinutes = startTotalMinutes + stop.time_offset_from_start;
@@ -204,8 +231,8 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                       );
                     })()}
                     {/* Show actual arrival time for completed, predicted for pending */}
-                    {completed && stop.actual_arrival_time ? (
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#10b981' }}>
+                    {!times && completed && stop.actual_arrival_time ? (
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#047857' }}>
                         {new Date(stop.actual_arrival_time).toLocaleTimeString('en-IN', { 
                           timeZone: 'Asia/Kolkata',
                           hour: '2-digit', 
@@ -213,7 +240,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                           hour12: false 
                         })}
                       </Text>
-                    ) : !completed && predictedTimes[stop.stop_id] && currentLocation && (() => {
+                    ) : !times && !completed && predictedTimes[stop.stop_id] && currentLocation && (() => {
                       const predictedTime = new Date(predictedTimes[stop.stop_id]);
                       const etaHours = predictedTime.getHours();
                       const etaMinutes = predictedTime.getMinutes();
@@ -226,7 +253,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                         scheduledTime.setHours(Math.floor(scheduledTotalMinutes / 60) % 24, scheduledTotalMinutes % 60, 0, 0);
                         const isOnTime = predictedTime.getTime() <= scheduledTime.getTime();
                         return (
-                          <Text style={{ fontSize: 11, fontWeight: '700', color: isOnTime ? '#10b981' : '#ef4444' }}>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: isOnTime ? '#047857' : '#b91c1c' }}>
                             {etaHours}:{String(etaMinutes).padStart(2, '0')}
                           </Text>
                         );
@@ -236,7 +263,7 @@ export const StopsTimeline: React.FC<StopsTimelineProps> = ({
                   </View>
                 </View>
                 {completed && (
-                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#10b981', backgroundColor: '#10b981' + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#047857', backgroundColor: '#10b981' + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' }}>
                     Completed
                   </Text>
                 )}

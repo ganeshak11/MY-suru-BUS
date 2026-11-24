@@ -81,16 +81,6 @@ const addUpdateToQueue = async (payload: LocationUpdatePayload): Promise<void> =
   }
 };
 
-const formatTimestamp = (): string => {
-  const now = new Date();
-  return now.getFullYear() + '-' +
-    String(now.getMonth() + 1).padStart(2, '0') + '-' +
-    String(now.getDate()).padStart(2, '0') + 'T' +
-    String(now.getHours()).padStart(2, '0') + ':' +
-    String(now.getMinutes()).padStart(2, '0') + ':' +
-    String(now.getSeconds()).padStart(2, '0');
-};
-
 const processLocationQueue = async (): Promise<void> => {
   try {
     const queue = await readQueueSafe();
@@ -281,7 +271,8 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
 
     if (!locations || !Array.isArray(locations) || locations.length === 0) return;
 
-    const location = locations[0];
+    // A batch can hold several fixes; the last one is the newest.
+    const location = locations[locations.length - 1];
     if (!location || !location.coords ||
       typeof location.coords.latitude !== 'number' ||
       typeof location.coords.longitude !== 'number') return;
@@ -302,7 +293,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
     }
 
     const speedKmh = location.coords.speed ? location.coords.speed * 3.6 : 0;
-    const gpsTimestamp = formatTimestamp();
+    // The fix's own time, in UTC (ISO). The old local-time string had no timezone,
+    // so the UTC server read it 5h30 off.
+    const gpsTimestamp = new Date(location.timestamp ?? Date.now()).toISOString();
     const payload: LocationUpdatePayload = {
       bus_id: busId,
       current_latitude: location.coords.latitude,
@@ -325,7 +318,9 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async (task: any) => {
       );
 
       await Promise.race([updatePromise, timeoutPromise]);
-      await processLocationQueue();
+      // We're online and the server has the newest position: older queued points
+      // are history the live map doesn't need (the server would ignore them anyway).
+      await AsyncStorage.multiRemove([LOCATION_QUEUE_KEY, LOCATION_QUEUE_TMP_KEY]);
     } catch (dbError: any) {
       console.error("[BG TASK] DB error:", dbError?.message || dbError);
       await addUpdateToQueue(payload);

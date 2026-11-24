@@ -8,7 +8,7 @@ export const ThemeToggleButton: React.FC = () => {
   const iconName = isDark ? 'sunny' : 'moon';
 
   return (
-    <TouchableOpacity onPress={toggleTheme} style={styles.button}>
+    <TouchableOpacity onPress={toggleTheme} style={styles.button} accessibilityRole="button" accessibilityLabel="Switch light or dark theme" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
       <Ionicons 
         name={iconName} 
         size={24} 

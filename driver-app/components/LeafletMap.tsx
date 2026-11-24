@@ -99,9 +99,12 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({ location, stops = [] }) 
         style={styles.webview}
         scrollEnabled={false}
       />
-      <TouchableOpacity 
-        style={styles.enlargeButton} 
+      <TouchableOpacity
+        style={styles.enlargeButton}
         onPress={() => setIsFullscreen(!isFullscreen)}
+        accessibilityRole="button"
+        accessibilityLabel={isFullscreen ? "Exit full-screen map" : "Full-screen map"}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
         <Ionicons name={isFullscreen ? "contract" : "expand"} size={20} color="#333" />
       </TouchableOpacity>

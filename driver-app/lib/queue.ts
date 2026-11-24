@@ -15,7 +15,7 @@ export type QueuedArrival = {
 // Add an arrival to the persistent queue
 export const queueArrival = async (arrival: QueuedArrival): Promise<void> => {
   try {
-    if (!arrival || typeof arrival.trip_id !== 'number' || typeof arrival.stop_id !== 'number') {
+    if (!arrival || !Number.isFinite(Number(arrival.trip_id)) || !Number.isFinite(Number(arrival.stop_id))) {
       throw new Error('Invalid arrival data');
     }
     const raw = await AsyncStorage.getItem(ARRIVAL_QUEUE_KEY);
@@ -46,7 +46,7 @@ export const processArrivalQueue = async (): Promise<void> => {
 
     for (const arrival of queue) {
       try {
-        await apiClient.markStopArrival(String(arrival.trip_id), String(arrival.stop_id));
+        await apiClient.markStopArrival(String(arrival.trip_id), String(arrival.stop_id), arrival.actual_arrival_time);
         succeeded.push(arrival);
       } catch (err: any) {
         // Keep in queue on network failure; stop processing to preserve order

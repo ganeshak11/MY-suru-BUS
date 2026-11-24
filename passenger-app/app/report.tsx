@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BusAPI } from '../lib/apiClient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -23,12 +23,8 @@ const ReportPage: React.FC = () => {
 
   const fetchActiveTrips = async () => {
     try {
-      const data = await BusAPI.getAllTrips();
-      const today = new Date().toISOString().split('T')[0];
-      const activeTrips = (data || []).filter((t: any) => 
-        t.trip_date === today && ['In Progress', 'Scheduled'].includes(t.status)
-      );
-      setTrips(activeTrips);
+      // Buses running right now; the server picks the driver from the trip.
+      setTrips((await BusAPI.getActiveTrips()) || []);
     } catch (error) {
       console.error('Error fetching trips:', error);
     } finally {
@@ -57,7 +53,6 @@ const ReportPage: React.FC = () => {
         message: message,
         trip_id: selectedTrip.trip_id,
         bus_id: selectedTrip.bus_id,
-        driver_id: selectedTrip.driver_id,
         route_id: selectedTrip.route_id,
       });
 
@@ -117,7 +112,9 @@ const ReportPage: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    // Keep the message box and Submit button above the keyboard.
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
       <Header showBackButton />
       <Text style={styles.header}>Submit a Report</Text>
 
@@ -139,6 +136,11 @@ const ReportPage: React.FC = () => {
           ))}
         </Picker>
       </View>
+      {trips.length === 0 && (
+        <Text style={{ color: currentColors.secondaryText, marginTop: -8, marginBottom: 16 }}>
+          No buses are running right now, so there is nothing to report against. Please try again during service hours.
+        </Text>
+      )}
 
       <Text style={styles.label}>Report Category</Text>
       <View style={styles.pickerContainer}>
@@ -174,6 +176,7 @@ const ReportPage: React.FC = () => {
         <Text style={styles.cancelText}>Cancel</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

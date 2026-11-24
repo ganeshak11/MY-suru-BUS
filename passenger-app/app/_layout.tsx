@@ -7,7 +7,9 @@ import SplashScreen from './SplashScreen';
 // Configure notification handler for when the app is in the foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    // SDK 54 replaced shouldShowAlert with banner/list.
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),

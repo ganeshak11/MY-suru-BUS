@@ -25,9 +25,9 @@ export default function Report() {
 
     setSubmitting(true);
     try {
-      await apiClient.createReport({
-        report_type: reportType,
-        message: message,
+      await apiClient.submitReport({
+        report_type: reportType.trim(),
+        message: message.trim(),
       });
 
       Alert.alert(

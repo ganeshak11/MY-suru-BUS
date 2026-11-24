@@ -532,7 +532,7 @@ const App: React.FC = () => {
           onBlur={() => setTimeout(() => setShowSourceSuggestions(false), BLUR_DELAY)}
           rightIcon={
             source.length > 0 ? (
-              <TouchableOpacity onPress={() => setSource('')}>
+              <TouchableOpacity onPress={() => setSource('')} accessibilityRole="button" accessibilityLabel="Clear start location" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Icon name="close-circle" type="material-community" size={20} color={currentColors.secondaryText} />
               </TouchableOpacity>
             ) : undefined
@@ -542,7 +542,7 @@ const App: React.FC = () => {
         {renderSourceSuggestions()}
       </View>
 
-      <TouchableOpacity onPress={handleSwapLocations} style={styles.swapButton}>
+      <TouchableOpacity onPress={handleSwapLocations} style={styles.swapButton} accessibilityRole="button" accessibilityLabel="Swap start and destination" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Icon name="swap-vert" type="material" color={currentColors.activeTabBackground} size={30} />
       </TouchableOpacity>
 
@@ -560,7 +560,7 @@ const App: React.FC = () => {
           onBlur={() => setTimeout(() => setShowDestinationSuggestions(false), BLUR_DELAY)}
           rightIcon={
             destination.length > 0 ? (
-              <TouchableOpacity onPress={() => setDestination('')}>
+              <TouchableOpacity onPress={() => setDestination('')} accessibilityRole="button" accessibilityLabel="Clear destination" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Icon name="close-circle" type="material-community" size={20} color={currentColors.secondaryText} />
               </TouchableOpacity>
             ) : undefined
@@ -594,7 +594,7 @@ const App: React.FC = () => {
                 <Icon name="history" type="material" size={20} color={currentColors.secondaryText} />
                 <Text style={styles.recentText}>{search}</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => removeRecentSearch(search)} style={{ padding: 4 }}>
+              <TouchableOpacity onPress={() => removeRecentSearch(search)} style={{ padding: 4 }} accessibilityRole="button" accessibilityLabel={`Remove ${search} from recent searches`} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Icon name="close" type="material" size={18} color={currentColors.secondaryText} />
               </TouchableOpacity>
             </View>
@@ -623,7 +623,7 @@ const App: React.FC = () => {
             onChangeText={setRouteNumber}
             rightIcon={
               routeNumber.length > 0 ? (
-                <TouchableOpacity onPress={() => setRouteNumber('')}>
+                <TouchableOpacity onPress={() => setRouteNumber('')} accessibilityRole="button" accessibilityLabel="Clear route number" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                   <Icon name="close-circle" type="material-community" size={20} color={currentColors.secondaryText} />
                 </TouchableOpacity>
               ) : undefined
@@ -691,7 +691,7 @@ const App: React.FC = () => {
       {/* Header and Theme Toggle - Always Visible */}
       <View style={styles.headerCard}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn}>
+          <TouchableOpacity onPress={toggleTheme} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Switch light or dark theme" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Icon name={isDark ? 'moon' : 'sunny'} type="ionicon" color={currentColors.primaryText} />
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: 'center' }}>
@@ -699,10 +699,7 @@ const App: React.FC = () => {
             <Text style={styles.subtitle}>Stop Waiting, Start Tracking...</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={handleShare} style={[styles.iconBtn, { opacity: 0.3 }]} disabled>
-              <Icon name="share-social" type="ionicon" color={currentColors.primaryText} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.push('/menu')} style={styles.iconBtn}>
+            <TouchableOpacity onPress={() => router.push('/menu')} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="Menu" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Icon name="menu" type="ionicon" color={currentColors.primaryText} />
             </TouchableOpacity>
           </View>

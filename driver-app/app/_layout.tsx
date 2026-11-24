@@ -19,7 +19,7 @@ function AuthLayout() {
     }
 
     // Check if we are at the root login screen. segments.length is 0 for '/'
-    const atLogin = segments.length === 0;
+    const atLogin = (segments as string[]).length === 0;
 
     // Check if we are in any "app" screen (e.g., /home or /trip)
     const inApp = segments.length > 0;

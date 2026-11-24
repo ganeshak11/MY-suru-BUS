@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 // In production: set EXPO_PUBLIC_API_BASE_URL in your .env
 // In development: Metro provides hostUri (e.g. "192.168.x.x:8081").
@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 const rawHost = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
 const devHost = Platform.OS === 'android' && rawHost === 'localhost' ? '10.0.2.2' : rawHost;
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? `http://${devHost}:3001/api`;
-console.log('[apiClient] API_BASE_URL resolved to:', API_BASE_URL);
+if (__DEV__) console.log('[apiClient] API_BASE_URL resolved to:', API_BASE_URL);
 
 class ApiClient {
   private token: string | null = null;
@@ -43,12 +43,12 @@ class ApiClient {
     }
 
     const fullUrl = `${API_BASE_URL}${endpoint}`;
-    console.log(`[apiClient] --> ${options.method ?? 'GET'} ${fullUrl}`);
-    if (options.body) {
+    if (__DEV__) console.log(`[apiClient] --> ${options.method ?? 'GET'} ${fullUrl}`);
+    if (__DEV__ && options.body) {
       // Log body but mask password
       try {
         const parsed = JSON.parse(options.body as string);
-        if (parsed.password) parsed.password = '***';
+        for (const k of ['password', 'current_password', 'new_password']) if (parsed[k]) parsed[k] = '***';
         console.log('[apiClient] body:', JSON.stringify(parsed));
       } catch { /* ignore */ }
     }
@@ -61,17 +61,36 @@ class ApiClient {
       throw new Error(`Network error: ${networkErr?.message ?? 'Cannot reach server'}`);
     }
 
-    console.log(`[apiClient] <-- ${response.status} ${response.statusText} from ${endpoint}`);
+    // The server renews a driver's session while it's in use; keep the new token.
+    const renewed = response.headers.get('X-Refreshed-Token');
+    if (renewed) await this.setToken(renewed);
+
+    if (__DEV__) console.log(`[apiClient] <-- ${response.status} ${response.statusText} from ${endpoint}`);
 
     // MOB-04: Detect token expiry / revocation.
     // On 401 or 403, clear the stored token and redirect to login.
     // This prevents the driver getting stuck in a broken authenticated state.
-    if (response.status === 401 || response.status === 403) {
+    // Only 401 means the session is gone. 403 ("not your trip") and the 401 from a
+    // wrong current password on change-password must not log the driver out.
+    if (response.status === 401 && endpoint !== '/drivers/me/change-password') {
       const body = await response.json().catch(() => ({}));
       console.warn('[apiClient] 401/403 — body:', JSON.stringify(body), '| endpoint:', endpoint);
       // Only redirect & clear token for authenticated requests (not the login call itself)
       if (endpoint !== '/auth/driver/login') {
         await this.clearToken();
+        // In the background (location task) nobody would notice: tell the driver
+        // their bus has stopped being tracked.
+        if (AppState.currentState !== 'active') {
+          import('expo-notifications')
+            .then((N) => N.scheduleNotificationAsync({
+              content: {
+                title: 'Bus location sharing stopped',
+                body: 'Your session ended. Open the app and sign in to keep sharing your location.',
+              },
+              trigger: null,
+            }))
+            .catch(() => undefined);
+        }
         try {
           router.replace('/');
         } catch {
@@ -93,12 +112,10 @@ class ApiClient {
 
   // Auth
   async login(phone_number: string, password: string) {
-    console.log('[apiClient] login() called with phone_number:', phone_number);
     const data = await this.request('/auth/driver/login', {
       method: 'POST',
       body: JSON.stringify({ phone_number, password }),
     });
-    console.log('[apiClient] login() success — driver_id:', data?.driver?.driver_id);
     await this.setToken(data.token);
     return data;
   }
@@ -164,8 +181,16 @@ class ApiClient {
     return this.request(`/trips/${tripId}/complete`, { method: 'POST' });
   }
 
-  async markStopArrival(tripId: string, stopId: string) {
-    return this.request(`/trips/${tripId}/stops/${stopId}/arrive`, { method: 'POST' });
+  async markStopArrival(tripId: string, stopId: string, actualArrivalTime?: string) {
+    return this.request(`/trips/${tripId}/stops/${stopId}/arrive`, {
+      method: 'POST',
+      body: JSON.stringify({ actual_arrival_time: actualArrivalTime }),
+    });
+  }
+
+  // Server's view of the trip: stops passed, delay and ETAs.
+  async getTripProgress(tripId: number) {
+    return this.request(`/trips/${tripId}/progress`);
   }
 
   async getTripStops(tripId: string) {

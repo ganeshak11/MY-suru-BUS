@@ -424,7 +424,7 @@ const createStyles = (colors: typeof themeTokens.light) =>
       color: colors.primaryAccent,
     },
     completedBadgeText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
       color: '#10b981',
       backgroundColor: '#10b981' + '15',
@@ -434,7 +434,7 @@ const createStyles = (colors: typeof themeTokens.light) =>
       overflow: 'hidden',
     },
     nextBadgeText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
       color: colors.primaryAccent,
       backgroundColor: colors.primaryAccent + '15',
@@ -453,7 +453,7 @@ const createStyles = (colors: typeof themeTokens.light) =>
       borderTopColor: colors.border + '20',
     },
     scheduledTimeLabel: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
       color: colors.primaryText,
     },
@@ -476,7 +476,7 @@ const createStyles = (colors: typeof themeTokens.light) =>
       backgroundColor: '#ef4444' + '20',
     },
     delayStatusText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
       color: '#10b981',
     },

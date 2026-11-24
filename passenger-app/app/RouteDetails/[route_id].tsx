@@ -8,6 +8,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { RouteLeafletMap } from '../../components/RouteLeafletMap';
 import { StopsTimeline } from '../../components/StopsTimeline';
 import { Header } from '../../components/Header';
+import { useLiveRoute, freshness, stopTimes } from '../../lib/useLiveRoute';
+import { haversineDistance } from '../../lib/haversine';
 
 type StopDetails = {
   stop_id: number;
@@ -28,46 +30,12 @@ const RouteDetailsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [route, setRoute] = useState<{ route_id: number; route_name: string; start_time?: string } | null>(null);
   const [stops, setStops] = useState<StopDetails[]>([]);
-  const [busLocations, setBusLocations] = useState<any[]>([]);
-  const [currentStopIndex, setCurrentStopIndex] = useState(0);
   const [schedules, setSchedules] = useState<{ schedule_id: number; start_time: string; isActive: boolean; trip_id?: number }[]>([]);
   const [selectedStartTime, setSelectedStartTime] = useState<string | null>(null);
-  const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null);
-  const [activeTripId, setActiveTripId] = useState<number | null>(null);
+  // Live trips on this route with the server's progress (stops passed, ETAs).
+  const { trips: liveTrips, loaded: liveLoaded, now } = useLiveRoute(route_id ? Number(route_id) : null);
+  const [selectedTripId, setSelectedTripId] = useState<number | null>(null);
 
-  const getDistance = (from: { latitude: number; longitude: number }, to: { latitude: number; longitude: number }): number => {
-    const R = 6371e3;
-    const φ1 = (from.latitude * Math.PI) / 180;
-    const φ2 = (to.latitude * Math.PI) / 180;
-    const Δφ = ((to.latitude - from.latitude) * Math.PI) / 180;
-    const Δλ = ((to.longitude - from.longitude) * Math.PI) / 180;
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  useEffect(() => {
-    try {
-      if (busLocations.length > 0 && stops.length > 0) {
-        const bus = busLocations[0];
-        if (bus?.current_latitude && bus?.current_longitude) {
-          const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
-
-          for (let i = 0; i < stops.length; i++) {
-            if (stops[i].status === 'Completed') continue;
-            const d = getDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
-            if (d < stops[i].geofence_radius_meters) {
-              setStops(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'Completed' } : s));
-              setCurrentStopIndex(i + 1);
-            }
-            break;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error tracking stop status:', error);
-    }
-  }, [busLocations, stops]);
 
   useEffect(() => {
     const load = async () => {
@@ -265,8 +233,15 @@ const RouteDetailsPage: React.FC = () => {
     );
   }
 
-  const busLocation = busLocations[0] && busLocations[0].current_latitude && busLocations[0].current_longitude
-    ? { latitude: busLocations[0].current_latitude, longitude: busLocations[0].current_longitude }
+  const live = liveTrips.find((t) => t.trip_id === selectedTripId) ?? liveTrips[0] ?? null;
+  const { times, passed } = stopTimes(live?.progress ?? null);
+  const shownStops = stops.map((st) => ({ ...st, status: passed.has(st.stop_id) ? ('Completed' as const) : ('Pending' as const) }));
+  const firstPending = shownStops.findIndex((st) => st.status !== 'Completed');
+  const shownIndex = firstPending === -1 ? shownStops.length : firstPending;
+  const fresh = live ? freshness(live, now) : null;
+  const freshColor = { live: '#047857', stale: '#b45309', lost: '#b91c1c', paused: colors.secondaryText };
+  const busLocation = live
+    ? { latitude: live.bus.current_latitude, longitude: live.bus.current_longitude }
     : undefined;
 
   return (
@@ -279,7 +254,7 @@ const RouteDetailsPage: React.FC = () => {
         <View style={styles.mapCard}>
           <View style={styles.cardHeader}>
             <Ionicons name="information-circle" size={22} color={colors.primaryAccent} />
-            <Text style={styles.cardTitle}>{busLocations.length > 0 ? busLocations.map(b => b.bus_no).join(', ') : 'Bus Details'}</Text>
+            <Text style={styles.cardTitle}>{liveTrips.length > 0 ? liveTrips.map(t => t.bus.bus_no).join(', ') : 'Bus Details'}</Text>
           </View>
           <View style={styles.detailsRow}>
             <View style={styles.detailsLeft}>
@@ -298,7 +273,7 @@ const RouteDetailsPage: React.FC = () => {
                 <Text style={styles.detailLabel}>Distance: </Text>
                 <Text style={styles.detailValue}>{stops.length > 0 ? `${(stops.reduce((acc, stop, idx) => {
                   if (idx === 0) return 0;
-                  return acc + getDistance(
+                  return acc + haversineDistance(
                     { latitude: stops[idx - 1].latitude, longitude: stops[idx - 1].longitude },
                     { latitude: stop.latitude, longitude: stop.longitude }
                   );
@@ -349,22 +324,64 @@ const RouteDetailsPage: React.FC = () => {
           )}
         </View>
 
+        {/* Live status: which bus, how fresh its position is, how late it runs */}
+        <View style={[styles.stopsCard, { padding: 16, gap: 10 }]}>
+          {liveTrips.length > 1 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {liveTrips.map((t) => {
+                const on = t.trip_id === live?.trip_id;
+                return (
+                  <TouchableOpacity
+                    key={t.trip_id}
+                    onPress={() => setSelectedTripId(t.trip_id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`Show bus ${t.bus.bus_no}, ${t.start_time.slice(0, 5)} departure`}
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: colors.primaryAccent, backgroundColor: on ? colors.primaryAccent : 'transparent' }}
+                  >
+                    <Text style={{ color: on ? '#fff' : colors.primaryText, fontWeight: '700', fontSize: 13 }}>
+                      {t.bus.bus_no} · {t.start_time.slice(0, 5)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+          {live && fresh ? (
+            <View accessible accessibilityLabel={`Bus ${live.bus.bus_no}. ${fresh.label}.`}>
+              <Text style={{ color: colors.primaryText, fontWeight: '700', fontSize: 15 }}>
+                Bus {live.bus.bus_no} · {live.start_time.slice(0, 5)} departure
+              </Text>
+              <Text style={{ color: freshColor[fresh.level], fontWeight: '600', marginTop: 4 }}>{fresh.label}</Text>
+              {live.progress && live.progress.delay_min !== 0 && fresh.level !== 'paused' && (
+                <Text style={{ color: live.progress.delay_min > 0 ? '#b91c1c' : '#047857', marginTop: 2 }}>
+                  {live.progress.delay_min > 0 ? `Running ${live.progress.delay_min} min late` : `Running ${-live.progress.delay_min} min early`}
+                </Text>
+              )}
+            </View>
+          ) : liveLoaded ? (
+            <Text style={{ color: colors.secondaryText }}>No bus is running on this route right now.</Text>
+          ) : (
+            <ActivityIndicator color={colors.primaryAccent} />
+          )}
+        </View>
+
         <View style={styles.stopsCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>Route Stops</Text>
             {stops.length > 0 && (
               <View style={styles.progressBadge}>
-                <Text style={styles.progressText}>{currentStopIndex + 1}/{stops.length}</Text>
+                <Text style={styles.progressText}>{Math.min(shownIndex + 1, stops.length)}/{stops.length}</Text>
               </View>
             )}
           </View>
-          <StopsTimeline 
-            stops={stops} 
-            currentStopIndex={currentStopIndex}
-            tripStartTime={route?.start_time} 
-            currentLocation={activeScheduleId && selectedStartTime === schedules.find(s => s.schedule_id === activeScheduleId)?.start_time ? busLocation : undefined}
-            tripId={activeScheduleId && selectedStartTime === schedules.find(s => s.schedule_id === activeScheduleId)?.start_time ? activeTripId || undefined : undefined}
-            busSpeed={busLocations[0]?.current_speed_kmh}
+          <StopsTimeline
+            stops={shownStops}
+            currentStopIndex={shownIndex}
+            currentLocation={busLocation}
+            tripId={live?.trip_id}
+            busSpeed={live?.bus.current_speed_kmh}
+            times={live?.progress ? times : undefined}
           />
         </View>
       </ScrollView>

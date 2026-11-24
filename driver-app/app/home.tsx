@@ -36,7 +36,7 @@ export default function Home() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [nextTrip, setNextTrip] = useState<any | null>(null);
 
-  useNotifications(driver?.driver_id);
+  useNotifications(driver?.driver_id ?? null);
 
   const fetchDriverAndTrip = useCallback(async (isRefresh = false) => {
     if (!driver) return;
@@ -52,21 +52,15 @@ export default function Home() {
     try {
       const trips = await apiClient.getTrips();
       
-      const todayTrips = trips.filter((trip: any) => {
-        const tripDate = new Date(trip.trip_date || trip.created_at);
-        const today = new Date();
-        return tripDate.toDateString() === today.toDateString() &&
-               (trip.status === 'Scheduled' || trip.status === 'In Progress');
-      });
-
-      const sortedTrips = todayTrips.sort((a: any, b: any) => {
-        return (a.start_time || '').localeCompare(b.start_time || '');
-      });
-
-      let nextTripData = sortedTrips.find((t: any) => t.status === 'In Progress');
-      if (!nextTripData) {
-        nextTripData = sortedTrips.find((t: any) => t.status === 'Scheduled');
-      }
+      // A trip already running (or paused) always comes first, whatever its date:
+      // after the app is killed or the phone restarts mid-trip, the driver must be
+      // able to get straight back to it. Otherwise, today's next scheduled trip.
+      const running = trips.find((t: any) => t.status === 'En Route' || t.status === 'Paused');
+      const today = new Date().toDateString();
+      const nextScheduled = trips
+        .filter((t: any) => t.status === 'Scheduled' && new Date(t.trip_date).toDateString() === today)
+        .sort((a: any, b: any) => (a.start_time || '').localeCompare(b.start_time || ''))[0];
+      const nextTripData = running ?? nextScheduled;
 
       if (nextTripData) {
         setNextTrip({
@@ -131,14 +125,14 @@ export default function Home() {
   return (
     <View style={styles.container}>
       <View style={styles.appBar}>
-        <TouchableOpacity onPress={handleSignOut} style={styles.iconButton}>
+        <TouchableOpacity onPress={handleSignOut} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Sign out" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <MaterialIcons name="logout" size={22} color={colors.primaryText} />
         </TouchableOpacity>
         <View style={styles.appBarCenter}>
           <Text style={styles.appBarTitle}>MY(suru) BUS</Text>
         </View>
         <View style={styles.appBarRight}>
-          <TouchableOpacity onPress={() => router.push("/profile")} style={styles.iconButton}>
+          <TouchableOpacity onPress={() => router.push("/profile")} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Profile" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="person-circle-outline" size={24} color={colors.primaryText} />
           </TouchableOpacity>
           <ThemeToggleButton />
@@ -272,7 +266,7 @@ export default function Home() {
                   activeOpacity={0.8}
                 >
                   <Text style={styles.startTripButtonText}>
-                    {nextTrip.status === "En Route" ? "Continue Trip" : "Start Trip"}
+                    {nextTrip.status === "En Route" ? "Continue Trip" : nextTrip.status === "Paused" ? "Resume Trip" : "Start Trip"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -468,7 +462,7 @@ const createStyles = (colors: typeof themeTokens.light) => StyleSheet.create({
   statusText: {
     color: colors.primaryText,
     fontWeight: '700',
-    fontSize: 11,
+    fontSize: 12,
   },
   emptyState: {
     alignItems: 'center',

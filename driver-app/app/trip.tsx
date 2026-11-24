@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Linking,
   Modal,
   Platform,
   ScrollView,
@@ -13,6 +14,7 @@ import {
   View,
 } from "react-native";
 import Constants from 'expo-constants';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const IS_EXPO_GO = Constants.appOwnership === 'expo';
 import { router, useLocalSearchParams } from "expo-router";
@@ -40,6 +42,30 @@ type StopDetails = {
   stop_sequence: number;
   status: "Pending" | "Completed";
   time_offset_from_start?: number;
+};
+
+// Aggressive battery savers (Xiaomi, Infinix, Oppo, …) stop background location.
+// Ask once, at the first trip start, to exempt the app.
+const BATTERY_PROMPT_KEY = "battery_prompt_shown";
+const askBatteryExemptionOnce = async (): Promise<void> => {
+  if (Platform.OS !== "android") return;
+  try {
+    if (await AsyncStorage.getItem(BATTERY_PROMPT_KEY)) return;
+    await AsyncStorage.setItem(BATTERY_PROMPT_KEY, "1");
+  } catch {
+    return;
+  }
+  await new Promise<void>((resolve) =>
+    Alert.alert(
+      "Keep tracking reliable",
+      "Some phones stop apps in the background to save battery, which would stop your bus being shown to passengers. In the next screen, open Battery and choose \"Unrestricted\" or \"Don't optimise\".",
+      [
+        { text: "Later", style: "cancel", onPress: () => resolve() },
+        { text: "Open settings", onPress: () => { Linking.openSettings().catch(() => undefined); resolve(); } },
+      ],
+      { cancelable: false }
+    )
+  );
 };
 
 export default function TripScreen() {
@@ -146,6 +172,36 @@ export default function TripScreen() {
     };
   }, []);
 
+  // Stops passed and the next stop's ETA come from the server, which works them
+  // out from every position this bus sends (so they're right after a restart too).
+  useEffect(() => {
+    if (!trip_id) return;
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const p = await apiClient.getTripProgress(Number(trip_id));
+        if (cancelled || !p?.stops) return;
+        const passed = new Set<number>(
+          p.stops.filter((s: any) => s.arrived_at || s.stop_sequence <= p.last_stop_seq).map((s: any) => Number(s.stop_id))
+        );
+        setStops((prev) => prev.map((s) => ({ ...s, status: passed.has(Number(s.stop_id)) ? "Completed" : "Pending" })));
+        const next = p.stops.find((s: any) => !passed.has(Number(s.stop_id)));
+        setCurrentStopIndex(next ? p.stops.indexOf(next) : p.stops.length);
+        if (next?.eta) {
+          const mins = Math.round((new Date(next.eta).getTime() - Date.now()) / 60000);
+          setEta(mins > 0 ? `${mins} min` : "Arriving");
+        } else {
+          setEta(null);
+        }
+      } catch {
+        // Offline: keep showing the last known progress.
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 15_000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [trip_id]);
+
   const [lastTriggerTime, setLastTriggerTime] = useState<number>(0);
   const [previousDistance, setPreviousDistance] = useState<number | null>(null);
 
@@ -169,14 +225,6 @@ export default function TripScreen() {
       return;
     }
 
-    // Calculate ETA using actual speed or fallback to 50 km/h
-    const currentSpeedMps = location.coords.speed || 0;
-    const currentSpeedKmh = currentSpeedMps * 3.6;
-    const speedKmh = currentSpeedKmh > 5 ? currentSpeedKmh : 50;
-    const distanceKm = d / 1000;
-    const timeHours = distanceKm / speedKmh;
-    const timeMinutes = Math.round(timeHours * 60);
-    setEta(timeMinutes > 0 ? `${timeMinutes} min` : "Arriving");
 
     // HIGH-08: Foreground geofence trigger removed here.
     // We now rely exclusively on the background location task (useDriverLocation.ts)
@@ -221,8 +269,15 @@ export default function TripScreen() {
 
       setStops(formattedStops);
 
+      // A trip paused earlier stays paused until the driver resumes it.
+      if (tripData.status === "Paused") {
+        setIsPaused(true);
+        return;
+      }
+
       // Update trip status to En Route if it's Scheduled
       if (tripData.status === "Scheduled") {
+        await askBatteryExemptionOnce();
         try {
           await apiClient.updateTripStatus(id, "En Route");
           tripData.status = "En Route";
@@ -237,7 +292,7 @@ export default function TripScreen() {
           tripData.bus_id,
           id,
           formattedStops.map(s => ({
-            stop_id: s.stop_id,
+            stop_id: Number(s.stop_id),
             latitude: s.latitude,
             longitude: s.longitude,
             geofence_radius_meters: s.geofence_radius_meters,
@@ -294,16 +349,8 @@ export default function TripScreen() {
     // Queue the arrival for background processing
     await queueArrival({
       trip_id: Number(trip_id),
-      stop_id: stop.stop_id,
-      actual_arrival_time: (() => {
-        const now = new Date();
-        return now.getFullYear() + '-' +
-          String(now.getMonth() + 1).padStart(2, '0') + '-' +
-          String(now.getDate()).padStart(2, '0') + 'T' +
-          String(now.getHours()).padStart(2, '0') + ':' +
-          String(now.getMinutes()).padStart(2, '0') + ':' +
-          String(now.getSeconds()).padStart(2, '0');
-      })(),
+      stop_id: Number(stop.stop_id),
+      actual_arrival_time: new Date().toISOString(),
     });
   };
 
@@ -331,6 +378,14 @@ export default function TripScreen() {
   };
 
   const handlePauseTrip = async () => {
+    // Tell the server first, so passengers see "paused" rather than a frozen bus.
+    try {
+      if (isPaused) await apiClient.resumeTrip(String(trip_id));
+      else await apiClient.pauseTrip(String(trip_id));
+    } catch (e: any) {
+      Alert.alert("Error", `Could not ${isPaused ? "resume" : "pause"} the trip: ${e?.message || "network error"}`);
+      return;
+    }
     if (isPaused) {
       setIsPaused(false);
       if (trip?.bus_id && trip_id) {
@@ -338,7 +393,7 @@ export default function TripScreen() {
           trip.bus_id,
           Number(trip_id),
           stops.map(s => ({
-            stop_id: s.stop_id,
+            stop_id: Number(s.stop_id),
             latitude: s.latitude,
             longitude: s.longitude,
             geofence_radius_meters: s.geofence_radius_meters,
@@ -418,7 +473,7 @@ export default function TripScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Back" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.primaryText} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Live Trip</Text>
@@ -738,7 +793,7 @@ const createStyles = (colors: typeof themeTokens.light) =>
     },
     delayText: {
       color: "#FFFFFF",
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: "700"
     },
     etaBadge: {

@@ -36,12 +36,12 @@ export const Header: React.FC<HeaderProps> = ({ showBackButton, showReportButton
   return (
     <View style={styles.container}>
       {showBackButton && (
-        <TouchableOpacity onPress={onBackPress || (() => router.back())} style={styles.button}>
+        <TouchableOpacity onPress={onBackPress || (() => router.back())} style={styles.button} accessibilityRole="button" accessibilityLabel="Back" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.primaryText} />
         </TouchableOpacity>
       )}
       {showReportButton && (
-        <TouchableOpacity onPress={() => router.push('/report')} style={[styles.button, { marginLeft: 'auto' }]}>
+        <TouchableOpacity onPress={() => router.push('/report')} style={[styles.button, { marginLeft: 'auto' }]} accessibilityRole="button" accessibilityLabel="Report a problem" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="alert-circle-outline" size={24} color={colors.primaryText} />
         </TouchableOpacity>
       )}

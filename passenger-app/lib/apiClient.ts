@@ -87,28 +87,6 @@ export class BusAPI {
   }
 
   // Trips
-  static async getAllTrips() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/trips`);
-      if (!response.ok) throw new Error('Failed to fetch trips');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching trips:', error);
-      throw error;
-    }
-  }
-
-  static async getTrip(tripId: string | number) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/trips/${tripId}`);
-      if (!response.ok) throw new Error('Failed to fetch trip');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching trip:', error);
-      throw error;
-    }
-  }
-
   static async getTripStops(tripId: string | number) {
     try {
       const response = await fetch(`${API_BASE_URL}/trips/${tripId}/stops`);
@@ -143,17 +121,6 @@ export class BusAPI {
     }
   }
 
-  static async getAllReports() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/reports`);
-      if (!response.ok) throw new Error('Failed to fetch reports');
-      return await response.json();
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-      throw error;
-    }
-  }
-
   // Announcements
   static async getAnnouncements() {
     try {
@@ -164,6 +131,13 @@ export class BusAPI {
       console.error('Error fetching announcements:', error);
       throw error;
     }
+  }
+
+  // Running trips (public, no driver details) for the report form.
+  static async getActiveTrips() {
+    const response = await fetch(`${API_BASE_URL}/trips/active`);
+    if (!response.ok) throw new Error('Failed to fetch active trips');
+    return await response.json();
   }
 
   // CRIT-10: Single efficient query — replaces N+1 getAllTrips + getAllBuses

@@ -1,15 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BusAPI } from '../lib/apiClient';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Constants from 'expo-constants';
 import { useTheme } from '../contexts/ThemeContext';
 import { RouteLeafletMap } from '../components/RouteLeafletMap';
 import { StopsTimeline } from '../components/StopsTimeline';
 import { Header } from '../components/Header';
-import { io, Socket } from 'socket.io-client';
+import { useLiveRoute, freshness, stopTimes } from '../lib/useLiveRoute';
 import { haversineDistance } from '../lib/haversine';
 
 type StopDetails = {
@@ -30,55 +29,13 @@ const MapViewScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [route, setRoute] = useState<{ route_id: number; route_name: string; start_time?: string } | null>(null);
   const [stops, setStops] = useState<StopDetails[]>([]);
-  const [busLocations, setBusLocations] = useState<any[]>([]);
-  const [currentStopIndex, setCurrentStopIndex] = useState(0);
-  const [schedules, setSchedules] = useState<{ schedule_id: number; start_time: string; isActive: boolean; trip_id?: number }[]>([]);
-  const [selectedStartTime, setSelectedStartTime] = useState<string | null>(null);
-  const [activeScheduleId, setActiveScheduleId] = useState<number | null>(null);
-  const [activeTripId, setActiveTripId] = useState<number | null>(null);
-
-  const busLocationsRef = useRef<any[]>([]);
-  const socketRef = useRef<Socket | null>(null);
-
-  // Keep busLocationsRef in sync so reconnect handler can access latest state
-  useEffect(() => {
-    busLocationsRef.current = busLocations;
-  }, [busLocations]);
-
-  // RT-04: Whenever busLocations changes (initial load OR any update), (re)join bus rooms.
-  // This handles both: initial load after socket connects, AND reconnect-before-data-loads.
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket || !socket.connected || busLocations.length === 0) return;
-    busLocations.forEach((b: any) => {
-      if (b?.bus_id) socket.emit('join-bus', b.bus_id);
-    });
-  }, [busLocations]);
-
-  // getDistance removed in favor of shared haversineDistance
-
-  useEffect(() => {
-    try {
-      if (busLocations.length > 0 && stops.length > 0) {
-        const bus = busLocations[0];
-        if (bus?.current_latitude && bus?.current_longitude) {
-          const busLocation = { latitude: bus.current_latitude, longitude: bus.current_longitude };
-
-          for (let i = 0; i < stops.length; i++) {
-            if (stops[i].status === 'Completed') continue;
-            const d = haversineDistance(busLocation, { latitude: stops[i].latitude, longitude: stops[i].longitude });
-            if (d < stops[i].geofence_radius_meters) {
-              setStops(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'Completed' } : s));
-              setCurrentStopIndex(i + 1);
-            }
-            break;
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error updating stop status:', error);
-    }
-  }, [busLocations, stops]);
+  // Live buses on this route and the server's progress for each (shared with the
+  // route screen, so both show the same stops passed).
+  const { trips: liveTrips, now } = useLiveRoute(route_id ? Number(route_id) : null);
+  const busLocations = liveTrips.map((t) => t.bus);
+  const { passed } = stopTimes(liveTrips[0]?.progress ?? null);
+  const shownStops = stops.map((st) => ({ ...st, status: passed.has(st.stop_id) ? ('Completed' as const) : ('Pending' as const) }));
+  const freshColor = { live: '#047857', stale: '#b45309', lost: '#b91c1c', paused: colors.secondaryText };
 
   useEffect(() => {
     const load = async () => {
@@ -116,17 +73,6 @@ const MapViewScreen: React.FC = () => {
 
         setRoute({ route_id: routeData.route_id, route_name: routeData.route_name });
 
-        // Fetch only active trips for this specific route (CRIT-10 fix)
-        // This single endpoint replaces the N+1 `getAllTrips` + `getAllBuses` logic
-        const activeTrips = await BusAPI.getActiveTripsForRoute(rid);
-
-        if (activeTrips.length > 0) {
-          // The new endpoint embeds bus payload directly in the trip object
-          const routeBuses = activeTrips.map((t: any) => t.bus).filter(Boolean);
-          setBusLocations(routeBuses);
-
-
-        }
       } catch (e) {
         console.error(e);
       }
@@ -134,51 +80,6 @@ const MapViewScreen: React.FC = () => {
     };
 
     load();
-
-    // CRIT-09: Real-time bus location via Socket.io (was commented-out TODO)
-    const BACKEND_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api', '')
-      ?? `http://${Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost'}:3001`;
-    const socket: Socket = io(BACKEND_URL, {
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionDelay: 2000,
-    });
-
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('[Socket] Connected:', socket.id);
-      // Rejoin rooms if socket reconnects after data is already loaded.
-      // If data hasn't loaded yet, the busLocations useEffect above handles joining
-      // once load() completes and setBusLocations fires.
-      busLocationsRef.current.forEach((b: any) => {
-        if (b?.bus_id) socket.emit('join-bus', b.bus_id);
-      });
-    });
-
-    // When bus locations are loaded, join each bus's room
-    socket.on('bus-location', (data: { busId: number; latitude: number; longitude: number; speed?: number; timestamp?: string }) => {
-      setBusLocations(prev =>
-        prev.map(b =>
-          b.bus_id === data.busId
-            ? { ...b, current_latitude: data.latitude, current_longitude: data.longitude, current_speed_kmh: data.speed }
-            : b
-        )
-      );
-    });
-
-    socket.on('trip-completed', (data: { trip_id: number }) => {
-      // Remove bus from live display when trip ends
-      setBusLocations(prev => prev.filter(b => b.current_trip_id !== data.trip_id));
-    });
-
-    socket.on('disconnect', () => {
-      console.log('[Socket] Disconnected, will reconnect...');
-    });
-
-    return () => {
-      socket.disconnect();
-    };
   }, [route_id]);
 
   const styles = React.useMemo(() => StyleSheet.create({
@@ -343,6 +244,17 @@ const MapViewScreen: React.FC = () => {
             <Text style={styles.cardTitle}>{busLocations.length > 0 ? busLocations.map(b => b.bus_no).join(', ') : 'Bus Details'}</Text>
           </View>
           <View style={{ padding: 20, gap: 8 }}>
+            {liveTrips.map((t) => {
+              const f = freshness(t, now);
+              return (
+                <Text key={t.trip_id} style={{ color: freshColor[f.level], fontWeight: '600' }}>
+                  {t.bus.bus_no}: {f.label}
+                </Text>
+              );
+            })}
+            {liveTrips.length === 0 && (
+              <Text style={{ color: colors.secondaryText }}>No bus is running on this route right now.</Text>
+            )}
             <View style={styles.detailItem}>
               <Ionicons name="navigate-circle" size={18} color={colors.primaryAccent} />
               <Text style={styles.detailLabel}>Route: </Text>
@@ -369,8 +281,8 @@ const MapViewScreen: React.FC = () => {
             <View style={{ height: 1, backgroundColor: colors.secondaryText + '30' }} />
             <View style={styles.detailItem}>
               <Ionicons name="time" size={18} color={colors.primaryAccent} />
-              <Text style={styles.detailLabel}>Trips: </Text>
-              <Text style={styles.detailValue}>{schedules.length}</Text>
+              <Text style={styles.detailLabel}>Live buses: </Text>
+              <Text style={styles.detailValue}>{liveTrips.length}</Text>
             </View>
           </View>
         </View>
@@ -381,7 +293,7 @@ const MapViewScreen: React.FC = () => {
             <Text style={styles.cardTitle}>Live Map</Text>
           </View>
           <View style={{ height: 500, borderRadius: 20, overflow: 'hidden' }}>
-            <RouteLeafletMap stops={stops} buses={busLocations} />
+            <RouteLeafletMap stops={shownStops} buses={busLocations} />
           </View>
         </View>
       </ScrollView>
