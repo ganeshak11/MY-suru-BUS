@@ -118,13 +118,8 @@ passenger-app/
 
 ## Build for Production
 
-```bash
-npm install -g eas-cli
-eas login
-
-eas build --platform android
-eas build --platform ios
-```
+Android APKs are built by GitHub Actions with Gradle (**Actions → Android APKs**), not EAS.
+See [Docs/ANDROID_BUILDS.md](../Docs/ANDROID_BUILDS.md) for downloading builds, release signing and local builds.
 
 ---
 

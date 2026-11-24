@@ -1,0 +1,146 @@
+# Builds the driver and passenger APKs on GitHub's runners with Gradle
+# (expo prebuild → ./gradlew assembleRelease). No EAS.
+#
+# Runs on pushes to main that touch an app, or by hand from the Actions tab
+# (pick one app or both). Each APK is uploaded as an artifact. Install with:
+#   gh run download <run id> -D apk && adb install -r apk/*/*.apk
+#
+# Signing: set these repository secrets to sign with your own release key
+# (required for installing an update over a previous build):
+#   MYSURUBUS_KEYSTORE_B64      base64 of the .jks file
+#   MYSURUBUS_KEYSTORE_PASSWORD
+#   MYSURUBUS_KEY_ALIAS
+#   MYSURUBUS_KEY_PASSWORD
+# Without them the APK is signed with the debug key and still installs, but
+# each build may be signed differently, so updating means uninstalling first.
+name: Android APKs
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Which app to build
+        type: choice
+        options: [both, driver-app, passenger-app]
+        default: both
+  push:
+    branches: [main]
+    paths:
+      - "driver-app/**"
+      - "passenger-app/**"
+      - ".github/workflows/android.yml"
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Baked into the JS bundle at build time.
+  EXPO_PUBLIC_API_BASE_URL: https://mysurubus-backend-720g.onrender.com/api
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.pick.outputs.apps }}
+    steps:
+      - id: pick
+        run: |
+          case "${{ github.event.inputs.app }}" in
+            driver-app)    echo 'apps=["driver-app"]' >> "$GITHUB_OUTPUT" ;;
+            passenger-app) echo 'apps=["passenger-app"]' >> "$GITHUB_OUTPUT" ;;
+            *)             echo 'apps=["driver-app","passenger-app"]' >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  build:
+    needs: pick
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.pick.outputs.apps) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Version
+        id: version
+        run: |
+          name=$(node -p "require('./app.json').expo.version")
+          code=${{ github.run_number }}
+          # Every CI build gets a higher versionCode, so it installs as an update.
+          sed -i -E "s/versionCode [0-9]+/versionCode $code/; s/versionName \"[^\"]*\"/versionName \"$name\"/" android/app/build.gradle
+          grep -E "versionCode|versionName" android/app/build.gradle
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Release signing
+        id: signing
+        env:
+          KS_B64: ${{ secrets.MYSURUBUS_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.MYSURUBUS_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MYSURUBUS_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.MYSURUBUS_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "No signing secrets set: using the debug key."
+            echo "mode=debug key" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          # Android Gradle Plugin's injected signing properties override the
+          # generated build.gradle's signingConfig, so no file edits are needed.
+          {
+            echo "android.injected.signing.store.file=$RUNNER_TEMP/release.jks"
+            echo "android.injected.signing.store.password=$KS_PASS"
+            echo "android.injected.signing.key.alias=$KEY_ALIAS"
+            echo "android.injected.signing.key.password=$KEY_PASS"
+          } >> android/gradle.properties
+          echo "mode=release key" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK
+        working-directory: ${{ matrix.app }}/android
+        env:
+          NODE_ENV: production
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+
+      - name: Collect APK
+        id: apk
+        run: |
+          out="mysurubus-${{ matrix.app }}-v${{ steps.version.outputs.name }}-${{ github.run_number }}.apk"
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          cp android/app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/out/$out"
+          echo "file=$out" >> "$GITHUB_OUTPUT"
+          {
+            echo "### ${{ matrix.app }}"
+            echo "- APK: \`$out\` ($(du -h "$GITHUB_WORKSPACE/out/$out" | cut -f1))"
+            echo "- Signed with: ${{ steps.signing.outputs.mode }}"
+            echo "- Backend: \`$EXPO_PUBLIC_API_BASE_URL\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}
+          path: out/${{ steps.apk.outputs.file }}
+          retention-days: 30

@@ -2,7 +2,6 @@
   "expo": {
     "name": "MY(suru) BUS Passenger",
     "slug": "mysuru-bus-passenger-app",
-    "owner": "ganesh_a_k_22",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -52,19 +51,13 @@
       ]
     ],
     "scheme": "passenger-app",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "9bb7a8b2-1a61-49cb-ac49-0d556121a3d2"
       }
     },
     "updates": {
-      "url": "https://u.expo.dev/9bb7a8b2-1a61-49cb-ac49-0d556121a3d2"
+      "enabled": false
     },
     "ios": {}
   }

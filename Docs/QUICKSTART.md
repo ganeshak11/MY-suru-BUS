@@ -4,7 +4,6 @@
 - Node.js 20+
 - PostgreSQL running locally
 - Expo Go app on your phone (for mobile testing)
-- `eas-cli` installed globally (`npm install -g eas-cli`)
 
 ---
 
@@ -83,19 +82,10 @@ No login required — open and explore.
 
 ---
 
-## Building APKs (EAS Preview Build)
+## Building APKs
 
-```bash
-# Driver app APK (uses Render backend automatically)
-cd driver-app
-eas build --profile preview --platform android
-
-# Passenger app APK
-cd passenger-app
-eas build --profile preview --platform android
-```
-
-EAS builds in the cloud (~10-15 min). Download link provided on completion.
+GitHub Actions builds both APKs with Gradle: **Actions → Android APKs → Run workflow**, then download
+them from the run's Artifacts. Local builds and release signing: [ANDROID_BUILDS.md](ANDROID_BUILDS.md).
 
 ---
 

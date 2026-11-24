@@ -12,8 +12,8 @@ MY(suru) BUS is a full-stack real-time public transportation management platform
 |---|---|---|
 | Backend API | Node.js + Express + PostgreSQL + Socket.io | Render (Docker) |
 | Admin Dashboard | Next.js 14 + TypeScript + Leaflet | Vercel |
-| Driver App | React Native + Expo | EAS Build (APK) |
-| Passenger App | React Native + Expo | EAS Build (APK) |
+| Driver App | React Native + Expo | GitHub Actions + Gradle (APK) |
+| Passenger App | React Native + Expo | GitHub Actions + Gradle (APK) |
 
 ---
 
@@ -62,7 +62,7 @@ MY(suru) BUS is a full-stack real-time public transportation management platform
 - JWT authentication (admin + driver roles)
 - Rate limiting, structured logging (Pino), Sentry, graceful shutdown
 - Docker multi-stage build via `render.yaml`
-- EAS build profiles with baked-in env vars per profile
+- Android APKs built by GitHub Actions with Gradle; backend URL baked in by the workflow
 
 ### ⏳ In Progress / Pending
 - EAS APK builds for driver + passenger (preview profile ready, not yet built)
@@ -93,7 +93,7 @@ MY(suru) BUS is a full-stack real-time public transportation management platform
 - expo-location (foreground + background GPS)
 - expo-task-manager (background tasks)
 - expo-notifications (local push)
-- EAS Build (APK/AAB)
+- GitHub Actions + Gradle (APK)
 
 ---
 

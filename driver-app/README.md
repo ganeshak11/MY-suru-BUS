@@ -125,17 +125,8 @@ driver-app/
 
 ## Build for Production
 
-```bash
-# Install EAS CLI
-npm install -g eas-cli
-eas login
-
-# Android APK
-eas build --platform android
-
-# iOS
-eas build --platform ios
-```
+Android APKs are built by GitHub Actions with Gradle (**Actions → Android APKs**), not EAS.
+See [Docs/ANDROID_BUILDS.md](../Docs/ANDROID_BUILDS.md) for downloading builds, release signing and local builds.
 
 ---
 

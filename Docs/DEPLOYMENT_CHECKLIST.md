@@ -31,8 +31,7 @@
 ## ⏳ Still Todo
 
 ### Mobile Apps
-- [ ] Build driver app APK: `cd driver-app && eas build --profile preview --platform android`
-- [ ] Build passenger app APK: `cd passenger-app && eas build --profile preview --platform android`
+- [ ] Build both APKs: GitHub → Actions → **Android APKs** → Run workflow (see [ANDROID_BUILDS.md](ANDROID_BUILDS.md))
 - [ ] Install and test on physical Android device
 - [ ] End-to-end test: admin creates trip → driver app → passenger tracks
 

@@ -61,16 +61,10 @@ module/
 
 ---
 
-## EAS Builds (Mobile Apps)
+## Mobile App Builds
 
-```bash
-# Preview APK — uses Render backend (baked in via eas.json)
-cd driver-app && eas build --profile preview --platform android
-cd passenger-app && eas build --profile preview --platform android
-
-# Development APK — uses localhost (for Expo dev client)
-cd driver-app && eas build --profile development --platform android
-```
+APKs are built by GitHub Actions with Gradle on every push to `main` that touches an app,
+or by hand from **Actions → Android APKs**. See [ANDROID_BUILDS.md](ANDROID_BUILDS.md).
 
 ---
 
@@ -80,7 +74,7 @@ cd driver-app && eas build --profile development --platform android
 |---|---|
 | Push to `dev` | Vercel auto-deploys admin dashboard |
 | Push to `dev` with Dockerfile/render.yaml changes | Render auto-deploys backend |
-| `eas build --profile preview` | EAS builds APK in cloud |
+| Push to `main` touching `driver-app/` or `passenger-app/` | GitHub Actions builds both APKs |
 
 ---
 

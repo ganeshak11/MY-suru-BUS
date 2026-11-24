@@ -3,7 +3,7 @@
 ## Current State (March 2026)
 ✅ Backend live on Render
 ✅ Admin dashboard live on Vercel (login works)
-✅ Both apps use custom backend, EAS build configs ready
+✅ Both apps use custom backend, Android builds run on GitHub Actions
 ✅ 10 drivers, 10 buses, 15 schedules seeded in prod DB
 
 ---
@@ -16,10 +16,7 @@
 - [ ] Announcements create + display
 
 ### Build APKs
-```bash
-cd driver-app && eas build --profile preview --platform android
-cd passenger-app && eas build --profile preview --platform android
-```
+GitHub → Actions → **Android APKs** → Run workflow (see [ANDROID_BUILDS.md](ANDROID_BUILDS.md))
 - [ ] Driver APK installs and logs in
 - [ ] Passenger APK installs and shows routes
 
