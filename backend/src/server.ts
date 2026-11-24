@@ -1,6 +1,7 @@
 import { server, io } from './app';
 import pool from './database/db';
 import { logger } from './logger';
+import { startDailyTripScheduler } from './services/dailyTrips';
 
 // ─── Startup Cleanup ──────────────────────────────────────────────────────────
 // Edge case: If the server crashed mid-trip, the DB still has trips marked
@@ -10,13 +11,17 @@ import { logger } from './logger';
 const cleanupOrphanedTrips = async (): Promise<void> => {
     const client = await pool.connect();
     try {
-        // Only runs if the server restarts — safe to call every time.
-        // Trips that are 'En Route' but the server just started = orphaned.
+        // A restart alone doesn't mean a trip is dead: drivers keep sending GPS and
+        // the app reconnects. Only pause trips whose bus has gone silent for a while,
+        // otherwise every deploy would hide all live buses from passengers.
         const result = await client.query(`
-      UPDATE trips
+      UPDATE trips t
       SET status = 'Paused'
-      WHERE status = 'En Route'
-      RETURNING trip_id, bus_id
+      FROM buses b
+      WHERE t.status = 'En Route'
+        AND b.bus_id = t.bus_id
+        AND (b.last_updated IS NULL OR b.last_updated < now() - interval '30 minutes')
+      RETURNING t.trip_id, t.bus_id
     `);
 
         if (result.rows.length > 0) {
@@ -29,7 +34,7 @@ const cleanupOrphanedTrips = async (): Promise<void> => {
             }
             logger.warn(
                 { count: result.rows.length, tripIds: result.rows.map((r: any) => r.trip_id) },
-                '⚠️  Server restarted mid-trip — paused orphaned En Route trips. Drivers must resume manually.'
+                'Paused En Route trips whose bus has sent no location for 30+ minutes'
             );
         }
     } catch (err) {
@@ -46,6 +51,8 @@ server.listen(PORT, async () => {
     logger.info(`🚌 MY(suru) BUS Backend running on port ${PORT}`);
     // Run orphan cleanup after server is listening
     await cleanupOrphanedTrips();
+    // Create today's and tomorrow's trips from the schedules (and keep doing so).
+    startDailyTripScheduler();
 });
 
 // ─── Graceful Shutdown ────────────────────────────────────────────────────────

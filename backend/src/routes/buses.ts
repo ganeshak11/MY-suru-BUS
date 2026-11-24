@@ -3,6 +3,8 @@ import pool from '../database/db';
 import { validateBus } from '../middleware/validate';
 import { authenticateToken, requireAdmin, requireDriver, AuthRequest } from '../middleware/auth';
 import { io } from '../app';
+import { logger } from '../logger';
+import { advanceTrip, publishProgress } from '../services/tripProgress';
 
 const router = Router();
 
@@ -64,6 +66,10 @@ router.put('/:id', authenticateToken, requireAdmin, validateBus, async (req: Req
       'UPDATE buses SET bus_no = $1 WHERE bus_id = $2 RETURNING *',
       [bus_no, req.params.id]
     );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Bus not found' });
+      return;
+    }
     res.json(result.rows[0]);
   } catch (err) {
     next(err);
@@ -105,12 +111,13 @@ router.post('/:id/location', authenticateToken, requireDriver, async (req: AuthR
     return;
   }
 
-  // DB-07: Use device GPS timestamp if provided (preserves actual fix time across connectivity gaps).
-  // Fall back to NOW() if not provided or invalid.
-  let lastUpdated: Date | string = 'NOW()';
+  // DB-07: Use the device's GPS fix time when given (it survives connectivity gaps),
+  // but never a time in the future: a wrong phone clock would otherwise make every
+  // real update look "older" and be ignored below.
+  let fixTime = new Date();
   if (gps_timestamp) {
     const parsed = new Date(gps_timestamp);
-    if (!isNaN(parsed.getTime())) lastUpdated = parsed;
+    if (!isNaN(parsed.getTime()) && parsed.getTime() <= Date.now()) fixTime = parsed;
   }
 
   const busId = req.params.id;
@@ -120,12 +127,13 @@ router.post('/:id/location', authenticateToken, requireDriver, async (req: AuthR
   }
   try {
     // Only the driver running a live trip on this bus may report its position.
-    // 'Paused' is allowed because a server restart pauses in-flight trips.
+    // 'Paused' is allowed so a brief pause doesn't drop the driver's updates.
     // 409 (not 403) on purpose: the driver app logs out on 401/403, and a late
     // queued point after a trip ends is a state conflict, not a bad session.
     const activeTrip = await pool.query(
-      `SELECT 1 FROM trips
+      `SELECT trip_id, status FROM trips
        WHERE bus_id = $1 AND driver_id = $2 AND status IN ('En Route', 'Paused')
+       ORDER BY (status = 'En Route') DESC
        LIMIT 1`,
       [busId, req.user?.driver_id]
     );
@@ -134,25 +142,40 @@ router.post('/:id/location', authenticateToken, requireDriver, async (req: AuthR
       return;
     }
 
+    // Only move the bus forward in time. Points replayed from the driver app's
+    // offline queue are older than what we already have, so they must not drag
+    // the bus back to where it was minutes ago.
     const result = await pool.query(
       `UPDATE buses SET
         current_latitude = $1,
         current_longitude = $2,
         current_speed_kmh = $3,
         last_updated = $4
-      WHERE bus_id = $5
+      WHERE bus_id = $5 AND (last_updated IS NULL OR last_updated <= $4)
       RETURNING *`,
-      [lat, lon, spd, lastUpdated === 'NOW()' ? new Date() : lastUpdated, busId]
+      [lat, lon, spd, fixTime, busId]
     );
-    try {
-      io.to(`bus-${busId}`).emit('bus-location', {
-        busId: Number(busId),
-        latitude: lat,
-        longitude: lon,
-        speed: spd,
-        timestamp: lastUpdated === 'NOW()' ? new Date().toISOString() : (lastUpdated as Date).toISOString(),
-      });
-    } catch (_e) { /* socket emit is non-critical */ }
+    if (result.rows.length === 0) {
+      res.json({ message: 'Ignored: older than the current position', stale: true });
+      return;
+    }
+    io.to(`bus-${busId}`).emit('bus-location', {
+      busId: Number(busId),
+      latitude: lat,
+      longitude: lon,
+      speed: spd,
+      timestamp: fixTime.toISOString(),
+    });
+    // Work out which stops this position means the trip has passed, and tell
+    // passengers if that changed. Never fail the location update over it.
+    const trip = activeTrip.rows[0];
+    if (trip.status === 'En Route') {
+      try {
+        if (await advanceTrip(trip.trip_id, lat, lon, fixTime)) await publishProgress(trip.trip_id);
+      } catch (err) {
+        logger.error({ err, trip_id: trip.trip_id }, 'Trip progress update failed');
+      }
+    }
     res.json({ message: 'Location updated', bus: result.rows[0] });
   } catch (err) {
     next(err);

@@ -12,24 +12,38 @@ export const validateBus = (req: Request, res: Response, next: NextFunction): vo
   next();
 };
 
+// Indian mobile number: 10 digits starting 6-9, optionally prefixed with +91.
+export const PHONE_RE = /^(\+91)?[6-9]\d{9}$/;
+
 export const validateDriver = (req: Request, res: Response, next: NextFunction): void => {
-  const { name, phone_number, password } = req.body;
+  const { name, phone_number, password, email } = req.body ?? {};
 
   if (!name || typeof name !== 'string' || name.trim().length < 2) {
     res.status(400).json({ error: 'Name must be at least 2 characters' });
     return;
   }
 
-  if (!phone_number || typeof phone_number !== 'string') {
-    res.status(400).json({ error: 'Phone number is required' });
+  if (typeof phone_number !== 'string' || !PHONE_RE.test(phone_number.replace(/[\s-]/g, ''))) {
+    res.status(400).json({ error: 'Phone number must be a 10-digit Indian mobile number' });
     return;
   }
 
-  if (req.method === 'POST' && (!password || password.length < 6)) {
-    res.status(400).json({ error: 'Password must be at least 6 characters' });
+  if (email && (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+    res.status(400).json({ error: 'Email address is not valid' });
     return;
   }
 
+  // Password is optional on create (a random one is generated) and ignored on update.
+  if (req.method === 'POST' && password !== undefined && password !== '' &&
+      (typeof password !== 'string' || password.length < 8)) {
+    res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return;
+  }
+
+  // Store numbers in one format (+91XXXXXXXXXX) so login lookups match.
+  const digits = phone_number.replace(/[\s-]/g, '');
+  req.body.phone_number = digits.startsWith('+91') ? digits : `+91${digits}`;
+  req.body.name = name.trim();
   next();
 };
 

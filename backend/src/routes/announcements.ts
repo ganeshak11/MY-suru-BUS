@@ -1,19 +1,19 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import pool from '../database/db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response): Promise<void> => {
+router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
-router.post('/', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { title, message } = req.body;
 
@@ -28,12 +28,12 @@ router.post('/', authenticateToken, requireAdmin, async (req: Request, res: Resp
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
 // CRIT-01: these two routes were completely missing
-router.put('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { title, message } = req.body;
 
@@ -52,11 +52,11 @@ router.put('/:id', authenticateToken, requireAdmin, async (req: Request, res: Re
     }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
-router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query(
       'DELETE FROM announcements WHERE announcement_id = $1 RETURNING announcement_id',
@@ -68,7 +68,7 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res:
     }
     res.json({ message: 'Announcement deleted' });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 

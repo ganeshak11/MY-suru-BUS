@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { authenticateToken, requireAdmin, requireDriver, AuthRequest } from '../middleware/auth';
 import { logger } from '../logger';
+import { validateDriver, PHONE_RE } from '../middleware/validate';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res, next) => {
   try {
     const result = await pool.query(`
       SELECT
-        ${DRIVER_SAFE_COLS},
+        d.driver_id, d.name, d.email, d.phone_number, d.profile_photo_url,
         COALESCE(json_agg(json_build_object('trip_id', t.trip_id, 'status', t.status)) FILTER (WHERE t.trip_id IS NOT NULL AND t.status = 'En Route'), '[]') as trips,
         COALESCE(json_agg(json_build_object('count', report_count.cnt)) FILTER (WHERE report_count.cnt IS NOT NULL), '[]') as passenger_reports
       FROM drivers d
@@ -91,14 +92,18 @@ router.get('/me', authenticateToken, requireDriver, async (req: AuthRequest, res
 // PATCH /drivers/me — update own name and phone (driver self-service)
 router.patch('/me', authenticateToken, requireDriver, async (req: AuthRequest, res: any, next: any) => {
   const driverId = req.user?.driver_id;
-  const { name, phone_number } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'name is required' });
+  const { name, phone_number } = req.body ?? {};
+  if (typeof name !== 'string' || name.trim().length < 2) return res.status(400).json({ error: 'Name must be at least 2 characters' });
+  const phone = typeof phone_number === 'string' ? phone_number.replace(/[\s-]/g, '') : '';
+  if (!PHONE_RE.test(phone)) {
+    return res.status(400).json({ error: 'Phone number must be a 10-digit Indian mobile number' });
+  }
   try {
     const result = await pool.query(
       `UPDATE drivers SET name = $1, phone_number = $2
        WHERE driver_id = $3
        RETURNING ${DRIVER_SAFE_COLS}`,
-      [name.trim(), phone_number?.trim() ?? null, driverId]
+      [name.trim(), phone.startsWith('+91') ? phone : `+91${phone}`, driverId]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Driver not found' });
     res.json(result.rows[0]);
@@ -128,11 +133,8 @@ router.get('/:id', authenticateToken, requireAdmin, async (req, res, next) => {
   }
 });
 
-router.post('/', authenticateToken, requireAdmin, async (req, res, next) => {
+router.post('/', authenticateToken, requireAdmin, validateDriver, async (req, res, next) => {
   const { name, phone_number, email, password } = req.body;
-  if (!name || !phone_number) {
-    return res.status(400).json({ error: 'Name and phone_number are required' });
-  }
   try {
     // Cryptographically random initial password (12 chars), shown once to the admin.
     const rawPassword = password || crypto.randomBytes(9).toString('base64url');
@@ -148,12 +150,12 @@ router.post('/', authenticateToken, requireAdmin, async (req, res, next) => {
   }
 });
 
-router.put('/:id', authenticateToken, requireAdmin, async (req, res, next) => {
+router.put('/:id', authenticateToken, requireAdmin, validateDriver, async (req, res, next) => {
   const { name, phone_number, email } = req.body;
   try {
     const result = await pool.query(
       'UPDATE drivers SET name = $1, phone_number = $2, email = $3 WHERE driver_id = $4 RETURNING driver_id, name, phone_number, email, profile_photo_url',
-      [name, phone_number, email, req.params.id]
+      [name, phone_number, email || null, req.params.id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Driver not found' });
@@ -172,8 +174,26 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res, next) =>
       return res.status(404).json({ error: 'Driver not found' });
     }
     res.json({ message: 'Driver deleted successfully' });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === '23503') {
+      return res.status(409).json({ error: 'This driver still has trips. Reassign or delete those trips first.' });
+    }
     logger.error({ error }, 'Error deleting driver');
+    next(error);
+  }
+});
+
+// Admin resets a driver's password (e.g. forgotten); the new one is shown once.
+router.post('/:id/reset-password', authenticateToken, requireAdmin, async (req, res, next) => {
+  try {
+    const newPassword = crypto.randomBytes(9).toString('base64url');
+    const result = await pool.query(
+      'UPDATE drivers SET password_hash = $1 WHERE driver_id = $2 RETURNING driver_id, name, phone_number',
+      [await bcrypt.hash(newPassword, 12), req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Driver not found' });
+    res.json({ ...result.rows[0], initial_password: newPassword });
+  } catch (error) {
     next(error);
   }
 });
@@ -194,7 +214,7 @@ router.post('/me/change-password', authenticateToken, requireDriver, async (req:
     const { password_hash } = row.rows[0];
     if (!password_hash) return res.status(401).json({ error: 'Account not activated. Contact admin.' });
     const valid = await bcrypt.compare(current_password, password_hash);
-    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+    if (!valid) return res.status(400).json({ error: 'Current password is incorrect' });
     const newHash = await bcrypt.hash(new_password, 12);
     await pool.query('UPDATE drivers SET password_hash = $1 WHERE driver_id = $2', [newHash, driverId]);
     res.json({ message: 'Password updated successfully' });

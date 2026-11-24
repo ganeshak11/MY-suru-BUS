@@ -46,9 +46,13 @@ describe('PATCH /api/trips/:id/status \u2014 validation', () => {
     });
 
     it('returns 200 with valid status', async () => {
-        // First query: ownership check (SELECT driver_id FROM trips WHERE trip_id = 1)
-        mockQuery.mockResolvedValueOnce({ rows: [{ driver_id: 1 }] });
-        // Second query: the actual UPDATE
+        // 1. load trip (ownership + current status)
+        mockQuery.mockResolvedValueOnce({ rows: [{ trip_id: 1, driver_id: 1, bus_id: 1, route_id: 1, status: 'Scheduled' }] });
+        // 2. no other live trip on this bus
+        mockQuery.mockResolvedValueOnce({ rows: [] });
+        // 3. conditional UPDATE trips
+        mockQuery.mockResolvedValueOnce({ rows: [{ trip_id: 1 }] });
+        // 4. UPDATE buses.current_trip_id
         mockQuery.mockResolvedValueOnce({ rows: [] });
         const res = await request(app)
             .patch('/api/trips/1/status')

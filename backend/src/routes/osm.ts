@@ -22,24 +22,26 @@ const router = Router();
 
 // Default to the public OSRM demo server.
 // Override with OSRM_BASE_URL in production to use a self-hosted instance.
-const OSRM_BASE = (process.env.OSRM_BASE_URL ?? 'http://router.project-osrm.org').replace(/\/$/, '');
+// `||`, not `??`: render.yaml sets OSRM_BASE_URL to "" to mean "use the default".
+const OSRM_BASE = (process.env.OSRM_BASE_URL || 'https://router.project-osrm.org').replace(/\/$/, '');
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
-
-async function osrmFetch(url: string): Promise<Response | { status: number; json: () => Promise<unknown> }> {
-    const res = await fetch(url);
-    return res;
-}
+// Parse a coordinate query param; null if missing or out of range.
+const coord = (v: unknown, max: number): number | null => {
+    const n = Number(v);
+    return v !== undefined && v !== '' && Number.isFinite(n) && Math.abs(n) <= max ? n : null;
+};
 
 // ─── GET /api/osm/route ───────────────────────────────────────────────────────
 
 router.get('/route', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const { start_lat, start_lon, end_lat, end_lon } = req.query as Record<string, string>;
+        const q = req.query as Record<string, string>;
+        const start_lat = coord(q.start_lat, 90), start_lon = coord(q.start_lon, 180);
+        const end_lat = coord(q.end_lat, 90), end_lon = coord(q.end_lon, 180);
 
-        if (!start_lat || !start_lon || !end_lat || !end_lon) {
+        if (start_lat === null || start_lon === null || end_lat === null || end_lon === null) {
             res.status(400).json({
-                error: 'Missing required query params: start_lat, start_lon, end_lat, end_lon',
+                error: 'start_lat, start_lon, end_lat and end_lon must be valid coordinates',
             });
             return;
         }
@@ -53,7 +55,7 @@ router.get('/route', async (req: Request, res: Response, next: NextFunction): Pr
         if (!upstream.ok) {
             const body = await upstream.text();
             logger.warn({ status: upstream.status, body }, 'OSM proxy: upstream error');
-            res.status(502).json({ error: 'Upstream OSRM error', detail: body });
+            res.status(502).json({ error: 'Routing service error' });
             return;
         }
 
@@ -68,10 +70,10 @@ router.get('/route', async (req: Request, res: Response, next: NextFunction): Pr
 
 router.get('/nearest', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const { lat, lon } = req.query as Record<string, string>;
+        const lat = coord(req.query.lat, 90), lon = coord(req.query.lon, 180);
 
-        if (!lat || !lon) {
-            res.status(400).json({ error: 'Missing required query params: lat, lon' });
+        if (lat === null || lon === null) {
+            res.status(400).json({ error: 'lat and lon must be valid coordinates' });
             return;
         }
 
@@ -82,7 +84,7 @@ router.get('/nearest', async (req: Request, res: Response, next: NextFunction): 
 
         if (!upstream.ok) {
             const body = await upstream.text();
-            res.status(502).json({ error: 'Upstream OSRM error', detail: body });
+            res.status(502).json({ error: 'Routing service error' });
             return;
         }
 

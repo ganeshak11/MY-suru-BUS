@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from '../database/db';
-import { JWT_SECRET } from '../middleware/auth';
+import { JWT_SECRET, signDriverToken } from '../middleware/auth';
 import { logger } from '../logger';
 
 const router = Router();
@@ -12,7 +12,6 @@ const router = Router();
 
 router.post('/driver/login', async (req: Request, res: Response): Promise<void> => {
   const { phone_number, password } = req.body;
-  logger.info({ phone_number }, '[driver/login] Login attempt');
 
   if (!phone_number || !password) {
     logger.warn('[driver/login] Missing phone_number or password in request body');
@@ -21,8 +20,11 @@ router.post('/driver/login', async (req: Request, res: Response): Promise<void> 
   }
 
   // Normalize: accept both "9876543210" and "+919876543210"
+  if (typeof phone_number !== 'string' || typeof password !== 'string') {
+    res.status(400).json({ error: 'Phone number and password required' });
+    return;
+  }
   const normalized = phone_number.startsWith('+') ? phone_number : `+91${phone_number}`;
-  logger.info({ normalized }, '[driver/login] Normalized phone number');
 
   try {
     const result = await pool.query(
@@ -30,10 +32,9 @@ router.post('/driver/login', async (req: Request, res: Response): Promise<void> 
       [phone_number, normalized]
     );
     const driver = result.rows[0];
-    logger.info({ found: !!driver, driver_id: driver?.driver_id }, '[driver/login] DB lookup result');
 
     if (!driver) {
-      logger.warn({ phone_number, normalized }, '[driver/login] No driver found with that phone number');
+      logger.warn('[driver/login] No driver with that phone number');
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
@@ -44,9 +45,7 @@ router.post('/driver/login', async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    logger.info({ driver_id: driver.driver_id }, '[driver/login] Comparing password with bcrypt...');
     const validPassword = await bcrypt.compare(password, driver.password_hash);
-    logger.info({ driver_id: driver.driver_id, validPassword }, '[driver/login] bcrypt.compare result');
 
     if (!validPassword) {
       logger.warn({ driver_id: driver.driver_id }, '[driver/login] Password mismatch');
@@ -54,12 +53,8 @@ router.post('/driver/login', async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // HIGH-S04: Reduced from 7d to 24h. For long-lived sessions, implement refresh tokens.
-    const token = jwt.sign(
-      { driver_id: driver.driver_id, role: 'driver' },
-      JWT_SECRET!,
-      { expiresIn: '24h' }
-    );
+    // 7 days, renewed automatically while the app is in use (see middleware/auth.ts).
+    const token = signDriverToken(driver.driver_id);
 
     logger.info({ driver_id: driver.driver_id }, '[driver/login] Login SUCCESS — token issued');
     res.json({
@@ -94,11 +89,7 @@ router.post('/admin/login', async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // MIN-S01: admins table must have a password_hash column.
-    //   ALTER TABLE admins ADD COLUMN IF NOT EXISTS password_hash text;
-    // Then set a password for your admin row:
-    //   UPDATE admins SET password_hash = crypt('YourPassword', gen_salt('bf')) WHERE email = 'admin@mybus.com';
-    // OR use the /api/admin/setup-password endpoint below (one-time use).
+    // Admins are created with `npx ts-node src/create-admin.ts` (ADMIN_EMAIL / ADMIN_PASSWORD).
     const validPassword = admin.password_hash
       ? await bcrypt.compare(password, admin.password_hash)
       : false;

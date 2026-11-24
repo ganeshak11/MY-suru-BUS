@@ -42,8 +42,8 @@ describe('trip actions require the assigned driver', () => {
   });
 
   it('owner can complete their trip', async () => {
-    ownedByA();
-    mockQuery.mockResolvedValueOnce({ rows: [{ bus_id: '5' }] }); // UPDATE trips … RETURNING bus_id
+    mockQuery.mockResolvedValueOnce({ rows: [{ trip_id: 42, driver_id: '1', bus_id: 5, route_id: 2, status: 'En Route' }] });
+    mockQuery.mockResolvedValueOnce({ rows: [{ trip_id: 42 }] }); // conditional UPDATE trips
     mockQuery.mockResolvedValueOnce({ rows: [] });                // UPDATE buses
     const res = await request(app).post('/api/trips/42/complete').set('Authorization', driverA);
     expect(res.status).toBe(200);
@@ -145,9 +145,9 @@ describe('passenger reports', () => {
 // ─── M7: generated driver passwords ───────────────────────────────────────────
 describe('POST /api/drivers', () => {
   it('generates a 12-character random initial password', async () => {
-    mockQuery.mockResolvedValue({ rows: [{ driver_id: '3', name: 'R', phone_number: '+911', email: null }] });
+    mockQuery.mockResolvedValue({ rows: [{ driver_id: 3, name: 'Ravi', phone_number: '+919876500000', email: null }] });
     const res = await request(app).post('/api/drivers').set('Authorization', admin)
-      .send({ name: 'Ravi', phone_number: '+911' });
+      .send({ name: 'Ravi', phone_number: '9876500000' });
     expect(res.status).toBe(201);
     expect(res.body.initial_password).toMatch(/^[A-Za-z0-9_-]{12}$/);
   });

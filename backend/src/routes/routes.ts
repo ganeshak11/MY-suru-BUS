@@ -1,6 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { PoolClient } from 'pg';
 import pool from '../database/db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { validateRoute } from '../middleware/validate';
+import { escapeLike, isId } from '../middleware/params';
+import { getTripProgress } from '../services/tripProgress';
 
 const router = Router();
 
@@ -35,35 +39,40 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
   }
 });
 
-router.post('/', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, requireAdmin, validateRoute, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { route_name, route_no } = req.body;
     const result = await pool.query(
       'INSERT INTO routes (route_name, route_no) VALUES ($1, $2) RETURNING *',
-      [route_name, route_no]
+      [route_name.trim(), route_no.trim()]
     );
-    res.json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
-router.put('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', authenticateToken, requireAdmin, validateRoute, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { route_name, route_no } = req.body;
     const result = await pool.query(
       'UPDATE routes SET route_name = $1, route_no = $2 WHERE route_id = $3 RETURNING *',
-      [route_name, route_no, req.params.id]
+      [route_name.trim(), route_no.trim(), req.params.id]
     );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Route not found' });
+      return;
+    }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
 router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const client = await pool.connect();
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     const routeId = req.params.id;
 
@@ -100,21 +109,27 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res:
 
     await client.query('DELETE FROM schedules WHERE route_id = $1', [routeId]);
     await client.query('DELETE FROM route_stops WHERE route_id = $1', [routeId]);
-    await client.query('DELETE FROM routes WHERE route_id = $1', [routeId]);
+    const deleted = await client.query('DELETE FROM routes WHERE route_id = $1 RETURNING route_id', [routeId]);
     await client.query('COMMIT');
+    if (deleted.rows.length === 0) {
+      res.status(404).json({ error: 'Route not found' });
+      return;
+    }
     res.json({ message: 'Route deleted' });
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client?.query('ROLLBACK').catch(() => undefined);
     next(err);
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
-router.get('/:id/stops', async (req: Request, res: Response): Promise<void> => {
+// ─── Route stops ──────────────────────────────────────────────────────────────
+
+router.get('/:id/stops', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query(`
-      SELECT s.*, rs.stop_sequence, rs.time_offset_from_start
+      SELECT s.*, rs.route_stop_id, rs.stop_sequence, rs.time_offset_from_start
       FROM stops s
       JOIN route_stops rs ON s.stop_id = rs.stop_id
       WHERE rs.route_id = $1
@@ -122,7 +137,94 @@ router.get('/:id/stops', async (req: Request, res: Response): Promise<void> => {
     `, [req.params.id]);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
+  }
+});
+
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+// Validates the body shared by add/update. Responds and returns null when invalid.
+const readRouteStopBody = (req: Request, res: Response) => {
+  const { stop_id, stop_sequence, time_offset_from_start } = req.body ?? {};
+  const seq = Number(stop_sequence);
+  if (!isId(stop_id)) {
+    res.status(400).json({ error: 'stop_id must be a stop id' });
+    return null;
+  }
+  if (!Number.isInteger(seq) || seq < 1) {
+    res.status(400).json({ error: 'stop_sequence must be a whole number from 1' });
+    return null;
+  }
+  if (time_offset_from_start != null && !TIME_RE.test(String(time_offset_from_start))) {
+    res.status(400).json({ error: 'time_offset_from_start must look like HH:MM or HH:MM:SS' });
+    return null;
+  }
+  return { stopId: Number(stop_id), seq, offset: time_offset_from_start ?? null };
+};
+
+router.post('/:id/stops', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const body = readRouteStopBody(req, res);
+  if (!body) return;
+  try {
+    const clash = await pool.query(
+      'SELECT 1 FROM route_stops WHERE route_id = $1 AND stop_sequence = $2',
+      [req.params.id, body.seq]
+    );
+    if (clash.rows.length > 0) {
+      res.status(409).json({ error: `Sequence ${body.seq} is already used on this route` });
+      return;
+    }
+    const result = await pool.query(
+      `INSERT INTO route_stops (route_id, stop_id, stop_sequence, time_offset_from_start)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [req.params.id, body.stopId, body.seq, body.offset]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/:id/stops/:routeStopId', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const body = readRouteStopBody(req, res);
+  if (!body) return;
+  try {
+    const clash = await pool.query(
+      'SELECT 1 FROM route_stops WHERE route_id = $1 AND stop_sequence = $2 AND route_stop_id <> $3',
+      [req.params.id, body.seq, req.params.routeStopId]
+    );
+    if (clash.rows.length > 0) {
+      res.status(409).json({ error: `Sequence ${body.seq} is already used on this route` });
+      return;
+    }
+    const result = await pool.query(
+      `UPDATE route_stops SET stop_id = $1, stop_sequence = $2, time_offset_from_start = $3
+       WHERE route_stop_id = $4 AND route_id = $5 RETURNING *`,
+      [body.stopId, body.seq, body.offset, req.params.routeStopId, req.params.id]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Route stop not found' });
+      return;
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id/stops/:routeStopId', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM route_stops WHERE route_stop_id = $1 AND route_id = $2 RETURNING route_stop_id',
+      [req.params.routeStopId, req.params.id]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Route stop not found' });
+      return;
+    }
+    res.json({ message: 'Stop removed from route' });
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -164,12 +266,12 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction): Prom
   }
 });
 
-router.get('/search/:source/:destination', async (req: Request, res: Response): Promise<void> => {
+router.get('/search/:source/:destination', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { source, destination } = req.params;
 
     const result = await pool.query(`
-      SELECT DISTINCT r.*, 
+      SELECT DISTINCT r.*,
              src_stop.stop_name as source_stop,
              dest_stop.stop_name as destination_stop
       FROM routes r
@@ -180,15 +282,16 @@ router.get('/search/:source/:destination', async (req: Request, res: Response): 
       WHERE src_stop.stop_name ILIKE $1
       AND dest_stop.stop_name ILIKE $2
       AND rs1.stop_sequence < rs2.stop_sequence
-    `, [`%${source}%`, `%${destination}%`]);
+    `, [`%${escapeLike(source)}%`, `%${escapeLike(destination)}%`]);
 
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
-// CRIT-10: Efficient single-query endpoint — replaces N+1 passenger getAllTrips+getAllBuses
+// Live trips on a route (running or paused), each with its bus position and the
+// server's progress (stops passed, delay, ETAs). Passengers render this as is.
 router.get('/:id/active-trips', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query(`
@@ -196,24 +299,27 @@ router.get('/:id/active-trips', async (req: Request, res: Response, next: NextFu
         t.trip_id,
         t.status,
         t.trip_date,
-        -- Nest bus data so frontend can access it as t.bus
+        s.start_time,
         json_build_object(
           'bus_id',            b.bus_id,
           'bus_no',            b.bus_no,
           'current_latitude',  b.current_latitude,
           'current_longitude', b.current_longitude,
           'current_speed_kmh', b.current_speed_kmh,
-          'last_updated',      b.last_updated
+          'last_updated',      b.last_updated,
+          'current_trip_id',   t.trip_id
         ) AS bus
       FROM trips t
       JOIN schedules s ON t.schedule_id = s.schedule_id
       JOIN buses b ON t.bus_id = b.bus_id
       WHERE s.route_id = $1
-        AND t.status = 'En Route'
+        AND t.status IN ('En Route', 'Paused')
         AND b.current_latitude IS NOT NULL
         AND b.current_longitude IS NOT NULL
+      ORDER BY s.start_time
     `, [req.params.id]);
-    res.json(result.rows);
+    const trips = await Promise.all(result.rows.map(async (t) => ({ ...t, progress: await getTripProgress(t.trip_id) })));
+    res.json(trips);
   } catch (err) {
     next(err);
   }

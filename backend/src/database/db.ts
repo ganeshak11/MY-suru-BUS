@@ -1,8 +1,15 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import dotenv from 'dotenv';
 import { logger } from '../logger';
 
 dotenv.config();
+
+// node-postgres returns BIGINT (all our ids) and NUMERIC (coordinates, speed) as
+// strings to avoid precision loss. Our ids stay far below 2^53 and coordinates
+// fit a double, while every client treats these fields as numbers (stop_id ===,
+// latitude.toFixed, …). Parse them once here.
+types.setTypeParser(types.builtins.INT8, (v) => parseInt(v, 10));
+types.setTypeParser(types.builtins.NUMERIC, (v) => parseFloat(v));
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

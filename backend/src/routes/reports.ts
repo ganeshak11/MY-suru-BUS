@@ -1,19 +1,18 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import pool from '../database/db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
-import { AuthRequest } from '../types';
 
 const router = Router();
 
 // Admin only: reports contain complaint text and driver names.
-router.get('/', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.get('/', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query(`
       SELECT 
         pr.*,
-        json_build_object('bus_no', b.bus_no) as buses,
-        json_build_object('name', d.name) as drivers,
-        json_build_object('route_name', r.route_name) as routes
+        CASE WHEN b.bus_id IS NULL THEN NULL ELSE json_build_object('bus_no', b.bus_no) END as buses,
+        CASE WHEN d.driver_id IS NULL THEN NULL ELSE json_build_object('name', d.name) END as drivers,
+        CASE WHEN r.route_id IS NULL THEN NULL ELSE json_build_object('route_name', r.route_name) END as routes
       FROM passenger_reports pr
       LEFT JOIN buses b ON pr.bus_id = b.bus_id
       LEFT JOIN drivers d ON pr.driver_id = d.driver_id
@@ -22,10 +21,11 @@ router.get('/', authenticateToken, requireAdmin, async (req: Request, res: Respo
     `);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
+const REPORT_STATUSES = ['New', 'In Progress', 'Resolved', 'Archived'];
 const MAX_TYPE_LEN = 50;
 const MAX_MESSAGE_LEN = 1000;
 const toId = (v: unknown): string | null =>
@@ -34,7 +34,7 @@ const toId = (v: unknown): string | null =>
 // Anyone (passengers are anonymous) can file a report. The driver it concerns is
 // derived from the trip on the server; a client-supplied driver_id is ignored so
 // reports can't be pinned on an arbitrary driver.
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+router.post('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const { report_type, message } = req.body ?? {};
   if (typeof report_type !== 'string' || !report_type.trim() || report_type.trim().length > MAX_TYPE_LEN) {
     res.status(400).json({ error: `report_type is required (max ${MAX_TYPE_LEN} characters)` });
@@ -86,13 +86,24 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 });
 
 // Only admins can update report status
-router.patch('/:id/status', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
+router.patch('/:id/status', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const { status } = req.body ?? {};
+  if (!REPORT_STATUSES.includes(status)) {
+    res.status(400).json({ error: `status must be one of: ${REPORT_STATUSES.join(', ')}` });
+    return;
+  }
   try {
-    const { status } = req.body;
-    await pool.query('UPDATE passenger_reports SET status = $1 WHERE report_id = $2', [status, req.params.id]);
+    const result = await pool.query(
+      'UPDATE passenger_reports SET status = $1 WHERE report_id = $2 RETURNING report_id',
+      [status, req.params.id]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Report not found' });
+      return;
+    }
     res.json({ message: 'Report status updated' });
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 

@@ -79,8 +79,15 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   logger.debug({ socketId: socket.id, user: socket.data.user?.role }, 'Socket client connected');
 
-  socket.on('join-trip', (tripId: number) => socket.join(`trip-${tripId}`));
-  socket.on('join-bus', (busId: number) => socket.join(`bus-${busId}`));
+  // Rooms are named by numeric id; ignore anything else a client sends.
+  const joiner = (prefix: string) => (id: unknown) => {
+    if (/^[1-9]\d{0,15}$/.test(String(id))) socket.join(`${prefix}-${id}`);
+  };
+  socket.on('join-trip', joiner('trip'));
+  socket.on('join-bus', joiner('bus'));
+  // Passengers viewing a route get trip-started / trip-completed for any bus on it.
+  socket.on('join-route', joiner('route'));
+  socket.on('leave-route', (id: unknown) => socket.leave(`route-${id}`));
 
   // Note: GPS location updates come via REST (POST /api/buses/:id/location → buses.ts)
   // which emits to bus-${busId} room. The passenger app listens on that room.

@@ -1,12 +1,14 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { PoolClient } from 'pg';
 import pool from '../database/db';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { validateStop } from '../middleware/validate';
+import { escapeLike } from '../middleware/params';
 
 const router = Router();
 
 // Public reads
-router.get('/', async (req: Request, res: Response): Promise<void> => {
+router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -23,12 +25,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
     `);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
 // CRIT-02: single stop by ID (was missing)
-router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+router.get('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query('SELECT * FROM stops WHERE stop_id = $1', [req.params.id]);
     if (result.rows.length === 0) {
@@ -37,7 +39,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
@@ -45,7 +47,7 @@ router.get('/search/:query', async (req: Request, res: Response, next: NextFunct
   try {
     const result = await pool.query(
       'SELECT * FROM stops WHERE stop_name ILIKE $1',
-      [`%${req.params.query}%`]
+      [`%${escapeLike(req.params.query)}%`]
     );
     res.json(result.rows);
   } catch (err) {
@@ -53,7 +55,7 @@ router.get('/search/:query', async (req: Request, res: Response, next: NextFunct
   }
 });
 
-router.get('/:id/routes', async (req: Request, res: Response): Promise<void> => {
+router.get('/:id/routes', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await pool.query(`
       SELECT DISTINCT r.route_id, r.route_name, r.route_no
@@ -64,12 +66,12 @@ router.get('/:id/routes', async (req: Request, res: Response): Promise<void> => 
     `, [req.params.id]);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
 // CRIT-01: Admin-protected create / update / delete (were all missing)
-router.post('/', authenticateToken, requireAdmin, validateStop, async (req: Request, res: Response): Promise<void> => {
+router.post('/', authenticateToken, requireAdmin, validateStop, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { stop_name, latitude, longitude, geofence_radius_meters } = req.body;
     const result = await pool.query(
@@ -79,11 +81,11 @@ router.post('/', authenticateToken, requireAdmin, validateStop, async (req: Requ
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
-router.put('/:id', authenticateToken, requireAdmin, validateStop, async (req: Request, res: Response): Promise<void> => {
+router.put('/:id', authenticateToken, requireAdmin, validateStop, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { stop_name, latitude, longitude, geofence_radius_meters } = req.body;
     const result = await pool.query(
@@ -98,24 +100,29 @@ router.put('/:id', authenticateToken, requireAdmin, validateStop, async (req: Re
     }
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(500).json({ error: (err as Error).message });
+    next(err);
   }
 });
 
-router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const client = await pool.connect();
+router.delete('/:id', authenticateToken, requireAdmin, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  let client: PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     // Remove stop from route_stops first (FK constraint)
     await client.query('DELETE FROM route_stops WHERE stop_id = $1', [req.params.id]);
-    await client.query('DELETE FROM stops WHERE stop_id = $1', [req.params.id]);
+    const deleted = await client.query('DELETE FROM stops WHERE stop_id = $1 RETURNING stop_id', [req.params.id]);
     await client.query('COMMIT');
+    if (deleted.rows.length === 0) {
+      res.status(404).json({ error: 'Stop not found' });
+      return;
+    }
     res.json({ message: 'Stop deleted' });
   } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).json({ error: (err as Error).message });
+    await client?.query('ROLLBACK').catch(() => undefined);
+    next(err);
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
