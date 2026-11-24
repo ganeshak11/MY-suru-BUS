@@ -281,8 +281,8 @@ const RouteDetailsPage: React.FC = () => {
               </View>
               <View style={styles.detailItem}>
                 <Ionicons name="time" size={18} color={colors.primaryAccent} />
-                <Text style={styles.detailLabel}>Trips: </Text>
-                <Text style={styles.detailValue}>{schedules.length}</Text>
+                <Text style={styles.detailLabel}>Live buses: </Text>
+                <Text style={styles.detailValue}>{liveTrips.length}</Text>
               </View>
             </View>
             <TouchableOpacity style={styles.mapButton} onPress={() => router.push({ pathname: '/MapView', params: { route_id: route_id } })}>

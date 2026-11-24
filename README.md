@@ -15,6 +15,33 @@ Built from scratch as a full-stack, multi-module monorepo with a custom Node.js 
 
 ![Public live map: every route, live buses, next stop, ETA and delay](Assets/screenshots/live-light.jpg)
 
+### Mobile apps
+
+<table>
+<tr>
+<td width="33%"><img src="Assets/demo/passenger-live-timelapse.gif" alt="Passenger app: the demo bus moving on the live map (6× speed)"></td>
+<td width="33%"><img src="Assets/screenshots/app-passenger-route-live.jpg" alt="Passenger app: stops passed, scheduled vs expected times, running 12 min late"></td>
+<td width="33%"><img src="Assets/screenshots/app-passenger-routes.jpg" alt="Passenger app: all routes"></td>
+</tr>
+<tr>
+<td><b>Live map</b> (6× time-lapse, <a href="Assets/demo/passenger-live-timelapse.mp4">MP4</a>)</td>
+<td><b>Route</b>: stops passed, scheduled vs expected times, delay</td>
+<td><b>All routes</b>, including the simulated demo route</td>
+</tr>
+<tr>
+<td><img src="Assets/screenshots/app-passenger-map.jpg" alt="Passenger app: route on the road map with the live bus"></td>
+<td><img src="Assets/screenshots/app-passenger-home.jpg" alt="Passenger app: search"></td>
+<td><img src="Assets/screenshots/app-driver-login.jpg" alt="Driver app: sign in"></td>
+</tr>
+<tr>
+<td><b>Route map</b> with the live bus</td>
+<td><b>Search</b> by stops or bus number</td>
+<td><b>Driver app</b> sign-in</td>
+</tr>
+</table>
+
+Captured on the Android emulator against the production backend while the demo bus was running.
+
 <details>
 <summary><b>More screenshots</b></summary>
 
