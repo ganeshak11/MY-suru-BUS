@@ -65,6 +65,42 @@ const distM = (a, b) => {
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 
+// Split the route's road path into one leg per pair of consecutive stops: each
+// stop is matched to the nearest path point after the previous stop's, so the
+// legs follow the road in order. Without a path, legs are straight lines.
+const roadLegs = (stops, path) => {
+  if (!path || path.length < 2) return stops.slice(0, -1).map((s, i) => [s, stops[i + 1]]);
+  const pts = path.map(([lat, lon]) => ({ lat, lon }));
+  const idx = [];
+  let from = 0;
+  for (const s of stops) {
+    let best = from, bestD = Infinity;
+    for (let j = from; j < pts.length; j++) {
+      const d = distM(s, pts[j]);
+      if (d < bestD) { bestD = d; best = j; }
+    }
+    idx.push(best);
+    from = best;
+  }
+  return stops.slice(0, -1).map((s, i) => [s, ...pts.slice(idx[i] + 1, idx[i + 1]), stops[i + 1]]);
+};
+
+const legLength = (leg) => leg.slice(1).reduce((m, p, i) => m + distM(leg[i], p), 0);
+
+// The point a fraction f (0–1) of the way along a leg, measured along the road.
+const pointAlong = (leg, f) => {
+  let left = f * legLength(leg);
+  for (let i = 1; i < leg.length; i++) {
+    const seg = distM(leg[i - 1], leg[i]);
+    if (left <= seg || i === leg.length - 1) {
+      const t = seg === 0 ? 1 : Math.min(1, left / seg);
+      return { lat: leg[i - 1].lat + (leg[i].lat - leg[i - 1].lat) * t, lon: leg[i - 1].lon + (leg[i].lon - leg[i - 1].lon) * t };
+    }
+    left -= seg;
+  }
+  return leg[leg.length - 1];
+};
+
 const sendPosition = async (busId, p, speedKmh) => {
   // A few metres of GPS jitter, as from a real phone.
   const lat = p.lat + rand(-0.00004, 0.00004);
@@ -108,6 +144,10 @@ const sendPosition = async (busId, p, speedKmh) => {
     off: s.time_offset_from_start ? toMin(s.time_offset_from_start.slice(0, 5)) : 0,
   }));
   if (stops.length < 2) throw new Error('demo route has fewer than 2 stops');
+  // Follow the real roads: the route's stored road path from the public live feed.
+  const live = await api('GET', '/live').catch(() => null);
+  const legs = roadLegs(stops, live?.routes?.find((r) => r.route_id === due.route_id)?.path);
+  log(`road path: ${legs.reduce((n, l) => n + l.length, 0)} points over ${legs.length} legs`);
 
   log(`starting trip ${due.trip_id} (${due.start_time.slice(0, 5)}, bus ${due.bus_no})`);
   await api('POST', `/trips/${due.trip_id}/start`);
@@ -127,11 +167,11 @@ const sendPosition = async (busId, p, speedKmh) => {
       const next = stops[i + 1];
       const legS = Math.max(60, (next.off - stop.off) * 60 * rand(0.85, 1.25) - dwell);
       const steps = Math.max(1, Math.round(legS / TICK_S));
-      const kmh = (distM(stop, next) / 1000) / (legS / 3600);
+      const leg = legs[i];
+      const kmh = (legLength(leg) / 1000) / (legS / 3600);
       for (let k = 1; k <= steps; k++) {
         if (Date.now() - started > MAX_RUNTIME_MS) throw new Error('took too long');
-        const f = k / steps;
-        await sendPosition(due.bus_id, { lat: stop.lat + (next.lat - stop.lat) * f, lon: stop.lon + (next.lon - stop.lon) * f }, kmh * rand(0.7, 1.2));
+        await sendPosition(due.bus_id, pointAlong(leg, k / steps), kmh * rand(0.7, 1.2));
         await sleep(TICK_S * 1000);
       }
     }

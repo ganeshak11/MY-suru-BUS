@@ -81,7 +81,7 @@ export default function LiveNetworkMap({
       {data?.routes.map((r) => (
         <Polyline
           key={r.route_id}
-          positions={r.stops.map((s) => [s.latitude, s.longitude])}
+          positions={r.path ?? r.stops.map((s) => [s.latitude, s.longitude] as [number, number])}
           pathOptions={{ color: routeColor.get(r.route_id), weight: 4, opacity: 0.7, dashArray: r.route_no === 'D' ? '8 8' : undefined }}
         />
       ))}

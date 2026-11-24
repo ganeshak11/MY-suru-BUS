@@ -1,16 +1,17 @@
 // Public, read-only overview of the whole network for the /live page: every route
-// with its stops in order, and every running or paused trip with its bus position
+// with its stops in order and its road path, and every running or paused trip with its bus position
 // and the server's progress (stops passed, delay, ETAs). Nothing personal.
 import { Router, Request, Response, NextFunction } from 'express';
 import pool from '../database/db';
 import { getTripProgress } from '../services/tripProgress';
+import { getRoutePathWithin } from '../services/routeGeometry';
 
 const router = Router();
 
 router.get('/', async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const routes = await pool.query(`
-      SELECT r.route_id, r.route_no, r.route_name,
+      SELECT r.route_id, r.route_no, r.route_name, r.geometry, r.geometry_key,
              COALESCE(json_agg(json_build_object(
                'stop_id', st.stop_id, 'stop_name', st.stop_name,
                'latitude', st.latitude, 'longitude', st.longitude,
@@ -22,6 +23,13 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction): Promis
       GROUP BY r.route_id
       ORDER BY r.route_no
     `);
+    // Road path per route (stored; fetched from OSRM only when the stops change).
+    // Never hold the page up for more than a few seconds on a first fetch.
+    const routesOut = await Promise.all(routes.rows.map(async ({ geometry, geometry_key, ...r }) => ({
+      ...r,
+      path: await getRoutePathWithin(4000, r.route_id, r.stops, { geometry, geometry_key }),
+    })));
+
     const trips = await pool.query(`
       SELECT t.trip_id, t.status, s.route_id, s.start_time,
              json_build_object(
@@ -40,7 +48,7 @@ router.get('/', async (_req: Request, res: Response, next: NextFunction): Promis
     );
     // Small and changes every few seconds; let browsers poll without caching it.
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ generated_at: new Date().toISOString(), routes: routes.rows, trips: withProgress });
+    res.json({ generated_at: new Date().toISOString(), routes: routesOut, trips: withProgress });
   } catch (err) {
     next(err);
   }

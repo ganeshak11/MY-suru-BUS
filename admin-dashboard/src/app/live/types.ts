@@ -11,6 +11,8 @@ export interface LiveRoute {
   route_no: string;
   route_name: string;
   stops: LiveStop[];
+  /** Road path through the stops as [lat, lon]; null until the server has it (draw straight lines). */
+  path: [number, number][] | null;
 }
 
 export interface StopProgress {
