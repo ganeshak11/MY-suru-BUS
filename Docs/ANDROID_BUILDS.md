@@ -22,7 +22,7 @@ Each run's summary shows the file name, size, signing key and backend URL.
 | Backend baked in | `EXPO_PUBLIC_API_BASE_URL` in the workflow's `env:` |
 | `versionName` | `expo.version` in the app's `app.json` |
 | `versionCode` | the workflow run number (always increases, so new builds install as updates) |
-| ABIs | `arm64-v8a`, `armeabi-v7a` |
+| ABIs | `arm64-v8a` (64-bit phones; 32-bit `armeabi-v7a` left out to halve build time) |
 | Artifacts kept | 30 days |
 
 ## Signing (do this once)
