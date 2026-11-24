@@ -23,6 +23,11 @@ on:
         type: choice
         options: [both, driver-app, passenger-app]
         default: both
+      abis:
+        description: CPU architectures (x86_64 runs on the Android emulator)
+        type: choice
+        options: [arm64-v8a, x86_64, "arm64-v8a,x86_64"]
+        default: arm64-v8a
   push:
     branches: [main]
     paths:
@@ -132,14 +137,15 @@ jobs:
         working-directory: ${{ matrix.app }}/android
         env:
           NODE_ENV: production
-        # arm64-v8a only: every Android phone of the last several years. Adding
-        # armeabi-v7a (old 32-bit phones) doubles the native build time.
-        run: ./gradlew assembleRelease --no-daemon --parallel -PreactNativeArchitectures=arm64-v8a
+        # Pushes build arm64-v8a only (every Android phone of recent years); run the
+        # workflow by hand with x86_64 for an APK that runs on the Android emulator.
+        run: ./gradlew assembleRelease --no-daemon --parallel -PreactNativeArchitectures=${{ github.event.inputs.abis || 'arm64-v8a' }}
 
       - name: Collect APK
         id: apk
         run: |
-          out="mysurubus-${{ matrix.app }}-v${{ steps.version.outputs.name }}-${{ github.run_number }}.apk"
+          abis="${{ github.event.inputs.abis || 'arm64-v8a' }}"
+          out="mysurubus-${{ matrix.app }}-v${{ steps.version.outputs.name }}-${{ github.run_number }}-${abis//,/+}.apk"
           mkdir -p "$GITHUB_WORKSPACE/out"
           cp android/app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/out/$out"
           echo "file=$out" >> "$GITHUB_OUTPUT"
